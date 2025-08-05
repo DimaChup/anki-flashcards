@@ -351,118 +351,150 @@ export default function PageViewSection({
         </div>
       </div>
 
-      {/* Controls Container */}
-      <div className="controls-container bg-muted p-4 rounded-lg mb-6 flex flex-wrap justify-between items-center gap-4">
-        {/* Highlight Controls */}
-        <div className="control-group highlight-controls flex flex-col gap-2">
-          <div className="highlight-row flex items-center gap-4">
+      {/* Controls Container - Exact copy from original page-view.html */}
+      <div className="controls-container">
+        <div className="control-group highlight-controls">
+          <div className="highlight-row">
             <button
               onClick={toggleAllHighlights}
-              className="px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 text-sm"
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                highlightedPOS.size > 0 ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'
+              }`}
             >
               Highlight All
             </button>
-            <label className="toggle-label flex items-center gap-2 cursor-pointer">
+            
+            <label className="toggle-label">
               <input
                 type="checkbox"
-                checked={highlightStyle === 'background'}
-                onChange={(e) => setHighlightStyle(e.target.checked ? 'background' : 'underline')}
-                className="sr-only"
+                checked={highlightStyle === 'underline'}
+                onChange={(e) => setHighlightStyle(e.target.checked ? 'underline' : 'background')}
               />
-              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${highlightStyle === 'background' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </div>
-              <span className="text-sm">Style</span>
+              <span className="toggle-switch"></span>
+              <span className="toggle-text">Style</span>
             </label>
           </div>
           
-          {/* POS Buttons */}
-          <div className="pos-buttons flex flex-wrap gap-2">
-            {posButtonGroups.map((group) => (
+          {/* POS Button Rows */}
+          <div className="highlight-row button-container">
+            {posButtonGroups[0]?.tags.map((pos) => (
               <button
-                key={group.key}
-                onClick={() => togglePOSHighlight(group.tags)}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
-                  group.tags.every(tag => highlightedPOS.has(tag))
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted-foreground/20 hover:bg-muted-foreground/30'
+                key={pos}
+                onClick={() => togglePOSHighlight(pos)}
+                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                  highlightedPOS.has(pos)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-background border-border hover:bg-muted'
                 }`}
-                data-pos-group={group.group}
+                style={highlightedPOS.has(pos) ? {
+                  backgroundColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
+                  color: 'white'
+                } : {}}
               >
-                {group.text}
+                {pos}
+              </button>
+            ))}
+          </div>
+          
+          <div className="highlight-row button-container">
+            {posButtonGroups[1]?.tags.map((pos) => (
+              <button
+                key={pos}
+                onClick={() => togglePOSHighlight(pos)}
+                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                  highlightedPOS.has(pos)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-background border-border hover:bg-muted'
+                }`}
+                style={highlightedPOS.has(pos) ? {
+                  backgroundColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
+                  color: 'white'
+                } : {}}
+              >
+                {pos}
+              </button>
+            ))}
+          </div>
+          
+          <div className="highlight-row button-container">
+            {posButtonGroups[2]?.tags.map((pos) => (
+              <button
+                key={pos}
+                onClick={() => togglePOSHighlight(pos)}
+                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                  highlightedPOS.has(pos)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-background border-border hover:bg-muted'
+                }`}
+                style={highlightedPOS.has(pos) ? {
+                  backgroundColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+                  color: 'white'
+                } : {}}
+              >
+                {pos}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Filter Toggles */}
-        <div className="control-group filter-toggles flex gap-4">
-          <label className="toggle-label flex items-center gap-2 cursor-pointer">
+        <div className="control-separator"></div>
+
+        <div className="control-group filter-toggles">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={filterFirstInstance}
               onChange={(e) => setFilterFirstInstance(e.target.checked)}
-              className="sr-only"
             />
-            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${filterFirstInstance ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm">Filter 1st</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Filter 1st</span>
           </label>
           
-          <label className="toggle-label flex items-center gap-2 cursor-pointer">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={filterNewWords}
               onChange={(e) => setFilterNewWords(e.target.checked)}
-              className="sr-only"
             />
-            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${filterNewWords ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm">Filter New</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Filter New</span>
           </label>
           
-          <label className="toggle-label flex items-center gap-2 cursor-pointer">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={showGrammar}
               onChange={(e) => setShowGrammar(e.target.checked)}
-              className="sr-only"
             />
-            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${showGrammar ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm">Grammar</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Grammar</span>
           </label>
           
-          <label className="toggle-label flex items-center gap-2 cursor-pointer">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={segmentMode}
               onChange={(e) => updateSegmentMode(e.target.checked)}
-              className="sr-only"
             />
-            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${segmentMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm">Segments</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Segments</span>
           </label>
         </div>
 
-        {/* Action Controls */}
-        <div className="control-group action-controls flex items-center gap-4">
-          <label className="toggle-label flex items-center gap-2 cursor-pointer">
+        <div className="control-separator"></div>
+
+        <div className="control-group action-controls">
+          <label className="toggle-label" title="Control scope for Add/Clear buttons">
             <input
               type="checkbox"
               checked={scopeMode === 'page'}
               onChange={(e) => setScopeMode(e.target.checked ? 'page' : 'entire')}
-              className="sr-only"
             />
-            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${scopeMode === 'page' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm">Scope</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Scope</span>
           </label>
           
           <button
