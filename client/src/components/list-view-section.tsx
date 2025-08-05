@@ -381,7 +381,15 @@ Left-click to toggle known status`;
           batch.forEach(word => {
             const groupKey = posButtonGroups.find(g => g.tags.includes(word.pos))?.key;
             if (groupKey && cellContents[groupKey] !== undefined) {
-              cellContents[groupKey] += renderWordSpan(word, true) + ' ';
+              // Create word span HTML string like original
+              const wordSpanHtml = `<span class="word-span ${knownSignaturesSet.has(getSignature(word.word, word.pos)) ? 'known-word' : ''}" 
+                data-word="${word.word}" 
+                data-pos="${word.pos}" 
+                data-translation="${word.translation || ''}"
+                data-frequency="${word.frequency || 0}"
+                data-first-instance="${word.firstInstance ? 'true' : 'false'}"
+              >${word.word}</span>`;
+              cellContents[groupKey] += wordSpanHtml + ' ';
             }
             
             // Calculate max key like original
@@ -407,7 +415,11 @@ Left-click to toggle known status`;
                 const content = cellContents[group.key].trim();
                 return (
                   <div key={group.key} className={`grid-cell ${group.key}-cell`}>
-                    {content || <div className="no-items">&nbsp;</div>}
+                    {content ? (
+                      <div dangerouslySetInnerHTML={{ __html: content }} />
+                    ) : (
+                      <div className="no-items">&nbsp;</div>
+                    )}
                   </div>
                 );
               })}
