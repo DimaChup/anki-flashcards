@@ -520,28 +520,19 @@
     padding: 5px;
   }
 
-  /* Exact styles from original list-view.html */
-  
-  /* List View uses Grid styles for rows/cells */
-  #first-instance-list.list-view > .grid-batch-row { }
-  #first-instance-list.list-view .list-view-words-cell {
-       border-right: none;
-       line-height: 1.7;
-       word-wrap: break-word;
-       overflow-wrap: break-word;
-  }
-  #first-instance-list.list-view > #first-instance-grid { display: none; }
-  #first-instance-list.list-view .word-span {
-      display: inline;
-      margin: 0 0.05em;
-      padding: 0.1em 0.2em;
-      line-height: 1.7;
+  /* Header row styling */
+  .grid-header-row {
+    background-color: var(--bg-secondary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
   }
 
-  /* Grid View Styles */
-  #first-instance-grid { display: none; flex-direction: column; }
-  #first-instance-list.grid-view > div:not(#first-instance-grid) { display: none; }
-  #first-instance-list.grid-view > #first-instance-grid { display: flex; }
+  .grid-header-cell {
+    text-align: center;
+    font-weight: 600;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+  }
 
   .grid-cell.row-number-cell {
     flex: 0 0 50px;
