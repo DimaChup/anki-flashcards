@@ -205,7 +205,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     if (ankiFormat) {
       // Anki format with key
       content = flatWords.map((word, index) => 
-        `${word.word}::${word.pos}\t${word.translations?.[0] || ''}\t${index + 1}`
+        `${word.word}::${word.pos}\t${word.translation || ''}\t${index + 1}`
       ).join('\n');
       filename = `anki_unknown_batch_${downloadBatchFrom}-${downloadBatchTo}.txt`;
     } else {
