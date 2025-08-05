@@ -33,6 +33,11 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   const [downloadBatchFrom, setDownloadBatchFrom] = useState(1);
   const [downloadBatchTo, setDownloadBatchTo] = useState(1);
   const [knownWordsText, setKnownWordsText] = useState("");
+
+  // Get current known words for filtering
+  const getCurrentKnownWords = () => {
+    return (database?.knownWords as string[]) || [];
+  };
   
   // POS column filters (matching original checkbox values)
   const [selectedPosColumns, setSelectedPosColumns] = useState<Set<string>>(
@@ -63,7 +68,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     } else {
       setKnownWordsText('');
     }
-  }, [database?.id]);
+  }, [database?.id, database?.knownWords]);
 
   // Update known words mutation
   const updateKnownWordsMutation = useMutation({
@@ -104,9 +109,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     if (!uniqueWords) return [];
     
     let filtered = [...uniqueWords];
-    const knownWordsSet = new Set(
-      knownWordsText.split('\n').map(w => w.trim()).filter(w => w.length > 0)
-    );
+    const knownWordsSet = new Set(getCurrentKnownWords());
 
     if (newWordsOnly) {
       filtered = filtered.filter(word => 
@@ -279,8 +282,9 @@ Left-click to toggle known status`;
     const posGroup = getPosGroup(word.pos);
     const posKey = getPosColumnKey(posGroup);
     const signature = `${word.word}::${word.pos}`;
-    const isKnown = knownWordsText.includes(signature) || 
-                   knownWordsText.includes(word.word.toLowerCase());
+    const knownWordsSet = new Set(getCurrentKnownWords());
+    const isKnown = knownWordsSet.has(signature) || 
+                   knownWordsSet.has(word.word.toLowerCase());
     
     return (
       <span
@@ -375,32 +379,6 @@ Left-click to toggle known status`;
 
   return (
     <div className="list-view-section">
-      {/* Known Words Input */}
-      <div className="input-section mb-6">
-        <div className="textarea-group">
-          <label htmlFor="known-words-list" className="text-sm font-medium text-muted-foreground mb-2 block">
-            Known Words (Signatures):
-          </label>
-          <textarea
-            id="known-words-list"
-            value={knownWordsText}
-            onChange={(e) => setKnownWordsText(e.target.value)}
-            className="w-full h-32 p-3 bg-muted border border-border rounded-lg font-mono text-sm resize-vertical"
-            placeholder="Enter known words, one per line..."
-          />
-          <div className="flex gap-2 mt-2">
-            <Button
-              onClick={handleSaveKnownWords}
-              disabled={updateKnownWordsMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Save className="w-4 h-4 mr-1" />
-              Save Known Words
-            </Button>
-          </div>
-        </div>
-      </div>
 
       {/* Controls Container */}
       <div className="controls-container bg-muted p-4 rounded-lg mb-6">
