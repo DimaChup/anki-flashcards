@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Highlighter (First Instance List Only - Backend)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Root Variables (Dark Theme) --- */
+        :root {
+            /* Dark Theme Base */
+            --bg-primary: #1a1d21;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #31363f;
+            --text-primary: #e8eaed;
+            --text-secondary: #bdc1c6;
+            --text-heading: #ffffff; /* White color */
+            --border-color: #4a5058;
+            --accent-primary: #4a90e2;
+            --accent-primary-hover: #3a7bc8;
+            --accent-secondary: #4b5563;
+            --accent-secondary-hover: #6b7280;
+            --accent-download: #34d399; /* Teal/Green for download */
+            --accent-download-hover: #10b981;
+            --accent-add: #a78bfa; /* Purple for add button */
+            --accent-add-hover: #8b5cf6;
+            --accent-clear: #fca5a5; /* Light red for clear button */
+            --accent-clear-hover: #f87171; /* Darker red for clear button hover */
+            --error-bg: #5f1d24;
+            --error-border: #9e3842;
+            --error-text: #fecdd3;
+            --focus-ring: rgba(74, 144, 226, 0.4);
+            --word-hover-bg: rgba(255, 255, 255, 0.05); /* Subtle hover for words */
+            --known-word-opacity: 0.4; /* Opacity for known words IN THE LIST VIEW */
+
+            /* Highlight Colors (using HSL for easy alpha modification) - Kept for list view circles */
+            --hl-verb-hue: 340; --hl-verb-sat: 80%; --hl-verb-light: 80%;
+            --hl-noun-hue: 205; --hl-noun-sat: 80%; --hl-noun-light: 75%;
+            --hl-adj-hue: 145;  --hl-adj-sat: 65%; --hl-adj-light: 75%;
+            --hl-aux-hue: 35;   --hl-aux-sat: 90%; --hl-aux-light: 65%; /* Keep AUX for potential future use */
+            --hl-other-hue: 45; --hl-other-sat: 90%; --hl-other-light: 75%;
+            --hl-base-alpha: 0.9; /* Base alpha for highlights */
+
+            /* Transitions */
+            --transition-speed-fast: 0.15s;
+            --transition-speed-normal: 0.25s;
+            --transition-timing: ease-in-out;
+
+        }
+
+        /* --- General Body & Font --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* --- Main App Container --- */
+        #app-container {
+            background-color: var(--bg-secondary);
+            padding: 35px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* --- Headings --- */
+        h1 { font-size: 1.8em; font-weight: 700; margin-bottom: 10px; text-align: center;}
+
+        /* --- Layout Structure --- */
+        .input-section { display: flex; flex-direction: column; gap: 20px; margin-bottom: 0; }
+        .textarea-group { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 8px; }
+        .output-section { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        /* --- Form Elements & Controls --- */
+        label { font-weight: bold; color: var(--text-secondary); display: block; font-size: 0.95em; }
+        .setting-control { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+        .setting-control label { margin-bottom: 0; flex-shrink: 0; font-size: 0.9em; }
+        .setting-control input[type="number"],
+        .download-range-control .input-with-arrows input[type="number"], /* Target inputs within arrows */
+        .key-range-control input[type="number"]
+         {
+             width: 60px;
+             padding: 6px 8px;
+             background-color: var(--bg-primary);
+             color: var(--text-primary);
+             border: 1px solid var(--border-color);
+             border-radius: 6px; /* Default radius */
+             font-size: 0.9em;
+             text-align: center;
+             transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+         }
+        .setting-control input[type="number"]:focus,
+        .download-range-control .input-with-arrows input[type="number"]:focus,
+        .key-range-control input[type="number"]:focus
+        {
+             outline: none;
+             border-color: var(--accent-primary);
+             box-shadow: 0 0 0 3px var(--focus-ring);
+         }
+        .setting-control input[type="number"]:disabled,
+        .download-range-control .input-with-arrows input[type="number"]:disabled,
+        .key-range-control input[type="number"]:disabled
+         {
+             background-color: var(--bg-tertiary);
+             color: var(--text-secondary);
+             opacity: 0.6;
+             cursor: not-allowed;
+         }
+
+        /* Remove spinner buttons from number inputs */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield; /* Firefox */
+        }
+
+
+        /* --- Toggle Switch --- */
+        .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.95em; margin-top: 0; user-select: none; }
+        .toggle-label input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: var(--accent-secondary); border-radius: 10px; transition: background-color var(--transition-speed-normal) var(--transition-timing); flex-shrink: 0; }
+        .toggle-switch::before { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background-color: white; top: 2px; left: 2px; transition: transform var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch { background-color: var(--accent-primary); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch::before { transform: translateX(20px); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .toggle-text { line-height: 1.2; }
+
+        /* --- Checkbox (for POS columns) --- */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.9em; /* Smaller font size */
+            user-select: none;
+            padding: 3px 6px; /* Add some padding */
+            border-radius: 4px;
+            transition: background-color var(--transition-speed-fast) var(--transition-timing);
+        }
+        .checkbox-label:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .checkbox-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 14px; /* Smaller checkbox */
+            height: 14px;
+            accent-color: var(--accent-primary); /* Color the checkmark */
+        }
+        .checkbox-label span {
+             line-height: 1; /* Align text vertically */
+        }
+
+
+        /* --- Textarea --- */
+        textarea {
+            width: calc(100% - 24px); /* Adjusted for padding */
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 150px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1), 0 0 0 3px var(--focus-ring);
+        }
+        /* Specific height for Combined JSON textarea */
+         #combined-json-output { /* Changed ID */
+             min-height: 200px;
+             height: 250px; /* Make it reasonably large */
+         }
+         /* Specific height for Known Words textarea */
+         #known-words-input { /* NEW */
+             min-height: 100px;
+             height: 150px;
+             font-size: 0.85em;
+             line-height: 1.4;
+         }
+
+
+        /* --- Buttons --- */
+        .button-row { /* Container for combined JSON buttons */
+            display: flex;
+            gap: 15px;
+            margin-top: 10px; /* Space above buttons */
+        }
+
+        /* --- Main Controls Container --- */
+        .controls-container {
+            margin-bottom: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px 20px;
+            padding: 15px 20px;
+            background-color: var(--bg-tertiary);
+            border-radius: 12px;
+            align-items: center;
+        }
+
+        /* General style for secondary buttons */
+        .view-toggle-button,
+        .pagination-controls button,
+        #page-jump-button,
+        .wpp-button,
+        #download-first-instances-button,
+        #add-first-instances-button,
+        #clear-known-words-button,
+        .button-row button /* Style for Load/Create JSON buttons */
+        {
+            padding: 7px 12px;
+            background-color: var(--accent-secondary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing), color var(--transition-speed-normal) var(--transition-timing), transform var(--transition-speed-fast) var(--transition-timing), opacity var(--transition-speed-normal) var(--transition-timing);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            line-height: 1; /* Ensure consistent height */
+        }
+        .view-toggle-button:hover:not(:disabled),
+        .pagination-controls button:hover:not(:disabled),
+        #page-jump-button:hover:not(:disabled),
+        .wpp-button:hover:not(:disabled),
+        #download-first-instances-button:hover:not(:disabled),
+        #add-first-instances-button:hover:not(:disabled),
+        #clear-known-words-button:hover:not(:disabled),
+        .button-row button:hover:not(:disabled)
+        {
+            background-color: var(--accent-secondary-hover);
+            color: var(--text-heading);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .view-toggle-button:active:not(:disabled),
+        .pagination-controls button:active:not(:disabled),
+        #page-jump-button:active:not(:disabled),
+        .wpp-button:active:not(:disabled),
+        #download-first-instances-button:active:not(:disabled),
+        #add-first-instances-button:active:not(:disabled),
+        #clear-known-words-button:active:not(:disabled),
+        .button-row button:active:not(:disabled)
+        {
+            transform: scale(0.98);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        /* Specific hover for Download button */
+        #download-first-instances-button:hover:not(:disabled) {
+             background-color: var(--accent-download-hover);
+        }
+        /* Specific background for Download button */
+        #download-first-instances-button:not(:disabled) {
+             background-color: var(--accent-download);
+             color: white; /* Ensure text is readable */
+        }
+         /* Specific hover for Add All button */
+         #add-first-instances-button:hover:not(:disabled) {
+             background-color: var(--accent-add-hover);
+        }
+        /* Specific background for Add All button */
+        #add-first-instances-button:not(:disabled) {
+             background-color: var(--accent-add);
+             color: white; /* Ensure text is readable */
+        }
+        /* Specific hover for Clear Known button */
+        #clear-known-words-button:hover:not(:disabled) {
+            background-color: var(--accent-clear-hover);
+            color: white;
+        }
+        /* Specific background for Clear Known button */
+        #clear-known-words-button:not(:disabled) {
+            background-color: var(--accent-clear);
+            color: var(--bg-primary); /* Darker text for contrast */
+        }
+        /* Specific styles for Load/Create JSON buttons */
+        .button-row button {
+            padding: 10px 15px; /* Make slightly larger */
+            font-weight: bold;
+        }
+        .button-row button#create-combined-button {
+             background-color: var(--accent-secondary-hover); /* Slightly different base */
+        }
+        /* Removed Load button style */
+        /* .button-row button#load-combined-button { ... } */
+
+
+        /* Styles for disabled buttons */
+        .pagination-controls button:disabled,
+        .view-toggle-button:disabled,
+        #page-jump-button:disabled,
+        .wpp-button:disabled,
+        #download-first-instances-button:disabled,
+        #add-first-instances-button:disabled,
+        #clear-known-words-button:disabled,
+        .button-row button:disabled
+        {
+             background-color: #3a3f47 !important;
+             color: #777 !important;
+             cursor: not-allowed;
+             transform: none !important;
+             box-shadow: none !important;
+             opacity: 0.6;
+         }
+
+        /* Input with Arrows Styling (Generic) */
+        .input-with-arrows {
+            display: flex;
+            align-items: center;
+            gap: 3px; /* Small gap between input and buttons */
+        }
+        .input-with-arrows input[type="number"] {
+            margin: 0; /* Remove default margins */
+            border-radius: 6px 0 0 6px; /* Adjust radius for left side */
+        }
+        .input-with-arrows .wpp-button-group {
+            display: flex;
+            flex-direction: column;
+        }
+        /* Specific styles for WPP buttons (used for all arrow buttons) */
+        .wpp-button {
+            padding: 1px 6px; /* Fine-tune padding */
+            font-size: 0.7em; /* Smaller font */
+            min-width: auto;
+            border-radius: 0; /* Remove individual radius */
+            height: 15px; /* Match input height roughly */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1; /* Ensure text is centered */
+        }
+        .input-with-arrows .wpp-button:first-of-type {
+            border-radius: 0 6px 0 0; /* Top-right radius */
+        }
+         .input-with-arrows .wpp-button:last-of-type {
+            border-radius: 0 0 6px 0; /* Bottom-right radius */
+         }
+
+
+        /* --- First Instance List Section --- */
+        .first-instance-section-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 0 5px 0; background-color: transparent; border: none; }
+        .details-section { background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 12px; transition: background-color var(--transition-speed-normal) var(--transition-timing); }
+        .details-summary { padding: 10px 0 10px 15px; cursor: pointer; font-weight: bold; color: var(--text-secondary); list-style: none; position: relative; outline: none; user-select: none; flex-grow: 1; transition: color var(--transition-speed-normal) var(--transition-timing); }
+        .details-summary::-webkit-details-marker { display: none; }
+        .details-summary::before { content: '►'; display: inline-block; margin-right: 8px; transition: transform var(--transition-speed-normal) var(--transition-timing); font-size: 0.8em; color: var(--text-secondary); }
+        details[open] > .first-instance-section-header > .details-summary::before { transform: rotate(90deg); }
+
+        /* --- Details Controls (First Instance List) --- */
+        .details-controls {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping */
+            align-items: center; /* Align items vertically */
+            justify-content: flex-start; /* Align items to start */
+            gap: 15px 20px; /* Add vertical gap */
+            padding: 10px 20px 10px 20px; /* Consistent padding */
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 10px;
+        }
+        details:not([open]) .details-controls {
+            display: none;
+        }
+        .view-toggle-button { display: inline-block; margin: 0; }
+        #download-first-instances-button { margin-left: 0; } /* Ensure no extra margin */
+
+
+        /* Key Range Controls */
+        .key-range-controls-group {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Space between range inputs */
+            margin-left: 0; /* Align with other controls */
+            /* margin-right: 15px; /* Removed margin */
+        }
+        .key-range-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .key-range-control label {
+             font-size: 0.9em;
+             margin-bottom: 0;
+             color: var(--text-secondary);
+        }
+        /* #key-range-info removed */
+
+
+        /* Download Controls Group */
+        .download-controls-group {
+            display: flex;
+            align-items: center; /* Align items vertically */
+            flex-wrap: wrap; /* Allow wrapping within the group */
+            gap: 10px 15px; /* Space between items */
+            /* margin-left: auto; /* REMOVED: Don't push right */
+            /* flex-grow: 1; /* REMOVED: Don't grow */
+            /* justify-content: flex-end; /* REMOVED: Align left by default */
+            width: 100%; /* Make the group take full width to wrap below */
+            order: 10; /* Push this group below others using order */
+        }
+        .download-range-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .download-range-control label {
+             font-size: 0.9em;
+             margin-bottom: 0;
+             color: var(--text-secondary);
+        }
+        /* Align Anki toggle within the download group */
+        #anki-format-toggle-label {
+            /* margin-left: 5px; /* Removed margin */
+        }
+
+        /* POS Column Filter Controls */
+        .pos-column-filter-group {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px 10px; /* Adjust gap */
+            padding: 5px 8px; /* Reduce padding */
+            background-color: transparent; /* Remove background */
+            border-radius: 0; /* Remove radius */
+            margin-top: 0; /* Remove top margin */
+            width: auto; /* Allow natural width */
+            box-sizing: border-box;
+            border: none; /* Remove border */
+            /* order: 4; /* Removed explicit order, will flow naturally */
+        }
+        .pos-column-filter-group legend {
+            display: none; /* Hide legend */
+        }
+        /* Remove conditional visibility based on grid view */
+        /* .details-controls:not(.grid-view-active) .pos-column-filter-group { display: none; } */
+
+
+        /* --- First Instance List Content --- */
+        .details-content { padding: 0 20px 15px 20px; max-height: 350px; overflow-y: auto; font-size: 0.95em; }
+
+        /* List View uses Grid styles for rows/cells */
+        #first-instance-list.list-view > .grid-batch-row { }
+        #first-instance-list.list-view .list-view-words-cell {
+             border-right: none;
+             line-height: 1.7;
+             word-wrap: break-word;
+             overflow-wrap: break-word;
+        }
+        #first-instance-list.list-view > #first-instance-grid { display: none; }
+        #first-instance-list.list-view .word-span {
+            display: inline;
+            margin: 0 0.05em;
+            padding: 0.1em 0.2em;
+            line-height: 1.7;
+        }
+
+        /* Grid View Styles */
+        #first-instance-grid { display: none; flex-direction: column; }
+        #first-instance-list.grid-view > div:not(#first-instance-grid) { display: none; }
+        #first-instance-list.grid-view > #first-instance-grid { display: flex; }
+        .grid-batch-row { display: flex; width: 100%; border-bottom: 1px solid var(--border-color); }
+        .grid-batch-row:last-child { border-bottom: none; }
+        .grid-cell { flex: 1; padding: 10px; border-right: 1px solid var(--border-color); min-width: 0; line-height: 1.7; word-wrap: break-word; overflow-wrap: break-word; }
+        .grid-cell:last-child { border-right: none; }
+        .grid-cell .word-span { display: inline; margin: 0 0.05em; padding: 0.1em 0.2em; }
+        .grid-cell .no-items { color: var(--text-secondary); font-style: italic; font-size: 0.9em; }
+        .grid-cell.row-number-cell {
+            flex: 0 0 50px; /* Slightly wider to accommodate max key */
+            text-align: center;
+            font-weight: bold;
+            color: var(--text-secondary);
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-right: 1px solid var(--border-color);
+            background-color: var(--bg-tertiary);
+            font-size: 0.9em;
+            /* NEW: Flexbox for vertical centering */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        /* NEW: Style for the max key display */
+        .batch-max-key {
+            font-size: 0.75em; /* Smaller font */
+            color: var(--text-secondary); /* Subdued color */
+            margin-top: 2px; /* Small space below batch number */
+            line-height: 1; /* Adjust line height */
+            font-weight: normal; /* Normal weight */
+        }
+
+        /* Style for known words in the first instance list */
+        .known-word {
+            opacity: var(--known-word-opacity);
+            transition: opacity var(--transition-speed-normal) var(--transition-timing);
+            cursor: pointer; /* Indicate clickable */
+        }
+
+        /* Ensure clickable cursor for all words in the list */
+        #first-instance-list .word-span {
+            cursor: pointer;
+        }
+
+
+        /* --- Highlighting & Underline Styles --- */
+        .word-span { /* Base style for all spans, including list */
+            position: relative; /* Needed for list view grammar details */
+            display: inline;
+            padding: 0.1em 0.2em;
+            margin: 0 0.05em;
+            border-radius: 4px;
+            transition:
+                border-color var(--transition-speed-normal) var(--transition-timing), /* Keep for list circles */
+                padding var(--transition-speed-fast) var(--transition-timing),
+                border-radius var(--transition-speed-fast) var(--transition-timing);
+            cursor: default; /* Default cursor, override for list */
+            text-decoration: none; /* Base: no underline */
+            border: 1.5px solid transparent;
+            border-bottom-width: 0;
+            background-color: transparent;
+        }
+        /* Removed main page view span styles */
+
+
+        /* Grammar Details Superscript REMOVED */
+
+
+        /* Persistent Circles for words *within* the first-instance list */
+        #first-instance-list .word-span {
+             position: relative; /* Still needed if other relative elements exist */
+             padding: 0.1em 0.4em;
+             margin: 0 2px 2px 0;
+             border-radius: 1em;
+             border-width: 1.5px;
+             border-style: solid;
+             text-decoration: none !important; /* Ensure no underline from other rules */
+             cursor: pointer; /* Make list words clickable */
+        }
+
+        #first-instance-list .pos-circle-blue { border-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--hl-base-alpha)); }
+        #first-instance-list .pos-circle-pink { border-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha)); }
+        #first-instance-list .pos-circle-green { border-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--hl-base-alpha)); }
+        #first-instance-list .pos-circle-yellow { border-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha)); }
+        #first-instance-list .pos-circle-orange { border-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--hl-base-alpha)); }
+
+        #first-instance-list .word-span:hover {
+            background-color: transparent;
+             filter: brightness(1.1);
+             transform: scale(1.02);
+        }
+        /* Removed grammar details styles for list */
+
+
+        /* --- Error Message Style --- */
+        .error-message { color: var(--error-text); font-weight: bold; margin-top: 10px; padding: 10px; background-color: var(--error-bg); border: 1px solid var(--error-border); border-radius: 6px; }
+
+    </style>
+
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>POS Highlighter - First Instance List</h1>
+
+        <div class="input-section">
+            <div class="button-row">
+                </div>
+            <div class="textarea-group">
+                 <label for="known-words-input">Known Words (Signatures: word::POS):</label>
+                 <textarea id="known-words-input" placeholder="Loaded from server. Click words in list below or edit here..."></textarea>
+            </div>
+            <div id="error-display" class="error-message" style="display: none;"></div>
+        </div>
+
+        <div class="controls-container">
+             <label class="toggle-label" for="first-instance-toggle" title="Filter words marked as first instance in the JSON">
+                 <input type="checkbox" id="first-instance-toggle" checked> <span class="toggle-switch"></span>
+                 <span class="toggle-text">Show Only 1st Inst.</span>
+             </label>
+             <label class="toggle-label" for="new-words-toggle" title="Fade words in the list below if their signature is known">
+                 <input type="checkbox" id="new-words-toggle" checked> <span class="toggle-switch"></span>
+                 <span class="toggle-text">Fade Known in List</span>
+             </label>
+             <button id="add-first-instances-button" disabled>Add Visible First Inst.</button>
+             <button id="clear-known-words-button" disabled>Clear Known Words</button>
+        </div>
+
+        <div class="output-section">
+            <details id="first-instance-details" class="details-section" open> <summary class="first-instance-section-header">
+                 <span class="details-summary" id="first-instance-summary">First Instances List</span>
+             </summary>
+             <div class="details-controls">
+                 <button id="toggle-view-button" class="view-toggle-button">Switch to Grid View</button>
+                 <div class="setting-control">
+                     <label for="batch-size-input">Words per Batch:</label>
+                     <div class="input-with-arrows">
+                         <input type="number" id="batch-size-input" value="25" min="1" max="200" step="1">
+                         <div class="wpp-button-group"> <button type="button" id="wpb-increment-button" class="wpp-button" aria-label="Increase words per batch">▲</button>
+                             <button type="button" id="wpb-decrement-button" class="wpp-button" aria-label="Decrease words per batch">▼</button>
+                         </div>
+                     </div>
+                 </div>
+                 <label class="toggle-label" for="batch-by-unknown-toggle">
+                     <input type="checkbox" id="batch-by-unknown-toggle" checked>
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Batch by Unknown</span>
+                 </label>
+                 <div class="key-range-controls-group">
+                     <div class="key-range-control">
+                         <label for="filter-key-from">Key From:</label>
+                         <input type="number" id="filter-key-from" min="1" value="1" disabled>
+                     </div>
+                     <div class="key-range-control">
+                         <label for="filter-key-to">To:</label>
+                         <input type="number" id="filter-key-to" min="1" disabled>
+                     </div>
+                  </div>
+                 <div class="download-controls-group">
+                     <button id="download-first-instances-button" disabled>Download Unknown</button>
+                     <label class="toggle-label" id="anki-format-toggle-label" for="anki-format-toggle" title="Format download for Anki import (requires translation data)">
+                         <input type="checkbox" id="anki-format-toggle" checked>
+                         <span class="toggle-switch"></span>
+                         <span class="toggle-text">Anki Format</span>
+                     </label>
+                     <div class="download-range-control">
+                         <label for="download-batch-from">Batch From:</label>
+                         <div class="input-with-arrows">
+                             <input type="number" id="download-batch-from" min="1" value="1" disabled>
+                             <div class="wpp-button-group">
+                                 <button type="button" id="dbf-increment-button" class="wpp-button" aria-label="Increase Batch From">▲</button>
+                                 <button type="button" id="dbf-decrement-button" class="wpp-button" aria-label="Decrease Batch From">▼</button>
+                             </div>
+                         </div>
+                     </div>
+                     <div class="download-range-control">
+                         <label for="download-batch-to">To:</label>
+                         <div class="input-with-arrows">
+                             <input type="number" id="download-batch-to" min="1" disabled>
+                             <div class="wpp-button-group">
+                                 <button type="button" id="dbt-increment-button" class="wpp-button" aria-label="Increase Batch To">▲</button>
+                                 <button type="button" id="dbt-decrement-button" class="wpp-button" aria-label="Decrease Batch To">▼</button>
+                             </div>
+                         </div>
+                     </div>
+                     <fieldset class="pos-column-filter-group" id="pos-column-filter">
+                         <label class="checkbox-label">
+                             <input type="checkbox" name="pos-column" value="pink" checked> <span>V</span> </label>
+                         <label class="checkbox-label">
+                             <input type="checkbox" name="pos-column" value="blue" checked> <span>N</span>
+                         </label>
+                         <label class="checkbox-label">
+                             <input type="checkbox" name="pos-column" value="green" checked> <span>Adj</span>
+                         </label>
+                          <label class="checkbox-label">
+                             <input type="checkbox" name="pos-column" value="orange" checked> <span>Aux</span>
+                         </label>
+                         <label class="checkbox-label">
+                             <input type="checkbox" name="pos-column" value="yellow" checked> <span>Oth</span>
+                         </label>
+                     </fieldset>
+                 </div>
+             </div>
+             <div id="first-instance-list" class="details-content list-view">
+                 <div class="no-items">Loading data from server...</div>
+                 </div>
+            </details>
+
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- DOM Elements ---
+        const appContainer = document.getElementById('app-container');
+        const knownWordsInput = document.getElementById('known-words-input');
+        const errorDisplayDiv = document.getElementById('error-display');
+        const firstInstanceToggle = document.getElementById('first-instance-toggle');
+        const newWordsToggle = document.getElementById('new-words-toggle');
+        const firstInstanceListContainer = document.getElementById('first-instance-list');
+        const firstInstanceDetails = document.getElementById('first-instance-details');
+        const firstInstanceSummary = document.getElementById('first-instance-summary');
+        const toggleViewButton = document.getElementById('toggle-view-button');
+        const batchSizeInput = document.getElementById('batch-size-input');
+        const wpbDecrementButton = document.getElementById('wpb-decrement-button');
+        const wpbIncrementButton = document.getElementById('wpb-increment-button');
+        const downloadFirstInstancesButton = document.getElementById('download-first-instances-button');
+        const downloadBatchFromInput = document.getElementById('download-batch-from');
+        const downloadBatchToInput = document.getElementById('download-batch-to');
+        const filterKeyFromInput = document.getElementById('filter-key-from');
+        const filterKeyToInput = document.getElementById('filter-key-to');
+        // const keyRangeInfoSpan = document.getElementById('key-range-info'); // REMOVED
+        const addFirstInstancesButton = document.getElementById('add-first-instances-button');
+        const clearKnownWordsButton = document.getElementById('clear-known-words-button');
+        const batchByUnknownToggle = document.getElementById('batch-by-unknown-toggle');
+        const ankiFormatToggle = document.getElementById('anki-format-toggle');
+        const detailsControlsContainer = firstInstanceDetails.querySelector('.details-controls');
+        const posColumnCheckboxes = document.querySelectorAll('#pos-column-filter input[name="pos-column"]');
+        const dbfIncrementButton = document.getElementById('dbf-increment-button');
+        const dbfDecrementButton = document.getElementById('dbf-decrement-button');
+        const dbtIncrementButton = document.getElementById('dbt-increment-button');
+        const dbtDecrementButton = document.getElementById('dbt-decrement-button');
+
+
+        // --- State Variables ---
+        let database = {};
+        let segmentsData = [];
+        let idiomsData = [];
+        let inputText = "";
+        let allTokens = [];
+        let originalFirstInstanceTokens = [];
+        let filteredFirstInstanceTokens = [];
+        let knownSignaturesSet = new Set();
+        let totalFirstInstanceBatches = 0;
+        let filterFirstInstanceActive = true;
+        let filterNewWordsActive = true;
+        let firstInstanceViewMode = 'list';
+        let minWordKey = null;
+        let maxWordKey = null;
+        let batchByUnknownActive = true; // Default state updated
+        let ankiFormatActive = true; // Default state updated
+        let selectedPosColumns = new Set(['pink', 'blue', 'green', 'orange', 'yellow']);
+
+
+        // --- Constants ---
+        const SIGNATURE_SEPARATOR = '::';
+        const NULL_PLACEHOLDER = '_NONE_';
+        const posButtonGroups = [
+             { key: "pink", group: "verb", tags: ["VERB"], label: "Verb" },
+             { key: "blue", group: "noun-propn", tags: ["NOUN", "PROPN"], label: "Noun/Propn" },
+             { key: "green", group: "adj", tags: ["ADJ"], label: "Adj" },
+             { key: "orange", group: "aux", tags: ["AUX"], label: "Aux" },
+             { key: "yellow", group: "other", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"], label: "Other" }
+        ];
+
+        // --- Function Definitions (Moved Up) ---
+        function updateClearKnownWordsButtonState() { if (clearKnownWordsButton) { clearKnownWordsButton.disabled = knownSignaturesSet.size === 0; } }
+        function disableDownloadControls() {
+            downloadFirstInstancesButton.disabled = true;
+            downloadBatchFromInput.disabled = true;
+            downloadBatchToInput.disabled = true;
+            downloadBatchFromInput.min = '';
+            downloadBatchToInput.min = '';
+            downloadBatchFromInput.max = '';
+            downloadBatchToInput.max = '';
+            dbfIncrementButton.disabled = true;
+            dbfDecrementButton.disabled = true;
+            dbtIncrementButton.disabled = true;
+            dbtDecrementButton.disabled = true;
+         }
+        function enableDownloadControls() {
+            downloadFirstInstancesButton.disabled = false;
+            downloadBatchFromInput.disabled = false;
+            downloadBatchToInput.disabled = false;
+            dbfIncrementButton.disabled = false;
+            dbfDecrementButton.disabled = false;
+            dbtIncrementButton.disabled = false;
+            dbtDecrementButton.disabled = false;
+
+            const maxBatch = totalFirstInstanceBatches > 0 ? totalFirstInstanceBatches : 1;
+            const minBatch = 1;
+
+            downloadBatchFromInput.min = minBatch;
+            downloadBatchFromInput.max = maxBatch;
+            downloadBatchToInput.min = minBatch;
+            downloadBatchToInput.max = maxBatch;
+
+            let currentFrom = parseInt(downloadBatchFromInput.value, 10);
+            let currentTo = parseInt(downloadBatchToInput.value, 10);
+
+            if (isNaN(currentFrom) || currentFrom < minBatch || currentFrom > maxBatch) {
+                downloadBatchFromInput.value = minBatch;
+            } else {
+                downloadBatchFromInput.value = currentFrom;
+            }
+
+            if (isNaN(currentTo) || currentTo < minBatch || currentTo > maxBatch) {
+                downloadBatchToInput.value = maxBatch;
+            } else {
+                 const finalFrom = parseInt(downloadBatchFromInput.value, 10);
+                 downloadBatchToInput.value = Math.max(finalFrom, currentTo);
+            }
+             if (parseInt(downloadBatchFromInput.value, 10) > parseInt(downloadBatchToInput.value, 10)) {
+                 downloadBatchFromInput.value = downloadBatchToInput.value;
+             }
+        }
+        function disableKeyRangeControls() {
+            filterKeyFromInput.disabled = true;
+            filterKeyToInput.disabled = true;
+            filterKeyFromInput.value = '';
+            filterKeyToInput.value = '';
+            filterKeyFromInput.min = '';
+            filterKeyFromInput.max = '';
+            filterKeyToInput.min = '';
+            filterKeyToInput.max = '';
+        }
+        function enableKeyRangeControls() {
+            filterKeyFromInput.disabled = false;
+            filterKeyToInput.disabled = false;
+        }
+        function disableAddAllButton() { if (addFirstInstancesButton) addFirstInstancesButton.disabled = true; }
+        function enableAddAllButton() { if (addFirstInstancesButton) { addFirstInstancesButton.disabled = !filteredFirstInstanceTokens || filteredFirstInstanceTokens.length === 0; } }
+        function updateFilterTogglesState() { filterFirstInstanceActive = firstInstanceToggle.checked; filterNewWordsActive = newWordsToggle.checked; }
+        function updateBatchingMode() { batchByUnknownActive = batchByUnknownToggle.checked; console.log("Batch by unknown mode:", batchByUnknownActive); }
+        function updateAnkiFormatToggleState() { ankiFormatActive = ankiFormatToggle.checked; console.log("Anki format active:", ankiFormatActive); }
+        function updateSelectedPosColumns() {
+            selectedPosColumns.clear();
+            posColumnCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedPosColumns.add(checkbox.value);
+                }
+            });
+            console.log("Selected POS columns:", Array.from(selectedPosColumns));
+        }
+        // function updatePosColumnFilterVisibility() { // REMOVED
+
+        // --- Initialization Function ---
+        function initializeApp() {
+            knownWordsInput.value = '';
+            // Set initial state from HTML defaults BEFORE adding listeners
+            updateFilterTogglesState();
+            updateBatchingMode();
+            updateAnkiFormatToggleState();
+            updateSelectedPosColumns();
+            updateClearKnownWordsButtonState();
+            disableDownloadControls();
+            disableKeyRangeControls();
+            disableAddAllButton();
+            const initialDetailsControls = firstInstanceDetails.querySelector('.details-controls');
+            if (initialDetailsControls) { initialDetailsControls.style.display = firstInstanceDetails.open ? 'flex' : 'none'; }
+            // updatePosColumnFilterVisibility(); // REMOVED
+            addEventListeners();
+            loadDataFromServer(); // Load data on initial load
+            console.log("POS Highlighter (List View Only - Backend) Initialized.");
+        }
+
+
+        // --- Signature Helper (word::POS) ---
+        function getSignature(word, pos) {
+            if (!word) return null;
+            const wordLower = word.toLowerCase();
+            const posNorm = (pos && pos.length > 0) ? pos : NULL_PLACEHOLDER;
+            return `${wordLower}${SIGNATURE_SEPARATOR}${posNorm}`;
+        }
+
+        // --- Helper to get POS group key for a token ---
+        function getPosGroupKey(token) {
+            const tokenPos = token?.pos;
+            if (tokenPos) {
+                const groupFound = posButtonGroups.find(g => g.tags.includes(tokenPos));
+                if (groupFound) {
+                    return groupFound.key;
+                }
+            }
+            return null;
+        }
+
+        // --- Data Fetching and Saving ---
+        async function loadDataFromServer() {
+            console.log("Fetching data from /api/data...");
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+                const combinedData = await response.json();
+                inputText = combinedData.inputText || '';
+                database = combinedData.wordDatabase || {};
+                segmentsData = combinedData.segments || [];
+                idiomsData = combinedData.idioms || [];
+                knownSignaturesSet.clear();
+                if (Array.isArray(combinedData.knownWords)) {
+                    combinedData.knownWords.forEach(sig => { if (typeof sig === 'string' && sig.includes(SIGNATURE_SEPARATOR)) { knownSignaturesSet.add(sig.trim()); } });
+                }
+                updateKnownWordsTextarea();
+                updateClearKnownWordsButtonState();
+                console.log("Data loaded from server.");
+                handleError('');
+                processLoadedData(); // Process after loading
+            } catch (error) {
+                console.error("Failed to load data from server:", error);
+                handleError(`Failed to load data: ${error.message}. Check server connection and data file.`);
+            }
+        }
+
+        async function saveKnownWordsToServer() {
+            console.log("Saving known words to server...");
+            const payload = { knownWords: Array.from(knownSignaturesSet).sort() };
+            try {
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                     let errorMsg = `HTTP error! status: ${response.status}`;
+                     try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; }
+                     catch (e) { errorMsg = response.statusText || errorMsg; console.warn("Response from server was not valid JSON."); }
+                     throw new Error(errorMsg);
+                }
+                const result = await response.json();
+                console.log("Save result:", result.message);
+                handleError('');
+            } catch (error) {
+                console.error("Failed to save data to server:", error);
+                handleError(`Failed to save known words: ${error.message}. Changes might not be persisted.`);
+            }
+        }
+
+
+        // --- Core Processing Function (Uses loaded state) ---
+        function processLoadedData() {
+             const startTime = performance.now();
+             allTokens = []; originalFirstInstanceTokens = [];
+             minWordKey = null; maxWordKey = null;
+             console.time("Tokenization & Association");
+             const tokenRegex = /([\p{L}'’]+)|(\s+)|(\n+)|([^\p{L}\s\n'’]+)/gu;
+             let match; let wordCounter = 1;
+             while ((match = tokenRegex.exec(inputText)) !== null) {
+                 const fullMatchText = match[0];
+                 const wordGroup = match[1], spaceGroup = match[2], newlineGroup = match[3], nonWordGroup = match[4];
+                 let tokenObj = {
+                     text: fullMatchText, type: 'unknown', key: undefined, pos: null, lemma: null, firstInstance: false, grammar: null, signature: null, possible_translations: [], lemma_translations: []
+                 };
+                 let attemptAssociation = false;
+                 let dbEntry = null;
+                 if (wordGroup) { tokenObj.type = 'word'; attemptAssociation = true; }
+                 else if (nonWordGroup) { tokenObj.type = 'punct'; attemptAssociation = true; }
+                 else if (spaceGroup) { tokenObj.type = 'space'; }
+                 else if (newlineGroup) { tokenObj.type = 'newline'; }
+
+                 if (attemptAssociation) {
+                     dbEntry = database[wordCounter.toString()];
+                     if (dbEntry && dbEntry.word && dbEntry.word.toLowerCase() === fullMatchText.toLowerCase()) {
+                         tokenObj.key = wordCounter;
+                         tokenObj.pos = dbEntry.pos || null;
+                         tokenObj.lemma = dbEntry.lemma || null;
+                         tokenObj.firstInstance = dbEntry.first_inst === true;
+                         tokenObj.possible_translations = dbEntry.possible_translations || [];
+                         tokenObj.lemma_translations = dbEntry.lemma_translations || [];
+                         if (dbEntry.details && typeof dbEntry.details === 'object') {
+                             tokenObj.grammar = {};
+                             if (dbEntry.details.Gender) tokenObj.grammar.gender = dbEntry.details.Gender;
+                             if (dbEntry.details.Number) tokenObj.grammar.number = dbEntry.details.Number;
+                         }
+                         tokenObj.signature = getSignature(dbEntry.word, tokenObj.pos);
+                         if (tokenObj.firstInstance) { originalFirstInstanceTokens.push(tokenObj); }
+                         const currentKey = parseInt(tokenObj.key, 10);
+                         if (!isNaN(currentKey)) {
+                             if (minWordKey === null || currentKey < minWordKey) minWordKey = currentKey;
+                             if (maxWordKey === null || currentKey > maxWordKey) maxWordKey = currentKey;
+                         }
+                         wordCounter++;
+                     } else {
+                         console.warn(`Mismatch/missing DB entry for counter ${wordCounter}. Text: "${fullMatchText}", Expected: "${dbEntry?.word}".`);
+                         tokenObj.type = wordGroup ? 'word' : 'punct';
+                         if (attemptAssociation && !dbEntry) { console.error(`CRITICAL: Missing DB entry for expected counter ${wordCounter}.`); }
+                         else if (attemptAssociation && dbEntry && dbEntry.word.toLowerCase() !== fullMatchText.toLowerCase()) { console.warn(`Word mismatch for counter ${wordCounter}: Text="${fullMatchText}", DB="${dbEntry.word}".`); }
+                     }
+                 }
+                 allTokens.push(tokenObj);
+             }
+             console.timeEnd("Tokenization & Association");
+             console.log("Total original first instance tokens found:", originalFirstInstanceTokens.length);
+             if (minWordKey !== null && maxWordKey !== null) {
+                 enableKeyRangeControls();
+                 filterKeyFromInput.min = minWordKey;
+                 filterKeyFromInput.max = maxWordKey;
+                 filterKeyFromInput.value = minWordKey;
+                 filterKeyToInput.min = minWordKey;
+                 filterKeyToInput.max = maxWordKey;
+                 filterKeyToInput.value = Math.min(maxWordKey, 200); // Default to 200 or max
+                 if (parseInt(filterKeyFromInput.value, 10) > parseInt(filterKeyToInput.value, 10)) {
+                    filterKeyToInput.value = filterKeyFromInput.value;
+                 }
+             } else {
+                 disableKeyRangeControls();
+             }
+             generateFirstInstanceList();
+             const endTime = performance.now();
+             console.log(`Processing loaded data took: ${(endTime - startTime).toFixed(2)} ms`);
+        }
+
+        // --- Known Words / Signatures Functions ---
+        function parseKnownSignatures() { const signaturesText = knownWordsInput.value; const newSignatures = new Set(); signaturesText.split(/[\n]+/).map(line => line.trim()).filter(line => line.length > 0 && line.includes(SIGNATURE_SEPARATOR)).forEach(line => newSignatures.add(line)); knownSignaturesSet = newSignatures; }
+        function updateKnownWordsTextarea() { const sortedSignatures = Array.from(knownSignaturesSet).sort(); knownWordsInput.value = sortedSignatures.join('\n'); }
+        function handleKnownWordsChange() { parseKnownSignatures(); updateClearKnownWordsButtonState(); if (allTokens.length > 0) { generateFirstInstanceList(); } saveKnownWordsToServer(); }
+        function handleFirstInstanceWordClick(event) { const clickedSpan = event.target.closest('.word-span[data-signature]'); if (!clickedSpan || !firstInstanceListContainer.contains(clickedSpan)) return; toggleKnownWordStatus(clickedSpan); }
+        function toggleKnownWordStatus(clickedSpan) { const signature = clickedSpan.dataset.signature; if (!signature) { console.warn("Clicked span missing data-signature:", clickedSpan); return; } if (knownSignaturesSet.has(signature)) { knownSignaturesSet.delete(signature); } else { knownSignaturesSet.add(signature); } updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); generateFirstInstanceList(); saveKnownWordsToServer(); /* <<< SAVE CHANGES */ }
+        function handleClearKnownWords() { if (knownSignaturesSet.size === 0) { console.log("Known signatures list is already empty."); return; } knownSignaturesSet.clear(); console.log("Cleared known signatures list."); updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); if (allTokens.length > 0) { generateFirstInstanceList(); } saveKnownWordsToServer(); /* <<< SAVE CHANGES */ }
+
+
+        // --- Get Validated Input Values ---
+        function getWordsPerBatch() { const defaultValue = 25; const minValue = 1; let value = parseInt(batchSizeInput.value, 10); if (isNaN(value) || value < minValue) { value = defaultValue; batchSizeInput.value = value; } return value; } // Default changed here too
+
+        // --- Generate First Instance List (Handles Both Views, Key Filtering, and Batching Mode) ---
+        function generateFirstInstanceList() {
+            const wordsPerBatchSetting = getWordsPerBatch();
+            const sourceTokens = filterFirstInstanceActive ? originalFirstInstanceTokens : allTokens.filter(t => t.key !== undefined);
+            let keyFrom = parseInt(filterKeyFromInput.value, 10);
+            let keyTo = parseInt(filterKeyToInput.value, 10);
+            if (minWordKey !== null && maxWordKey !== null) {
+                if (isNaN(keyFrom) || keyFrom < minWordKey || keyFrom > maxWordKey) keyFrom = minWordKey;
+                if (isNaN(keyTo) || keyTo < minWordKey || keyTo > maxWordKey) keyTo = Math.min(maxWordKey, 200); // Default to 200 or max
+                if (keyFrom > keyTo) keyFrom = keyTo;
+                filterKeyFromInput.value = keyFrom;
+                filterKeyToInput.value = keyTo;
+            } else { keyFrom = 1; keyTo = 0; }
+
+            filteredFirstInstanceTokens = sourceTokens.filter(token => {
+                const tokenKey = parseInt(token.key, 10);
+                return !isNaN(tokenKey) && tokenKey >= keyFrom && tokenKey <= keyTo;
+            });
+
+            const batches = [];
+            if (filteredFirstInstanceTokens.length > 0) {
+                if (batchByUnknownActive) {
+                    let currentBatch = []; let unknownCountInBatch = 0;
+                    for (const token of filteredFirstInstanceTokens) {
+                        currentBatch.push(token);
+                        const isKnown = token.signature && knownSignaturesSet.has(token.signature);
+                        if (token.signature && !isKnown) { unknownCountInBatch++; }
+                        if (unknownCountInBatch >= wordsPerBatchSetting) { batches.push(currentBatch); currentBatch = []; unknownCountInBatch = 0; }
+                    }
+                    if (currentBatch.length > 0) { batches.push(currentBatch); }
+                } else {
+                    for (let i = 0; i < filteredFirstInstanceTokens.length; i += wordsPerBatchSetting) { batches.push(filteredFirstInstanceTokens.slice(i, i + wordsPerBatchSetting)); }
+                }
+            }
+
+            totalFirstInstanceBatches = batches.length;
+            firstInstanceListContainer.innerHTML = '';
+
+            if (totalFirstInstanceBatches === 0) {
+                firstInstanceListContainer.insertAdjacentHTML('beforeend', '<div class="no-items">No instances found matching filters.</div>');
+                if (detailsControlsContainer) detailsControlsContainer.style.display = firstInstanceDetails.open ? 'flex' : 'none';
+                disableDownloadControls();
+                disableAddAllButton();
+            } else {
+                if (detailsControlsContainer && firstInstanceDetails.open) { detailsControlsContainer.style.display = 'flex'; }
+                else if (detailsControlsContainer) { detailsControlsContainer.style.display = 'none'; }
+                enableDownloadControls(); // This now preserves values
+                enableAddAllButton();
+
+                if (firstInstanceViewMode === 'list') {
+                    let listRowsHTML = '';
+                    batches.forEach((batch, batchIndex) => {
+                        let batchContentHTML = '';
+                        let maxKeyInBatch = null; // <<< Initialize max key for the batch
+                        batch.forEach(token => {
+                            batchContentHTML += `${buildInteractiveSpan(token, true)} `;
+                            // <<< Calculate max key
+                            const currentKey = parseInt(token.key, 10);
+                            if (!isNaN(currentKey)) {
+                                if (maxKeyInBatch === null || currentKey > maxKeyInBatch) {
+                                    maxKeyInBatch = currentKey;
+                                }
+                            }
+                        });
+                        // <<< Create display HTML for max key
+                        const maxKeyDisplay = maxKeyInBatch !== null ? `<div class="batch-max-key">( ${maxKeyInBatch} )</div>` : '';
+                        // <<< Add max key display to the row number cell
+                        listRowsHTML += `<div class="grid-batch-row"><div class="grid-cell row-number-cell">${batchIndex + 1}${maxKeyDisplay}</div><div class="grid-cell list-view-words-cell"> ${batchContentHTML.trim()}</div></div>`;
+                    });
+                    firstInstanceListContainer.insertAdjacentHTML('beforeend', listRowsHTML);
+                } else { // Grid View
+                    let gridHTML = '<div id="first-instance-grid">';
+                    batches.forEach((batch, batchIndex) => {
+                        let cellContents = {};
+                        posButtonGroups.forEach(g => cellContents[g.key] = '');
+                        let maxKeyInBatch = null; // <<< Initialize max key for the batch
+                        batch.forEach(token => {
+                            let groupKey = getPosGroupKey(token);
+                            if(groupKey && cellContents[groupKey] !== undefined) { cellContents[groupKey] += buildInteractiveSpan(token, true) + ' '; }
+                             // <<< Calculate max key
+                            const currentKey = parseInt(token.key, 10);
+                            if (!isNaN(currentKey)) {
+                                if (maxKeyInBatch === null || currentKey > maxKeyInBatch) {
+                                    maxKeyInBatch = currentKey;
+                                }
+                            }
+                        });
+                        // <<< Create display HTML for max key
+                        const maxKeyDisplay = maxKeyInBatch !== null ? `<div class="batch-max-key">( ${maxKeyInBatch} )</div>` : '';
+                        // <<< Add max key display to the row number cell
+                        gridHTML += `<div class="grid-batch-row" data-batch-number="${batchIndex + 1}"><div class="grid-cell row-number-cell">${batchIndex + 1}${maxKeyDisplay}</div>`;
+                        posButtonGroups.forEach(g => {
+                            const key = g.key;
+                            const content = cellContents[key].trim();
+                            gridHTML += `<div class="grid-cell ${key}-cell">${content || '<div class="no-items">&nbsp;</div>'}</div>`;
+                        });
+                        gridHTML += `</div>`;
+                    });
+                    gridHTML += '</div>';
+                    firstInstanceListContainer.insertAdjacentHTML('beforeend', gridHTML);
+                }
+            }
+
+            firstInstanceListContainer.className = `details-content ${firstInstanceViewMode}-view`;
+            firstInstanceSummary.textContent = `First Instances List (${filteredFirstInstanceTokens.length} words, ${totalFirstInstanceBatches} batches)`;
+            // updatePosColumnFilterVisibility(); // REMOVED
+        }
+
+
+        // --- Helper to build interactive span HTML (REMOVED Grammar details) ---
+        function buildInteractiveSpan(token, isListContext = true) {
+            if (!token || (token.type !== 'word' && token.type !== 'punct') || token.key === undefined) {
+                return escapeHTML(token?.text || '');
+            }
+            let spanClasses = 'word-span';
+            let groupKey = getPosGroupKey(token);
+            const isKnown = token.signature && knownSignaturesSet.has(token.signature);
+            if (groupKey) spanClasses += ` pos-circle-${groupKey}`;
+            if (isKnown && filterNewWordsActive) { spanClasses += ' known-word'; }
+            let spanDataAttrs = `data-key="${token.key}"`;
+            if (token.pos) spanDataAttrs += ` data-pos="${token.pos}"`;
+            if (token.firstInstance) spanDataAttrs += ` data-first-instance="true"`;
+            spanDataAttrs += ` data-word="${escapeHTML(token.text)}"`;
+            if (token.signature) spanDataAttrs += ` data-signature="${escapeHTML(token.signature)}"`;
+            if (token.lemma) spanDataAttrs += ` data-lemma="${escapeHTML(token.lemma)}"`;
+            return `<span class="${spanClasses}" ${spanDataAttrs}>${escapeHTML(token.text)}</span>`;
+        }
+
+
+        // --- Event Handlers ---
+        function handleFilterFirstInstanceToggle() { updateFilterTogglesState(); if (allTokens.length > 0) { generateFirstInstanceList(); } }
+        function handleFilterNewWordsToggle() { updateFilterTogglesState(); if (allTokens.length > 0) { generateFirstInstanceList(); } }
+        function handleBatchingModeToggle() { updateBatchingMode(); if (allTokens.length > 0) { generateFirstInstanceList(); } }
+        function handleBatchSizeChange() { if (allTokens.length > 0) { generateFirstInstanceList(); } }
+        function handleViewToggle() {
+            firstInstanceViewMode = (firstInstanceViewMode === 'list') ? 'grid' : 'list';
+            toggleViewButton.textContent = (firstInstanceViewMode === 'list') ? 'Switch to Grid View' : 'Switch to List View';
+            if (allTokens.length > 0) {
+                generateFirstInstanceList();
+            } else {
+                firstInstanceListContainer.className = `details-content ${firstInstanceViewMode}-view`;
+                // updatePosColumnFilterVisibility(); // REMOVED
+            }
+         }
+        function handleWpbAdjust(amount) { let currentValue = parseInt(batchSizeInput.value, 10); if (isNaN(currentValue)) currentValue = 25; let newValue = currentValue + amount; const min = parseInt(batchSizeInput.min, 10) || 1; const max = parseInt(batchSizeInput.max, 10) || 200; newValue = Math.max(min, Math.min(max, newValue)); batchSizeInput.value = newValue; batchSizeInput.dispatchEvent(new Event('change')); } // Default updated
+        function handleKeyRangeChange() { if (allTokens.length > 0) { generateFirstInstanceList(); } }
+        function handleAddAllFirstInstances() { if (!filteredFirstInstanceTokens || filteredFirstInstanceTokens.length === 0) { console.warn("No visible first instance words to add."); return; } let addedCount = 0; filteredFirstInstanceTokens.forEach(token => { if (token.signature) { if (!knownSignaturesSet.has(token.signature)) { knownSignaturesSet.add(token.signature); addedCount++; } } }); if (addedCount > 0) { console.log(`Added ${addedCount} word signatures to known list.`); updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); generateFirstInstanceList(); saveKnownWordsToServer(); } else { console.log("All visible first instance words (with signatures) were already known."); } }
+        function handleAnkiFormatToggle() { updateAnkiFormatToggleState(); }
+        function handlePosColumnChange() { updateSelectedPosColumns(); }
+        // --- NEW: Handler for Batch Range Arrows ---
+        function handleBatchRangeAdjust(inputElement, amount) {
+            if (inputElement.disabled) return; // Do nothing if disabled
+
+            let currentValue = parseInt(inputElement.value, 10);
+            const min = parseInt(inputElement.min, 10) || 1;
+            const max = parseInt(inputElement.max, 10) || 1; // Use 1 if max not set
+
+            if (isNaN(currentValue)) {
+                currentValue = (amount > 0) ? min : max; // Start from min if increasing, max if decreasing
+            }
+
+            let newValue = currentValue + amount;
+            newValue = Math.max(min, Math.min(max, newValue)); // Clamp within min/max
+
+            // Ensure "From" is not greater than "To" and vice-versa
+            if (inputElement.id === 'download-batch-from') {
+                const toValue = parseInt(downloadBatchToInput.value, 10);
+                if (!isNaN(toValue) && newValue > toValue) {
+                    newValue = toValue; // Don't allow 'from' to exceed 'to'
+                }
+            } else if (inputElement.id === 'download-batch-to') {
+                 const fromValue = parseInt(downloadBatchFromInput.value, 10);
+                 if (!isNaN(fromValue) && newValue < fromValue) {
+                     newValue = fromValue; // Don't allow 'to' to be less than 'from'
+                 }
+            }
+
+            inputElement.value = newValue;
+            // Optionally trigger change event if needed by other logic, though not strictly necessary here
+            // inputElement.dispatchEvent(new Event('change'));
+        }
+
+
+        // --- MODIFIED Download Function ---
+        function downloadFirstInstances() {
+            // 1. Check if there are tokens to process
+            if (!filteredFirstInstanceTokens || filteredFirstInstanceTokens.length === 0) {
+                console.warn("No first instance words in the current filter/range to download.");
+                handleError("No words available to download based on current filters.");
+                return;
+            }
+
+            // 2. Get and validate batch range inputs
+            let fromBatch = parseInt(downloadBatchFromInput.value, 10);
+            let toBatch = parseInt(downloadBatchToInput.value, 10);
+            const maxBatch = totalFirstInstanceBatches;
+
+            // Re-validate just before download (user might type invalid values)
+            if (isNaN(fromBatch) || fromBatch < 1) fromBatch = 1;
+            if (isNaN(toBatch) || toBatch < 1) toBatch = maxBatch;
+            fromBatch = Math.max(1, fromBatch);
+            toBatch = Math.min(maxBatch, toBatch);
+            if (fromBatch > toBatch) fromBatch = toBatch;
+
+            // Update input fields with validated values
+            downloadBatchFromInput.value = fromBatch;
+            downloadBatchToInput.value = toBatch;
+
+            // 3. Re-calculate batches based on current settings
+            const wordsPerBatchSetting = getWordsPerBatch();
+            const batchesForDownload = [];
+            if (batchByUnknownActive) {
+                let currentBatch = []; let unknownCountInBatch = 0;
+                for (const token of filteredFirstInstanceTokens) {
+                    currentBatch.push(token);
+                    const isKnown = token.signature && knownSignaturesSet.has(token.signature);
+                    if (token.signature && !isKnown) { unknownCountInBatch++; }
+                    if (unknownCountInBatch >= wordsPerBatchSetting) { batchesForDownload.push(currentBatch); currentBatch = []; unknownCountInBatch = 0; }
+                }
+                if (currentBatch.length > 0) batchesForDownload.push(currentBatch);
+            } else {
+                for (let i = 0; i < filteredFirstInstanceTokens.length; i += wordsPerBatchSetting) { batchesForDownload.push(filteredFirstInstanceTokens.slice(i, i + wordsPerBatchSetting)); }
+            }
+
+            // 4. Select the relevant batches and flatten
+            const selectedBatches = batchesForDownload.slice(fromBatch - 1, toBatch);
+            const tokensInBatchRange = selectedBatches.flat();
+
+            // 5. Filter for unknown tokens, preserving order and uniqueness
+            let orderedUniqueUnknownTokens = [];
+            const seenTokenKeys = new Set();
+            tokensInBatchRange.forEach(token => {
+                if (token.signature && token.key !== undefined && !knownSignaturesSet.has(token.signature)) {
+                    if (!seenTokenKeys.has(token.key)) { orderedUniqueUnknownTokens.push(token); seenTokenKeys.add(token.key); }
+                }
+            });
+
+            // 5b. Filter by selected POS columns (Always filter)
+             console.log("Filtering download by selected POS columns:", Array.from(selectedPosColumns));
+             orderedUniqueUnknownTokens = orderedUniqueUnknownTokens.filter(token => {
+                 const groupKey = getPosGroupKey(token);
+                 return groupKey && selectedPosColumns.has(groupKey);
+             });
+
+
+            // 6. Check if any tokens remain after filtering
+            if (orderedUniqueUnknownTokens.length === 0) {
+                console.warn(`No unknown words/tokens found in batches ${fromBatch}-${toBatch} matching POS column filters.`);
+                handleError(`No unknown words found matching current filters (batch range and POS columns).`);
+                return;
+            } else {
+                handleError('');
+            }
+
+            // 7. Create text content based on Anki format toggle
+            let textContent = '';
+            let downloadFilename = '';
+            if (ankiFormatActive) {
+                console.log("Generating Anki format...");
+                const ankiEntries = orderedUniqueUnknownTokens.map(token => {
+                    const wordTranslations = Array.isArray(token.possible_translations) && token.possible_translations.length > 0 ? token.possible_translations.join(', ') : "(no translations)";
+                    const lemmaTranslations = Array.isArray(token.lemma_translations) && token.lemma_translations.length > 0 ? token.lemma_translations.join(', ') : "(no lemma translations)";
+                    const lemma = token.lemma || token.text;
+                    // <<< MODIFIED LINE 1 FORMATTING >>>
+                    const line1 = `${token.signature} (${token.key}) * ${wordTranslations}`;
+                    const line2 = `${lemma}: ${lemmaTranslations};`;
+                    return `${line1}\n\n${line2}`;
+                });
+                textContent = ankiEntries.join('\n\n\n');
+                downloadFilename = `anki_unknown_batch_${fromBatch}-${toBatch}.txt`;
+            } else {
+                console.log("Generating standard signature format...");
+                const signatures = orderedUniqueUnknownTokens.map(token => token.signature);
+                textContent = signatures.join('\n');
+                downloadFilename = `unknown_signatures_batch_${fromBatch}-${toBatch}_ordered.txt`;
+            }
+
+            // 8. Create Blob and trigger download
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const tempLink = document.createElement('a');
+            tempLink.href = url;
+            tempLink.download = downloadFilename;
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            URL.revokeObjectURL(url);
+            console.log(`Downloaded ${orderedUniqueUnknownTokens.length} unique unknown items from batches ${fromBatch}-${toBatch}. Format: ${ankiFormatActive ? 'Anki (with key)' : 'Signatures'}. Columns filtered: Yes`); // Updated log message
+        }
+
+
+        // --- State Update Functions ---
+        // (Definitions moved above initializeApp)
+
+        // --- Utility Functions ---
+        function escapeHTML(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
+        function handleError(message) { console.error("Error:", message); errorDisplayDiv.textContent = message; errorDisplayDiv.style.display = message ? 'block' : 'none'; }
+        function resetStateAndUI() {
+            handleError('');
+            firstInstanceListContainer.innerHTML = '<div class="no-items">Load data from server...</div>';
+            firstInstanceViewMode = 'list'; toggleViewButton.textContent = 'Switch to Grid View';
+            firstInstanceListContainer.className = 'details-content list-view';
+            if (detailsControlsContainer) detailsControlsContainer.style.display = 'none';
+            disableDownloadControls(); disableKeyRangeControls(); disableAddAllButton();
+            database = {}; segmentsData = []; idiomsData = []; inputText = "";
+            allTokens = []; originalFirstInstanceTokens = []; filteredFirstInstanceTokens = [];
+            totalFirstInstanceBatches = 0; minWordKey = null; maxWordKey = null;
+            knownSignaturesSet.clear(); knownWordsInput.value = '';
+            firstInstanceToggle.checked = true; newWordsToggle.checked = true;
+            batchByUnknownToggle.checked = true; // Reset to default ON
+            ankiFormatToggle.checked = true; // Reset to default ON
+            posColumnCheckboxes.forEach(cb => cb.checked = true);
+            updateSelectedPosColumns();
+            updateFilterTogglesState(); updateBatchingMode(); updateAnkiFormatToggleState();
+            updateClearKnownWordsButtonState();
+            // updatePosColumnFilterVisibility(); // REMOVED
+             // Reset batch range values explicitly on full reset
+             downloadBatchFromInput.value = '1';
+             downloadBatchToInput.value = ''; // Let enableDownloadControls set the max later
+             // Reset key range values
+             filterKeyFromInput.value = '';
+             filterKeyToInput.value = '';
+             // Reset batch size
+             batchSizeInput.value = '25';
+        }
+
+        // --- Event Listeners Setup ---
+        function addEventListeners() {
+            firstInstanceToggle.addEventListener('change', handleFilterFirstInstanceToggle);
+            newWordsToggle.addEventListener('change', handleFilterNewWordsToggle);
+            batchByUnknownToggle.addEventListener('change', handleBatchingModeToggle);
+            ankiFormatToggle.addEventListener('change', handleAnkiFormatToggle);
+            batchSizeInput.addEventListener('change', handleBatchSizeChange);
+            wpbDecrementButton.addEventListener('click', () => handleWpbAdjust(-1));
+            wpbIncrementButton.addEventListener('click', () => handleWpbAdjust(1));
+            toggleViewButton.addEventListener('click', handleViewToggle);
+            downloadFirstInstancesButton.addEventListener('click', downloadFirstInstances);
+            filterKeyFromInput.addEventListener('change', handleKeyRangeChange);
+            filterKeyToInput.addEventListener('change', handleKeyRangeChange);
+            if (addFirstInstancesButton) { addFirstInstancesButton.addEventListener('click', handleAddAllFirstInstances); }
+            if (clearKnownWordsButton) { clearKnownWordsButton.addEventListener('click', handleClearKnownWords); }
+            knownWordsInput.addEventListener('input', handleKnownWordsChange);
+            firstInstanceListContainer.addEventListener('click', handleFirstInstanceWordClick);
+
+            // Add listeners for POS column checkboxes
+            posColumnCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', handlePosColumnChange);
+            });
+
+            // Add listeners for Batch Range arrow buttons
+            dbfIncrementButton.addEventListener('click', () => handleBatchRangeAdjust(downloadBatchFromInput, 1));
+            dbfDecrementButton.addEventListener('click', () => handleBatchRangeAdjust(downloadBatchFromInput, -1));
+            dbtIncrementButton.addEventListener('click', () => handleBatchRangeAdjust(downloadBatchToInput, 1));
+            dbtDecrementButton.addEventListener('click', () => handleBatchRangeAdjust(downloadBatchToInput, -1));
+
+
+            firstInstanceDetails.addEventListener('toggle', () => {
+                if (detailsControlsContainer) {
+                    detailsControlsContainer.style.display = firstInstanceDetails.open ? 'flex' : 'none';
+                    if (firstInstanceDetails.open && totalFirstInstanceBatches === 0) {
+                         detailsControlsContainer.style.display = 'none';
+                    }
+                    // if (firstInstanceDetails.open) { // REMOVED
+                    //      updatePosColumnFilterVisibility();
+                    // }
+                }
+            });
+        }
+
+        // --- Initialize ---
+        initializeApp();
+
+    }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>
