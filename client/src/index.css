@@ -1,0 +1,263 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark Theme Base */
+  --bg-primary: hsl(210, 11%, 11%);
+  --bg-secondary: hsl(215, 14%, 15%);
+  --bg-tertiary: hsl(215, 15%, 19%);
+  --text-primary: hsl(210, 9%, 91%);
+  --text-secondary: hsl(215, 9%, 74%);
+  --text-heading: hsl(0, 0%, 100%);
+  --border-color: hsl(215, 14%, 29%);
+  --accent-primary: hsl(213, 73%, 59%);
+  --accent-primary-hover: hsl(213, 73%, 49%);
+  --accent-primary-light: hsl(213, 73%, 79%);
+  --accent-secondary: hsl(220, 13%, 36%);
+  --accent-secondary-hover: hsl(220, 13%, 46%);
+  --accent-download: hsl(158, 64%, 52%);
+  --accent-download-hover: hsl(158, 64%, 42%);
+  --accent-add: hsl(262, 83%, 58%);
+  --accent-add-hover: hsl(262, 83%, 48%);
+  --accent-clear: hsl(0, 85%, 67%);
+  --accent-clear-hover: hsl(0, 85%, 57%);
+  --error-bg: hsl(0, 45%, 19%);
+  --error-border: hsl(0, 62%, 34%);
+  --error-text: hsl(0, 85%, 87%);
+  --focus-ring: hsla(213, 73%, 59%, 0.4);
+  --word-hover-bg: hsla(0, 0%, 100%, 0.05);
+  --highlight-known-alpha: 0.3;
+  --known-word-opacity: 0.4;
+  --segment-word-highlight-color: hsl(0, 84%, 60%);
+  --segment-word-highlight-text: hsl(0, 0%, 100%);
+  --idiom-word-highlight-color: hsl(213, 73%, 59%);
+  --translation-border-segment: var(--segment-word-highlight-color);
+  --translation-border-idiom: var(--idiom-word-highlight-color);
+
+  /* Highlight Colors (using HSL for easy alpha modification) */
+  --hl-verb-hue: 340; --hl-verb-sat: 80%; --hl-verb-light: 80%;
+  --hl-noun-hue: 205; --hl-noun-sat: 80%; --hl-noun-light: 75%;
+  --hl-adj-hue: 145;  --hl-adj-sat: 65%; --hl-adj-light: 75%;
+  --hl-aux-hue: 35;   --hl-aux-sat: 90%; --hl-aux-light: 65%;
+  --hl-other-hue: 45; --hl-other-sat: 90%; --hl-other-light: 75%;
+  --hl-base-alpha: 0.9;
+
+  --hl-text: hsl(0, 0%, 100%);
+  --hl-bg-text: hsl(215, 28%, 7%);
+
+  /* Tooltip */
+  --tooltip-bg: var(--bg-tertiary);
+  --tooltip-border: var(--border-color);
+  --tooltip-text: var(--text-primary);
+  --tooltip-separator-color: var(--border-color);
+
+  /* Transitions */
+  --transition-speed-fast: 0.15s;
+  --transition-speed-normal: 0.25s;
+  --transition-timing: ease-in-out;
+
+  /* Tailwind Custom Properties */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --muted: var(--bg-tertiary);
+  --muted-foreground: var(--text-secondary);
+  --popover: var(--bg-secondary);
+  --popover-foreground: var(--text-primary);
+  --card: var(--bg-secondary);
+  --card-foreground: var(--text-primary);
+  --border: var(--border-color);
+  --input: var(--bg-tertiary);
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--text-heading);
+  --secondary: var(--bg-tertiary);
+  --secondary-foreground: var(--text-primary);
+  --accent: var(--bg-tertiary);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--accent-clear);
+  --destructive-foreground: var(--text-heading);
+  --ring: var(--focus-ring);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-heading);
+  }
+}
+
+@layer components {
+  /* Word Span Highlighting */
+  .word-span {
+    @apply cursor-pointer inline-block px-1 py-0.5 mx-0.5 rounded-sm transition-all duration-150;
+    border-radius: 3px;
+    transition: background-color var(--transition-speed-fast) var(--transition-timing);
+  }
+
+  .word-span:hover {
+    background-color: var(--word-hover-bg);
+  }
+
+  /* POS Highlighting Classes */
+  .highlight-verb {
+    background-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha));
+    color: var(--hl-text);
+  }
+
+  .highlight-noun, .highlight-propn {
+    background-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--hl-base-alpha));
+    color: var(--hl-text);
+  }
+
+  .highlight-adj {
+    background-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--hl-base-alpha));
+    color: var(--hl-text);
+  }
+
+  .highlight-aux {
+    background-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--hl-base-alpha));
+    color: var(--hl-text);
+  }
+
+  .highlight-other {
+    background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha));
+    color: var(--hl-text);
+  }
+
+  .known-word {
+    opacity: var(--highlight-known-alpha);
+  }
+
+  /* POS Indicators for table */
+  .pos-indicator {
+    @apply inline-block w-3 h-3 rounded-full mr-2;
+  }
+
+  .pos-verb {
+    background-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), 1);
+  }
+
+  .pos-noun, .pos-propn {
+    background-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), 1);
+  }
+
+  .pos-adj {
+    background-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), 1);
+  }
+
+  .pos-aux {
+    background-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), 1);
+  }
+
+  .pos-other {
+    background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), 1);
+  }
+
+  .known-word-row {
+    opacity: var(--known-word-opacity);
+  }
+
+  /* Custom button variants */
+  .btn-download {
+    @apply bg-green-500 hover:bg-green-600 text-white;
+    background-color: var(--accent-download);
+  }
+
+  .btn-download:hover {
+    background-color: var(--accent-download-hover);
+  }
+
+  .btn-add {
+    @apply text-white;
+    background-color: var(--accent-add);
+  }
+
+  .btn-add:hover {
+    background-color: var(--accent-add-hover);
+  }
+
+  .btn-clear {
+    @apply text-white;
+    background-color: var(--accent-clear);
+  }
+
+  .btn-clear:hover {
+    background-color: var(--accent-clear-hover);
+  }
+
+  /* Control separators */
+  .control-separator {
+    @apply w-px bg-border opacity-60 mx-4 self-stretch;
+  }
+
+  /* Tooltip styles */
+  .tooltip {
+    @apply absolute z-50 rounded-lg border p-3 shadow-lg;
+    background-color: var(--tooltip-bg);
+    border-color: var(--tooltip-border);
+    color: var(--tooltip-text);
+    max-width: 300px;
+    font-size: 0.85em;
+    line-height: 1.4;
+  }
+
+  .tooltip-word {
+    @apply font-bold mb-1;
+    color: var(--text-heading);
+  }
+
+  .tooltip-translation {
+    @apply mb-1;
+    color: var(--accent-primary-light);
+  }
+
+  .tooltip-pos {
+    @apply italic;
+    color: var(--text-secondary);
+  }
+
+  /* Loading states */
+  .loading {
+    @apply opacity-60 pointer-events-none relative;
+  }
+
+  .loading::after {
+    content: "";
+    @apply absolute top-1/2 left-1/2 w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Status indicators */
+  .status-indicator {
+    @apply flex items-center gap-2 text-sm;
+    color: var(--text-secondary);
+  }
+
+  .status-icon {
+    @apply w-3 h-3 rounded-full;
+  }
+
+  .status-loaded {
+    background-color: var(--accent-download);
+  }
+
+  .status-empty {
+    background-color: var(--text-secondary);
+  }
+
+  .status-error {
+    background-color: var(--accent-clear);
+  }
+}
