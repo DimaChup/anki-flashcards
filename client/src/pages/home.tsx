@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DatabaseSection from "@/components/database-section";
 import PageViewSection from "@/components/page-view-section";
 import ListViewSection from "@/components/list-view-section";
-import { type LinguisticDatabase } from "@shared/schema";
+import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 import { Languages } from "lucide-react";
 
 export default function Home() {
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string>("");
+  const queryClient = useQueryClient();
 
   const { data: databases, isLoading: isDatabasesLoading } = useQuery<LinguisticDatabase[]>({
     queryKey: ["/api/databases"],
@@ -17,6 +19,32 @@ export default function Home() {
     queryKey: ["/api/databases", selectedDatabaseId],
     enabled: !!selectedDatabaseId,
   });
+
+  const { data: wordsData } = useQuery<{ words: WordEntry[], totalCount: number }>({
+    queryKey: ["/api/databases", selectedDatabaseId, "words"],
+    enabled: !!selectedDatabaseId,
+  });
+
+  // Known words mutation
+  const updateKnownWordsMutation = useMutation({
+    mutationFn: async (knownWords: string[]) => {
+      const response = await apiRequest(
+        'PUT',
+        `/api/databases/${selectedDatabaseId}/known-words`,
+        { knownWords }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/databases", selectedDatabaseId] });
+    },
+  });
+
+  const handleKnownWordsChange = (knownWords: string[]) => {
+    if (selectedDatabaseId) {
+      updateKnownWordsMutation.mutate(knownWords);
+    }
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
@@ -44,7 +72,10 @@ export default function Home() {
 
           {/* Page View Section */}
           <PageViewSection
-            database={selectedDatabase}
+            selectedDatabase={selectedDatabase || null}
+            analysisData={wordsData?.words || []}
+            knownWords={selectedDatabase?.knownWords as string[] || []}
+            onKnownWordsChange={handleKnownWordsChange}
             data-testid="page-view-section"
           />
 

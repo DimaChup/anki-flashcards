@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Highlighter (Backend View - Grammar Enabled)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Root Variables (Dark Theme) --- */
+        :root {
+            /* Dark Theme Base */
+            --bg-primary: #1a1d21;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #31363f;
+            --text-primary: #e8eaed;
+            --text-secondary: #bdc1c6;
+            --text-heading: #ffffff; /* White color */
+            --border-color: #4a5058;
+            --accent-primary: #4a90e2;
+            --accent-primary-hover: #3a7bc8;
+            --accent-primary-light: #7baaf7;
+            --accent-secondary: #4b5563;
+            --accent-secondary-hover: #6b7280;
+            --accent-add: #a78bfa; /* Purple for add button */
+            --accent-add-hover: #8b5cf6;
+            --accent-clear: #fca5a5; /* Light red for clear button */
+            --accent-clear-hover: #f87171; /* Darker red for clear button hover */
+            --error-bg: #5f1d24;
+            --error-border: #9e3842;
+            --error-text: #fecdd3;
+            --focus-ring: rgba(74, 144, 226, 0.4);
+            --word-hover-bg: rgba(255, 255, 255, 0.05); /* Subtle hover for words */
+            --highlight-known-alpha: 0.3; /* Alpha for faded highlights in MAIN VIEW */
+            --segment-word-highlight-color: #e53e3e; /* Red color for segment word highlight */
+            --segment-word-highlight-text: #ffffff; /* Text color for red background */
+            --idiom-word-highlight-color: #3b82f6; /* Blue for idiom underline */
+            --translation-border-segment: var(--segment-word-highlight-color); /* Red for segment translation line */
+            --translation-border-idiom: var(--idiom-word-highlight-color); /* Blue for idiom info line */
+
+            /* Highlight Colors (using HSL for easy alpha modification) */
+            --hl-verb-hue: 340; --hl-verb-sat: 80%; --hl-verb-light: 80%;
+            --hl-noun-hue: 205; --hl-noun-sat: 80%; --hl-noun-light: 75%;
+            --hl-adj-hue: 145;  --hl-adj-sat: 65%; --hl-adj-light: 75%;
+            --hl-aux-hue: 35;   --hl-aux-sat: 90%; --hl-aux-light: 65%; /* Updated: Orange for AUX */
+            --hl-other-hue: 45; --hl-other-sat: 90%; --hl-other-light: 75%;
+            --hl-base-alpha: 0.9; /* Base alpha for highlights */
+
+            --hl-text: #ffffff; /* Text color for highlights */
+            --hl-bg-text: #111418; /* Darker text for better contrast on lighter BG highlights */
+
+            /* Tooltip */
+            --tooltip-bg: var(--bg-tertiary);
+            --tooltip-border: var(--border-color);
+            --tooltip-text: var(--text-primary);
+            --tooltip-separator-color: var(--border-color);
+
+
+            /* Transitions */
+            --transition-speed-fast: 0.15s;
+            --transition-speed-normal: 0.25s;
+            --transition-timing: ease-in-out;
+        }
+
+        /* --- General Body & Font --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* --- Main App Container --- */
+        #app-container {
+            background-color: var(--bg-secondary);
+            padding: 35px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 1400px; /* Adjusted max-width slightly */
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* --- Headings --- */
+        h1 { font-size: 1.8em; font-weight: 700; margin-bottom: 10px; text-align: center; color: var(--text-heading);}
+
+        /* --- Layout Structure --- */
+        .input-section { display: flex; flex-direction: column; gap: 20px; margin-bottom: 0; }
+        /* Container for the main input layout (Simplified) */
+        .input-main-container {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        }
+        .input-left-column, .input-right-column { /* Adjust flex basis if needed */
+            flex: 1 1 48%;
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Space between elements in columns */
+            min-width: 300px;
+        }
+
+        .textarea-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        /* Allow textareas in columns to grow if needed */
+        .input-left-column .textarea-group, .input-right-column .textarea-group {
+             flex-shrink: 0; /* Prevent shrinking smaller than content */
+        }
+        /* Removed flex-grow from left column group */
+        /* .input-left-column .textarea-group { flex-grow: 1; } */
+
+        /* --- Collapsible Section --- */
+        details {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-tertiary);
+            margin-top: 10px; /* Add some space above */
+        }
+        summary {
+            padding: 10px 15px;
+            padding-left: 35px; /* Space for custom marker */
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-radius: 8px 8px 0 0; /* Match top corners */
+            list-style: none; /* Remove default marker */
+            position: relative;
+            transition: background-color var(--transition-speed-normal) var(--transition-timing);
+        }
+        summary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        summary::-webkit-details-marker { display: none; } /* Hide marker in Chrome/Safari */
+        summary::before { /* Custom marker */
+            content: '▶';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform var(--transition-speed-fast) ease-in-out;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        details[open] > summary::before {
+            transform: translateY(-50%) rotate(90deg);
+        }
+        details[open] > summary {
+             border-bottom: 1px solid var(--border-color);
+             border-radius: 8px 8px 0 0;
+        }
+        .collapsible-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Same gap as outer columns */
+            border-top: none;
+        }
+
+
+        .output-section { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+
+        /* --- Form Elements & Controls --- */
+        label { font-weight: bold; color: var(--text-secondary); display: block; font-size: 0.95em; }
+        .setting-control { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+        .setting-control label { margin-bottom: 0; flex-shrink: 0; font-size: 0.9em; }
+        .setting-control input[type="number"]
+         {
+             width: 60px;
+             padding: 6px 8px;
+             background-color: var(--bg-primary);
+             color: var(--text-primary);
+             border: 1px solid var(--border-color);
+             border-radius: 6px;
+             font-size: 0.9em;
+             text-align: center;
+             transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+         }
+        .setting-control input[type="number"]:focus
+         {
+             outline: none;
+             border-color: var(--accent-primary);
+             box-shadow: 0 0 0 3px var(--focus-ring);
+         }
+        .setting-control input[type="number"]:disabled
+         {
+             background-color: var(--bg-tertiary);
+             color: var(--text-secondary);
+             opacity: 0.6;
+             cursor: not-allowed;
+         }
+
+        /* Remove spinner buttons from number inputs */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield; /* Firefox */
+          appearance: none; /* Standard property */
+        }
+
+        /* --- Toggle Switch --- */
+        .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.95em; margin-top: 0; user-select: none; }
+        .toggle-label input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: var(--accent-secondary); border-radius: 10px; transition: background-color var(--transition-speed-normal) var(--transition-timing); flex-shrink: 0; }
+        .toggle-switch::before { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background-color: white; top: 2px; left: 2px; transition: transform var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch { background-color: var(--accent-primary); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch::before { transform: translateX(20px); box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+        .toggle-text { line-height: 1.2; }
+
+        /* --- Textarea --- */
+        textarea {
+            width: calc(100% - 24px); /* Adjusted for padding */
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            min-height: 100px; /* Default min height */
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1), 0 0 0 3px var(--focus-ring);
+        }
+        /* Specific height for known words textarea */
+         #known-words-input {
+             height: 150px; /* Make slightly taller */
+             font-size: 0.85em; /* Slightly smaller font for signatures */
+             line-height: 1.4;
+         }
+         /* Removed specific heights for other textareas */
+
+
+        /* --- Buttons --- */
+        .button-row { /* Container for combined JSON buttons */
+            display: flex;
+            gap: 15px;
+            margin-top: 10px; /* Space above buttons */
+        }
+
+        /* --- Main Controls Container --- */
+        .controls-container {
+            margin-bottom: 0;
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping of groups */
+            gap: 0; /* Remove main gap, handle spacing with separators/groups */
+            padding: 15px 20px;
+            background-color: var(--bg-tertiary);
+            border-radius: 12px;
+            align-items: stretch; /* Stretch groups and separators vertically */
+            justify-content: space-between; /* Push groups apart */
+        }
+
+        /* --- Control Groups --- */
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px 20px; /* Gap within group */
+            align-items: center; /* Align items vertically */
+            padding: 0 15px; /* Add padding within groups */
+        }
+        .control-group.highlight-controls {
+             /* Arrange highlight controls vertically */
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* Vertical gap between rows */
+            align-items: flex-start; /* Align rows left */
+            padding: 0 15px; /* Maintain padding */
+            flex-grow: 0; /* Don't allow this specific group to grow excessively */
+            flex-basis: auto; /* Let content determine width */
+            justify-content: center; /* Center rows vertically */
+        }
+         .control-group.filter-toggles {
+             flex-grow: 1; /* Allow filter group to take up middle space */
+             justify-content: center; /* Center toggles */
+             flex-direction: column; /* Stack filter toggles */
+             align-items: flex-start; /* Align toggles left */
+             gap: 10px; /* Adjust vertical gap */
+         }
+         .control-group.action-controls {
+             /* Arrange action controls vertically */
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* Vertical gap */
+            align-items: flex-start; /* Align items left */
+            padding: 0 15px;
+            flex-basis: auto;
+            justify-content: center; /* Center items vertically */
+         }
+
+        .highlight-row {
+            display: flex;
+            flex-wrap: nowrap; /* Prevent wrapping within a row */
+            gap: 10px; /* Horizontal gap between items in a row */
+            align-items: center;
+            width: 100%; /* Make rows take available width */
+        }
+        /* Add separator styles */
+        .control-separator {
+            width: 1px;
+            background-color: var(--border-color);
+            opacity: 0.6;
+        }
+
+
+        /* --- POS Button Container (Now inside highlight-controls) --- */
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        /* General style for secondary buttons */
+        .button-container button,
+        .pagination-controls button,
+        #page-jump-button,
+        .wpp-button,
+        .button-row button,
+        .control-group button,
+        #toggle-all-highlights
+        {
+            padding: 7px 12px;
+            background-color: var(--accent-secondary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing), color var(--transition-speed-normal) var(--transition-timing), transform var(--transition-speed-fast) var(--transition-timing), opacity var(--transition-speed-normal) var(--transition-timing);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            line-height: 1; /* Ensure consistent height */
+            flex-shrink: 0; /* Prevent buttons/toggles shrinking too much */
+        }
+        .button-container button:hover:not(:disabled),
+        .pagination-controls button:hover:not(:disabled),
+        #page-jump-button:hover:not(:disabled),
+        .wpp-button:hover:not(:disabled),
+        .button-row button:hover:not(:disabled),
+        .control-group button:hover:not(:disabled),
+        #toggle-all-highlights:hover:not(:disabled)
+        {
+            background-color: var(--accent-secondary-hover);
+            color: var(--text-heading);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .button-container button:active:not(:disabled),
+        .pagination-controls button:active:not(:disabled),
+        #page-jump-button:active:not(:disabled),
+        .wpp-button:active:not(:disabled),
+        .button-row button:active:not(:disabled),
+        .control-group button:active:not(:disabled),
+        #toggle-all-highlights:active:not(:disabled)
+        {
+            transform: scale(0.98);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        /* Specific hover for Add All button */
+        #add-first-instances-button:hover:not(:disabled)
+        {
+            background-color: var(--accent-add-hover);
+        }
+        /* Specific background for Add All button */
+        #add-first-instances-button:not(:disabled)
+        {
+            background-color: var(--accent-add);
+            color: white; /* Ensure text is readable */
+        }
+        /* Specific hover for Clear Known button */
+        #clear-known-words-button:hover:not(:disabled) {
+            background-color: var(--accent-clear-hover);
+            color: white;
+        }
+        /* Specific background for Clear Known button */
+        #clear-known-words-button:not(:disabled) {
+            background-color: var(--accent-clear);
+            color: var(--bg-primary); /* Darker text for contrast */
+        }
+        /* Specific styles for Load/Create JSON buttons */
+        .button-row button {
+            padding: 10px 15px; /* Make slightly larger */
+            font-weight: bold;
+        }
+        .button-row button#create-combined-button {
+             background-color: var(--accent-secondary-hover); /* Slightly different base */
+        }
+        /* Removed Load button style */
+        /* .button-row button#load-combined-button { ... } */
+
+        /* Styles for disabled buttons */
+        .pagination-controls button:disabled,
+        .button-container button:disabled,
+        #page-jump-button:disabled,
+        .wpp-button:disabled,
+        #add-first-instances-button:disabled,
+        #clear-known-words-button:disabled,
+        .button-row button:disabled,
+        .control-group button:disabled,
+        #toggle-all-highlights:disabled
+        {
+            background-color: #3a3f47 !important;
+            color: #777 !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+            opacity: 0.6;
+        }
+        /* Specific styles for WPP buttons */
+        .wpp-button {
+            padding: 4px 6px; /* Smaller padding */
+            font-size: 0.7em; /* Smaller font */
+            min-width: auto;
+        }
+        .input-with-arrows {
+            display: flex;
+            align-items: center;
+            gap: 3px; /* Small gap between input and buttons */
+        }
+        .input-with-arrows input {
+            margin: 0; /* Remove default margins */
+            border-radius: 6px 0 0 6px; /* Adjust radius */
+        }
+        .input-with-arrows .wpp-button-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-with-arrows .wpp-button {
+            border-radius: 0;
+            padding: 1px 6px; /* Fine-tune padding */
+            height: 15px; /* Match input height roughly */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .input-with-arrows .wpp-button:first-of-type {
+            border-radius: 0 6px 0 0;
+        }
+         .input-with-arrows .wpp-button:last-of-type {
+            border-radius: 0 0 6px 0;
+         }
+
+        /* --- Active Button Styles (for POS buttons) --- */
+        .button-container button.active-pos {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            transform: none;
+            color: var(--hl-text);
+            transition: background-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing), color var(--transition-speed-normal) var(--transition-timing);
+        }
+        .button-container button.active-pos:hover { transform: none; }
+        /* Use HSL for button backgrounds */
+        .button-container button.active-pos[data-pos-group="noun-propn"] { background-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), calc(var(--hl-noun-light) - 10%), var(--hl-base-alpha)); } /* Slightly darker */
+        .button-container button.active-pos[data-pos-group="verb"] { background-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), calc(var(--hl-verb-light) - 10%), var(--hl-base-alpha)); }
+        .button-container button.active-pos[data-pos-group="adj"] { background-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), calc(var(--hl-adj-light) - 10%), var(--hl-base-alpha)); }
+        .button-container button.active-pos[data-pos-group="aux"] { background-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), calc(var(--hl-aux-light) - 10%), var(--hl-base-alpha)); } /* New AUX active */
+        .button-container button.active-pos[data-pos-group="other"] { background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), calc(var(--hl-other-light) - 10%), var(--hl-base-alpha)); }
+
+
+        /* --- Dual Page Display --- */
+        #dual-page-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            align-items: flex-start; /* <-- Align items to top, prevents stretching */
+        }
+        .text-display-page {
+            flex: 1; /* Grow equally */
+            min-width: 0; /* Allows flex items to shrink below content size */
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            padding: 20px;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            font-size: 1.0em;
+            min-height: 600px; /* <-- Updated min-height */
+            line-height: 1.7;
+            color: var(--text-primary);
+            overflow-wrap: break-word;
+            word-wrap: break-word; /* Legacy fallback */
+            hyphens: none;
+            -webkit-hyphens: none;
+            -moz-hyphens: none;
+            -ms-hyphens: none;
+            overflow: auto; /* Allow scrolling if content overflows */
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color var(--transition-speed-normal) var(--transition-timing);
+            /* Height will be determined by content or min-height, won't stretch */
+        }
+        .text-display-page:empty::before { content: ' '; } /* Prevent collapse when empty */
+
+        /* Style for right pane when used for segment translations */
+        .text-display-page.segment-translation-display {
+            background-color: var(--bg-tertiary); /* Use tertiary background */
+            border: 1px solid var(--border-color);
+            padding: 15px; /* Adjust padding */
+            font-size: 1em; /* Adjust font size if needed */
+            color: var(--text-primary);
+            /* Inherits flex, min-width, min-height, overflow etc. */
+        }
+        .text-display-page.segment-translation-display:empty::before {
+            content: 'Hover over text on the left to see segment translations...';
+            color: var(--text-secondary);
+            font-style: italic;
+            display: flex; /* Center placeholder */
+            justify-content: center;
+            align-items: center;
+            min-height: 60px; /* Ensure placeholder is visible */
+        }
+
+
+        /* --- Highlighting & Underline Styles --- */
+        .word-span {
+            position: relative; /* Needed for absolute positioning of superscript */
+            display: inline;
+            padding: 0.1em 0.2em;
+            margin: 0 0.05em;
+            border-radius: 4px;
+            transition:
+                background-color var(--transition-speed-normal) var(--transition-timing),
+                color var(--transition-speed-normal) var(--transition-timing),
+                text-decoration-color var(--transition-speed-normal) var(--transition-timing),
+                border-color var(--transition-speed-normal) var(--transition-timing),
+                border-bottom-color var(--transition-speed-normal) var(--transition-timing),
+                padding var(--transition-speed-fast) var(--transition-timing),
+                border-radius var(--transition-speed-fast) var(--transition-timing),
+                text-shadow var(--transition-speed-fast) ease-in-out; /* Add transition for text-shadow */
+            cursor: pointer; /* Make words clickable in main view */
+            text-decoration: none; /* Base: no underline */
+            border: 1.5px solid transparent;
+            border-bottom: 1px dotted var(--text-secondary); /* Subtle indication for hover */
+            border-bottom-width: 0; /* Reset for specific styles */
+            text-decoration-thickness: 2.5px; /* Default thickness */
+            text-underline-offset: 3px;
+            background-color: transparent;
+            text-shadow: none; /* Default: no shadow */
+        }
+        .text-display-page .word-span:hover {
+            background-color: var(--word-hover-bg);
+        }
+
+        /* --- START: Grammar Details Superscript CSS --- */
+        .grammar-details {
+            position: absolute;
+            right: 0.1em;
+            top: -0.5em;
+            left: auto;
+            transform: none;
+            line-height: 1;
+            font-size: 0.6em;
+            font-weight: bold;
+            color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha)); /* Default color */
+            text-shadow: none;
+            user-select: none;
+            cursor: default;
+            font-style: italic;
+            white-space: nowrap;
+            transition: color var(--transition-speed-normal) var(--transition-timing), text-shadow var(--transition-speed-normal) var(--transition-timing);
+            /* Visibility is controlled by JS adding/removing the element */
+        }
+
+        /* Conditional colors based on parent highlight class */
+        .word-span.highlight-PROPN .grammar-details,
+        .word-span.highlight-NOUN .grammar-details { color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--hl-base-alpha)); }
+        .word-span.highlight-VERB .grammar-details { color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha)); }
+        .word-span.highlight-ADJ .grammar-details { color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--hl-base-alpha)); }
+        .word-span.highlight-AUX .grammar-details { color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--hl-base-alpha)); } /* New AUX */
+        /* Other POS tags get the 'other' color */
+        .word-span.highlight-ADV .grammar-details,
+        .word-span.highlight-ADP .grammar-details,
+        .word-span.highlight-DET .grammar-details,
+        .word-span.highlight-PRON .grammar-details,
+        .word-span.highlight-CONJ .grammar-details,
+        .word-span.highlight-SCONJ .grammar-details,
+        .word-span.highlight-CCONJ .grammar-details,
+        .word-span.highlight-NUM .grammar-details,
+        .word-span.highlight-PART .grammar-details,
+        .word-span.highlight-INTJ .grammar-details,
+        .word-span.highlight-SYM .grammar-details,
+        .word-span.highlight-X .grammar-details
+        { color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha)); }
+
+        /* Improve superscript visibility on background highlight */
+        /* The 'show-grammar-details' class is added to the parent text-display-page */
+        .text-display-page.highlight-mode-background.show-grammar-details .word-span.highlight-active .grammar-details {
+            color: #FF0000; /* Bright Red */
+            text-shadow: none;
+            position: absolute; /* Ensure it stays positioned correctly */
+            z-index: 1; /* Ensure it's above the background */
+        }
+        /* --- END: Grammar Details Superscript CSS --- */
+
+        /* --- Main Page View Highlighting Styles --- */
+        .text-display-page.highlight-mode-underline .word-span.highlight-active {
+             padding: 0.1em 0.2em;
+             padding-bottom: 1px; /* Keep padding for offset */
+             border-radius: 0;
+             border-width: 0;
+             border-bottom-width: 2.5px; /* Increased Thickness */
+             border-bottom-style: solid;
+             color: var(--text-primary);
+             text-decoration: none !important; /* Override other underlines */
+         }
+        /* Base underline colors */
+        .text-display-page.highlight-mode-underline .highlight-PROPN,
+        .text-display-page.highlight-mode-underline .highlight-NOUN { border-bottom-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-VERB { border-bottom-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-ADJ { border-bottom-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-AUX { border-bottom-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--hl-base-alpha)); } /* New AUX */
+        /* Catch-all for other highlighted tags */
+        .text-display-page.highlight-mode-underline .highlight-active:not(.highlight-PROPN):not(.highlight-NOUN):not(.highlight-VERB):not(.highlight-ADJ):not(.highlight-AUX) {
+             border-bottom-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha));
+         }
+
+        /* Faded underline colors for known words when filtered */
+        .text-display-page.highlight-mode-underline .highlight-filtered-known.highlight-PROPN,
+        .text-display-page.highlight-mode-underline .highlight-filtered-known.highlight-NOUN { border-bottom-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--highlight-known-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-filtered-known.highlight-VERB { border-bottom-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--highlight-known-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-filtered-known.highlight-ADJ { border-bottom-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--highlight-known-alpha)); }
+        .text-display-page.highlight-mode-underline .highlight-filtered-known.highlight-AUX { border-bottom-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--highlight-known-alpha)); } /* New AUX faded */
+        /* Catch-all for other faded tags */
+         .text-display-page.highlight-mode-underline .highlight-filtered-known:not(.highlight-PROPN):not(.highlight-NOUN):not(.highlight-VERB):not(.highlight-ADJ):not(.highlight-AUX) {
+             border-bottom-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--highlight-known-alpha));
+         }
+
+        /* Background Mode Styles */
+        .text-display-page.highlight-mode-background .word-span.highlight-active {
+             padding: 0.1em 0.3em;
+             border-radius: 4px;
+             border-style: none !important;
+             color: var(--hl-bg-text);
+             text-decoration: none !important; /* Override other underlines */
+         }
+        /* Base background colors */
+        .text-display-page.highlight-mode-background .highlight-PROPN,
+        .text-display-page.highlight-mode-background .highlight-NOUN { background-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-background .highlight-VERB { background-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-background .highlight-ADJ { background-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--hl-base-alpha)); }
+        .text-display-page.highlight-mode-background .highlight-AUX { background-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--hl-base-alpha)); } /* New AUX */
+        /* Catch-all for other highlighted tags */
+        .text-display-page.highlight-mode-background .highlight-active:not(.highlight-PROPN):not(.highlight-NOUN):not(.highlight-VERB):not(.highlight-ADJ):not(.highlight-AUX) {
+             background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha));
+         }
+
+        /* Faded background colors for known words when filtered */
+        .text-display-page.highlight-mode-background .highlight-filtered-known.highlight-PROPN,
+        .text-display-page.highlight-mode-background .highlight-filtered-known.highlight-NOUN { background-color: hsla(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light), var(--highlight-known-alpha)); }
+        .text-display-page.highlight-mode-background .highlight-filtered-known.highlight-VERB { background-color: hsla(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light), var(--highlight-known-alpha)); }
+        .text-display-page.highlight-mode-background .highlight-filtered-known.highlight-ADJ { background-color: hsla(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light), var(--highlight-known-alpha)); }
+          .text-display-page.highlight-mode-background .highlight-filtered-known.highlight-AUX { background-color: hsla(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light), var(--highlight-known-alpha)); } /* New AUX faded */
+         /* Catch-all for other faded tags */
+         .text-display-page.highlight-mode-background .highlight-filtered-known:not(.highlight-PROPN):not(.highlight-NOUN):not(.highlight-VERB):not(.highlight-ADJ):not(.highlight-AUX) {
+             background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--highlight-known-alpha));
+         }
+
+        /* --- Pagination Controls --- */
+        .pagination-controls { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--bg-tertiary); border-radius: 8px; gap: 10px; }
+        .pagination-center { display: flex; align-items: center; gap: 10px; }
+        .pagination-right { display: flex; align-items: center; gap: 15px; margin-left: auto; }
+        #page-info { color: var(--text-secondary); font-size: 0.95em; font-weight: bold; margin: 0 5px; }
+        /* Style for the page jump input */
+        #page-jump-input {
+            width: 50px;
+            padding: 6px 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9em;
+            text-align: center;
+            margin: 0;
+            transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+        }
+        #page-jump-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+        /* Style for the Go button */
+        #page-jump-button {
+            padding: 7px 10px;
+        }
+
+        /* --- Error Message Style --- */
+        .error-message { color: var(--error-text); font-weight: bold; margin-top: 10px; padding: 10px; background-color: var(--error-bg); border: 1px solid var(--error-border); border-radius: 6px; }
+
+        /* --- Tooltip Style (UPDATED) --- */
+        #tooltip-container {
+            position: absolute;
+            display: none; /* Controlled by JS */
+            z-index: 1000;
+            pointer-events: none; /* Container doesn't block */
+            background-color: var(--tooltip-bg);
+            border: 1px solid var(--tooltip-border);
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex; /* Arrange word/idiom side-by-side */
+            font-size: 0.9em;
+            max-width: 700px; /* Allow wider combined tooltip */
+        }
+
+        /* Container for Word Info (Concise + Detailed) */
+        #word-info-tooltip {
+             display: flex; /* Make concise/detailed parts side-by-side */
+             padding: 0; /* Remove padding here, add to parts */
+             /* max-width: 350px; /* Remove max-width here, apply to parts if needed */
+        }
+
+        /* Individual Tooltip Parts (Concise, Detailed, Idiom) */
+        .tooltip-part,
+        #idiom-info-tooltip { /* Apply padding to all content parts */
+             padding: 8px 12px;
+             white-space: pre-wrap;
+             color: var(--tooltip-text);
+             max-width: 350px; /* Max width per section */
+        }
+
+        /* Detailed Part Specific Styles */
+        .tooltip-part.detailed-part {
+             border-left: 1px solid var(--tooltip-separator-color); /* Separator */
+             /* display: none; /* Initially hidden - controlled by JS inline style */
+        }
+
+        /* Idiom Part Specific Styles */
+        #idiom-info-tooltip {
+             border-left: 1px solid var(--tooltip-separator-color); /* Separator */
+             display: none; /* Hide idiom section by default */
+        }
+
+        #tooltip-container a {
+            pointer-events: auto;
+        }
+        #tooltip-container strong {
+            color: var(--text-secondary);
+            font-weight: bold;
+        }
+        #tooltip-container .tooltip-line {
+            line-height: 1.4;
+            margin-bottom: 2px;
+        }
+        #tooltip-container hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 6px 0;
+        }
+        #tooltip-container .tooltip-best-translation {
+            font-size: 1.8em; /* Keep large font for best translation */
+            line-height: 1.1;
+            vertical-align: middle;
+        }
+
+        /* --- Segment & Idiom Highlighting & Translation Display --- */
+        .text-display-page span.segment-word-highlight {
+            text-shadow: 0 0 4px var(--segment-word-highlight-color), 0 0 6px var(--segment-word-highlight-color);
+        }
+        .text-display-page span.idiom-word-highlight {
+            text-shadow: 0 0 5px var(--idiom-word-highlight-color), 0 0 8px var(--idiom-word-highlight-color);
+        }
+
+        /* Translation Display Styles (Applied to right pane when active) */
+        .segment-translation-display .translation-block {
+             margin-bottom: 12px;
+             padding-left: 5px;
+             border-left: 2px solid var(--translation-border-segment); /* Use RED for segment translations */
+             position: relative; /* Needed for cycle button positioning */
+        }
+         .segment-translation-display .translation-block:last-child { margin-bottom: 0; }
+        .idiom-info-separator {
+            border: none;
+            border-top: 1px dashed var(--border-color);
+            margin: 15px 0 10px 0; /* Space around separator */
+        }
+        .segment-translation-display .idiom-info-block {
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            padding-left: 5px; /* Add padding */
+            border-left: 2px solid var(--translation-border-idiom); /* Add BLUE border for idioms */
+        }
+        .segment-translation-display .idiom-info-block:last-child { margin-bottom: 0; }
+        .idiom-text {
+            font-style: italic;
+            color: var(--text-secondary);
+            display: block; /* Put on its own line */
+        }
+        .idiom-translation-display {
+            padding-left: 10px; /* Indent meaning/translation */
+            display: block;
+        }
+        #idiom-info-tooltip .idiom-text { margin-bottom: 3px; }
+        #idiom-info-tooltip .idiom-translation-display { padding-left: 0; }
+
+        /* --- NEW: Segment Translation Cycle Button --- */
+        .segment-translation-cycle {
+            display: inline-block; /* Or block */
+            margin-left: 10px;
+            padding: 2px 6px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: var(--accent-primary-light);
+            background-color: rgba(74, 144, 226, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .segment-translation-cycle:hover {
+            background-color: rgba(74, 144, 226, 0.2);
+            color: #fff;
+        }
+
+    </style>
+
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>Part-of-Speech Highlighter</h1>
+
+        <div class="input-section">
+             <div class="textarea-group">
+                 <label for="known-words-input">Known Words (Signatures: word::POS):</label>
+                 <textarea id="known-words-input" rows="6" placeholder="Load data from server or edit here..."></textarea>
+             </div>
+             <div class="textarea-group">
+                 <label for="combined-json-output">Combined Data (JSON):</label>
+                 <textarea id="combined-json-output" placeholder="Click 'Create & Copy Combined JSON' to generate..." readonly></textarea> </div>
+             <div class="button-row">
+                 <button id="create-combined-button">Create & Copy Combined JSON</button>
+                 </div>
+             <div id="error-display" class="error-message" style="display: none;"></div>
+        </div>
+
+        <div class="controls-container">
+            <div class="control-group highlight-controls">
+                <div class="highlight-row" id="highlight-row-1">
+                     <button id="toggle-all-highlights">Highlight All</button>
+                     <label class="toggle-label" for="highlight-style-toggle">
+                         <input type="checkbox" id="highlight-style-toggle">
+                         <span class="toggle-switch"></span>
+                         <span class="toggle-text">Style</span> </label>
+                </div>
+                <div class="highlight-row button-container" id="pos-row-1"></div>
+                 <div class="highlight-row button-container" id="pos-row-2"></div>
+                 <div class="highlight-row button-container" id="pos-row-3"></div>
+            </div>
+
+            <div class="control-separator"></div>
+
+            <div class="control-group filter-toggles">
+                 <label class="toggle-label" for="first-instance-toggle">
+                     <input type="checkbox" id="first-instance-toggle">
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Filter 1st</span> </label>
+                 <label class="toggle-label" for="new-words-toggle">
+                     <input type="checkbox" id="new-words-toggle">
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Filter New</span> </label>
+                 <label class="toggle-label" for="show-grammar-toggle">
+                     <input type="checkbox" id="show-grammar-toggle">
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Grammar</span> </label>
+                 <label class="toggle-label" for="segment-mode-toggle">
+                     <input type="checkbox" id="segment-mode-toggle">
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Segments</span> </label>
+            </div>
+
+             <div class="control-separator"></div>
+
+             <div class="control-group action-controls">
+                 <label class="toggle-label" for="scope-toggle" title="Control scope for Add/Clear buttons">
+                     <input type="checkbox" id="scope-toggle">
+                     <span class="toggle-switch"></span>
+                     <span class="toggle-text">Scope</span> </label>
+                 <button id="add-first-instances-button" disabled>Add First Inst.</button>
+                 <button id="clear-known-words-button" disabled>Clear Known Words</button>
+             </div>
+        </div>
+        <div class="output-section">
+            <div id="dual-page-container">
+                <div id="text-display-left" class="text-display-page">
+                    Loading data from server...
+                </div>
+                <div id="text-display-right" class="text-display-page"></div>
+            </div>
+            <div class="pagination-controls" id="pagination-controls" style="display: none;">
+                 <button id="page-jump-button">Go</button>
+                 <div class="pagination-center">
+                     <button id="prev-page-button" disabled>&lt; Previous</button>
+                     <span id="page-info">Page 1 of 1</span>
+                     <input type="number" id="page-jump-input" min="1" placeholder="Page" title="Enter page number and press Enter or click Go">
+                     <button id="next-page-button" disabled>Next &gt;</button>
+                 </div>
+                 <div class="pagination-right">
+                     <label class="toggle-label" id="view-mode-toggle-label" for="view-mode-toggle">
+                         <input type="checkbox" id="view-mode-toggle" checked> <span class="toggle-switch"></span>
+                         <span class="toggle-text">View: Dual/Single</span>
+                     </label>
+                     <div class="setting-control">
+                         <label for="words-per-page-input">Words/Page:</label>
+                         <div class="input-with-arrows">
+                              <input type="number" id="words-per-page-input" value="100" min="5" max="500" step="10"> <div class="wpp-button-group">
+                                   <button type="button" id="wpp-increment-button" class="wpp-button" aria-label="Increase words per page">▲</button>
+                                   <button type="button" id="wpp-decrement-button" class="wpp-button" aria-label="Decrease words per page">▼</button>
+                              </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+
+            </div>
+            <div id="tooltip-container" style="display: none;">
+                <div id="word-info-tooltip">
+                    </div>
+                <div id="idiom-info-tooltip">
+                    </div>
+            </div>
+
+    <script>
+    // --- Main Thread Script (Backend Integration - Grammar Enabled) ---
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- DOM Elements ---
+        const appContainer = document.getElementById('app-container');
+        const knownWordsInput = document.getElementById('known-words-input'); // Visible textarea
+        const combinedJsonOutput = document.getElementById('combined-json-output'); // Keep for Create/Copy
+        const createCombinedButton = document.getElementById('create-combined-button');
+        const dualPageContainer = document.getElementById('dual-page-container');
+        const textDisplayLeft = document.getElementById('text-display-left');
+        const textDisplayRight = document.getElementById('text-display-right');
+        const errorDisplayDiv = document.getElementById('error-display');
+        const firstInstanceToggle = document.getElementById('first-instance-toggle');
+        const newWordsToggle = document.getElementById('new-words-toggle');
+        const highlightStyleToggle = document.getElementById('highlight-style-toggle');
+        const showGrammarToggle = document.getElementById('show-grammar-toggle');
+        const segmentModeToggle = document.getElementById('segment-mode-toggle');
+        const scopeToggle = document.getElementById('scope-toggle');
+        const viewModeToggleLabel = document.getElementById('view-mode-toggle-label');
+        const viewModeToggle = document.getElementById('view-mode-toggle');
+        const toggleAllButton = document.getElementById('toggle-all-highlights');
+        const wordsPerPageInput = document.getElementById('words-per-page-input');
+        const wppDecrementButton = document.getElementById('wpp-decrement-button');
+        const wppIncrementButton = document.getElementById('wpp-increment-button');
+        const paginationControlsDiv = document.getElementById('pagination-controls');
+        const prevPageButton = document.getElementById('prev-page-button');
+        const nextPageButton = document.getElementById('next-page-button');
+        const pageInfoSpan = document.getElementById('page-info');
+        const pageJumpInput = document.getElementById('page-jump-input');
+        const pageJumpButton = document.getElementById('page-jump-button');
+        const clearKnownWordsButton = document.getElementById('clear-known-words-button');
+        const addFirstInstancesButton = document.getElementById('add-first-instances-button');
+        const tooltipContainer = document.getElementById('tooltip-container');
+        const wordInfoTooltip = document.getElementById('word-info-tooltip');
+        const idiomInfoTooltip = document.getElementById('idiom-info-tooltip');
+
+        // --- State Variables ---
+        let wordDataStore = null; // Initialize to null
+        let segmentsData = [];
+        let idiomsData = [];
+        let inputText = ""; // Will be loaded from server
+        let wordKeyToSegmentMap = {};
+        let wordKeyToIdiomMap = {};
+        let allTokens = [];
+        let originalFirstInstanceTokens = [];
+        let processedPages = [];
+        let currentPageLeftSpanRefs = {};
+        let currentPageRightSpanRefs = {};
+        let knownSignaturesSet = new Set(); // Stores "word::POS" signatures, loaded from server
+        let currentPage = 1;
+        let totalPages = 0;
+        let highlightedPOS = new Set();
+        let filterFirstInstanceActive = false;
+        let filterNewWordsActive = false;
+        let highlightStyleMode = 'underline';
+        let showGrammarDetails = false; // State for grammar toggle
+        let isDualPageView = true; // Default to dual view
+        let isSegmentModeActive = false;
+        // *** NEW: State to remember view mode before entering segments ***
+        let viewModeBeforeSegments = true; // Initialize based on default isDualPageView
+        let scopeMode = 'entire';
+        let currentlyHighlightedSegmentId = null;
+        let lastMouseEvent = null;
+        let allFoundPosTags = new Set();
+        let segmentDisplayState = { id: null, keys: [], index: 0 };
+
+        // --- Constants ---
+        const SIGNATURE_SEPARATOR = '::';
+        const NULL_PLACEHOLDER = '_NONE_';
+        const segmentWordHighlightClass = 'segment-word-highlight';
+        const idiomWordHighlightClass = 'idiom-word-highlight';
+        const posButtonGroups = [
+             { key: "pink", group: "verb", text: "Verb", tags: ["VERB"], hueVar: "--hl-verb-hue", satVar: "--hl-verb-sat", lightVar: "--hl-verb-light" },
+             { key: "blue", group: "noun-propn", text: "Noun/PropN", tags: ["NOUN", "PROPN"], hueVar: "--hl-noun-hue", satVar: "--hl-noun-sat", lightVar: "--hl-noun-light" },
+             { key: "green", group: "adj", text: "Adjective", tags: ["ADJ"], hueVar: "--hl-adj-hue", satVar: "--hl-adj-sat", lightVar: "--hl-adj-light" },
+             { key: "orange", group: "aux", text: "Aux", tags: ["AUX"], hueVar: "--hl-aux-hue", satVar: "--hl-aux-sat", lightVar: "--hl-aux-light" },
+             { key: "yellow", group: "other", text: "Other", tags: [], hueVar: "--hl-other-hue", satVar: "--hl-other-sat", lightVar: "--hl-other-light" }
+        ];
+        const staticallyCoveredTags = new Set(['VERB', 'NOUN', 'PROPN', 'ADJ', 'AUX']);
+        const coloredTooltipPropsNoLabel = new Set(["best_translation", "possible_translations", "lemma", "lemma_translations", "word"]);
+        const tooltipOtherProps = ["pos", "first_inst", "note", "translations"];
+
+        // --- Function Definitions (Moved Up) ---
+        function updateClearKnownWordsButtonState() { if (clearKnownWordsButton) { clearKnownWordsButton.disabled = knownSignaturesSet.size === 0; } }
+        function updateAddAllButtonState() { if (addFirstInstancesButton) { addFirstInstancesButton.disabled = !originalFirstInstanceTokens || originalFirstInstanceTokens.length === 0; } }
+        function updateHighlightStyleMode() { highlightStyleMode = highlightStyleToggle.checked ? 'background' : 'underline'; }
+        function updateViewMode() { isDualPageView = viewModeToggle.checked; }
+        function updateGrammarDetailsVisibility() { showGrammarDetails = showGrammarToggle.checked; }
+        function updateFilterTogglesState() { filterFirstInstanceActive = firstInstanceToggle.checked; filterNewWordsActive = newWordsToggle.checked; }
+        // *** MODIFIED: updateSegmentMode to remember/restore view mode ***
+        function updateSegmentMode() {
+            const wasSegmentModeActive = isSegmentModeActive; // Store previous state
+            isSegmentModeActive = segmentModeToggle.checked;
+            console.log("Segment Mode Active:", isSegmentModeActive);
+
+            // Hide/Show the View Mode toggle based on segment mode
+            if (viewModeToggleLabel) {
+                viewModeToggleLabel.style.display = isSegmentModeActive ? 'none' : '';
+            }
+
+            if (isSegmentModeActive && !wasSegmentModeActive) {
+                // Entering Segment Mode
+                viewModeBeforeSegments = isDualPageView; // Remember current view mode
+                if (isDualPageView) {
+                    console.log("Segment mode activated, forcing single page view.");
+                    isDualPageView = false; // Force single view
+                    viewModeToggle.checked = false; // Update checkbox visually
+                }
+            } else if (!isSegmentModeActive && wasSegmentModeActive) {
+                // Exiting Segment Mode
+                console.log("Segment mode deactivated, restoring previous view mode:", viewModeBeforeSegments);
+                isDualPageView = viewModeBeforeSegments; // Restore previous view mode
+                viewModeToggle.checked = isDualPageView; // Update checkbox visually
+            }
+
+            clearSegmentHighlight();
+            clearIdiomHighlight();
+            updateRightPane(null); // Clear right pane content
+            tooltipContainer.style.display = 'none'; // Hide tooltip
+        }
+        function updateScopeMode() { scopeMode = scopeToggle.checked ? 'visible' : 'entire'; }
+
+        // --- Initialization ---
+        function initializeApp() {
+            knownWordsInput.value = ''; // Clear known words display
+            combinedJsonOutput.value = ''; // Clear output display
+            // Setup UI elements and initial state
+            generatePosButtons();
+            updateHighlightStyleMode();
+            updateViewMode(); // Initialize view mode state
+            viewModeBeforeSegments = isDualPageView; // *** Initialize remembered state ***
+            updateSegmentMode(); // Initialize segment mode state (and potentially adjust view mode)
+            updateToggleAllButtonState();
+            updateGrammarDetailsVisibility(); // Initialize grammar state
+            updateFilterTogglesState();
+            parseKnownSignatures(); // Parse initially empty textarea
+            updateClearKnownWordsButtonState();
+            updateAddAllButtonState();
+            updateScopeMode();
+            resetStateAndUI(); // Reset internal state
+            addEventListeners(); // Combined event listeners
+            loadDataFromServer(); // Load data on initial load
+            console.log("POS Highlighter Initialized (Backend Integration - Grammar Enabled).");
+        }
+
+        // --- Signature Helper (word::POS) ---
+        function getSignature(word, pos) {
+            if (!word) return null;
+            const wordLower = word.toLowerCase();
+            const posNorm = (pos && pos.length > 0) ? pos : NULL_PLACEHOLDER;
+            return `${wordLower}${SIGNATURE_SEPARATOR}${posNorm}`;
+        }
+
+        // --- Tooltip Functions ---
+        function formatWordTooltipContent(data, key, tooltipColor) { /* ... unchanged ... */ if (!data) return { conciseHTML: '<i>No word data found.</i>', detailedHTML: '' }; let conciseHTML = ''; let detailedHTML = ''; const processedProps = new Set(); const wordValue = data.word ? escapeHTML(data.word) : ''; const bestTrans = data.best_translation ? escapeHTML(data.best_translation) : ''; const posValue = data.pos ? escapeHTML(data.pos) : ''; const lemmaVal = data.lemma ? escapeHTML(data.lemma) : ''; const lemmaTrans = data.lemma_translations ? escapeHTML(data.lemma_translations) : ''; const possTrans = data.possible_translations ? escapeHTML(data.possible_translations) : ''; const colorSpan = (text, color) => color ? `<span class="tooltip-colored-value" style="color: ${color};">${text}</span>` : `<span class="tooltip-colored-value">${text}</span>`; if (wordValue || bestTrans) { conciseHTML += '<div class="tooltip-line">'; if (wordValue) { conciseHTML += colorSpan(wordValue, tooltipColor) + ': '; } if (bestTrans) { conciseHTML += `<strong class="tooltip-best-translation">${colorSpan(bestTrans, tooltipColor)}</strong>`; } conciseHTML += '</div>'; processedProps.add('word'); processedProps.add('best_translation'); } if (lemmaVal || lemmaTrans) { conciseHTML += '<div class="tooltip-line">'; if (lemmaVal) { conciseHTML += colorSpan(lemmaVal, tooltipColor); } if (lemmaVal && lemmaTrans) { conciseHTML += ': '; } if (lemmaTrans) { conciseHTML += colorSpan(lemmaTrans, tooltipColor); } conciseHTML += '</div>'; processedProps.add('lemma'); processedProps.add('lemma_translations'); } if (possTrans && possTrans !== bestTrans) { conciseHTML += `<div class="tooltip-line"><strong>Possible:</strong> ${colorSpan(possTrans, tooltipColor)}</div>`; processedProps.add('possible_translations'); } if (possTrans) { detailedHTML += `<div class="tooltip-line">${colorSpan(possTrans, tooltipColor)}</div>`; processedProps.add('possible_translations'); } if (lemmaVal || lemmaTrans) { detailedHTML += '<div class="tooltip-line">'; if (lemmaVal) { detailedHTML += colorSpan(lemmaVal, tooltipColor); } if (lemmaVal && lemmaTrans) { detailedHTML += ': '; } if (lemmaTrans) { detailedHTML += colorSpan(lemmaTrans, tooltipColor); } detailedHTML += '</div>'; processedProps.add('lemma'); processedProps.add('lemma_translations'); } if (posValue) { detailedHTML += `<div class="tooltip-line"><strong>POS:</strong> ${posValue}</div>`; processedProps.add('pos'); } if (detailedHTML !== '' && (data.key || tooltipOtherProps.some(prop => data.hasOwnProperty(prop) && !processedProps.has(prop)) || (data.details && Object.keys(data.details).length > 0))) { detailedHTML += '<hr>'; } detailedHTML += `<div class="tooltip-line"><strong>DB Key:</strong> ${escapeHTML(key)}</div>`; tooltipOtherProps.forEach(prop => { if (processedProps.has(prop)) return; if (data.hasOwnProperty(prop) && (data[prop] !== null && data[prop] !== '' || prop === 'first_inst')) { const displayName = prop.charAt(0).toUpperCase() + prop.slice(1).replace(/_/g, ' '); const displayValue = prop === 'first_inst' ? (data[prop] ? 'Yes' : 'No') : escapeHTML(data[prop]); detailedHTML += `<div class="tooltip-line"><strong>${escapeHTML(displayName)}:</strong> ${displayValue}</div>`; processedProps.add(prop); } }); for (const prop in data) { if (!processedProps.has(prop) && prop !== 'details' && data[prop] !== null && data[prop] !== '') { const displayName = prop.charAt(0).toUpperCase() + prop.slice(1).replace(/_/g, ' '); detailedHTML += `<div class="tooltip-line"><strong>${escapeHTML(displayName)}:</strong> ${escapeHTML(data[prop])}</div>`; processedProps.add(prop); } } if (data.details && typeof data.details === 'object' && Object.keys(data.details).length > 0) { if (detailedHTML !== '' && !detailedHTML.endsWith('<hr>')) detailedHTML += '<hr>'; detailedHTML += `<div class="tooltip-line"><strong>Details:</strong></div>`; for (const detailKey in data.details) { if (data.details[detailKey] !== null && data.details[detailKey] !== '') { const detailDisplayName = detailKey.charAt(0).toUpperCase() + detailKey.slice(1); if (detailKey.toLowerCase() === 'pos' && processedProps.has('pos')) continue; detailedHTML += `<div class="tooltip-line" style="margin-left: 10px;"><strong>${escapeHTML(detailDisplayName)}:</strong> ${escapeHTML(data.details[detailKey])}</div>`; } } } return { conciseHTML: conciseHTML, detailedHTML: detailedHTML }; }
+        function formatIdiomTooltipContent(idiom) { /* ... unchanged ... */ if (!idiom) return ''; let fullIdiomText = ''; for (let k = idiom.startWordKey; k <= idiom.endWordKey; k++) { fullIdiomText += (wordDataStore[k]?.word || '') + ' '; } fullIdiomText = fullIdiomText.trim(); let content = '<div class="idiom-info-block">'; content += `<span class="idiom-text">${escapeHTML(fullIdiomText || idiom.text || '')}</span>`; content += `<span class="idiom-translation-display">${escapeHTML(idiom.translation || idiom.meaning || '')}</span>`; content += '</div>'; return content; }
+        function positionTooltip(e) { /* ... unchanged ... */ if (!tooltipContainer || tooltipContainer.style.display === 'none') return; const eventForPos = e || lastMouseEvent; if (!eventForPos && !tooltipContainer.getBoundingClientRect) return; const tooltipRect = tooltipContainer.getBoundingClientRect(); const tooltipWidth = tooltipRect.width; const tooltipHeight = tooltipRect.height; const scrollX = window.scrollX || window.pageXOffset; const scrollY = window.scrollY || window.pageYOffset; const viewportWidth = document.documentElement.clientWidth; const viewportHeight = document.documentElement.clientHeight; const offsetX = 15; const offsetY = 15; let cursorX, cursorY; if (eventForPos) { cursorX = eventForPos.clientX + scrollX; cursorY = eventForPos.clientY + scrollY; } else { cursorX = scrollX + viewportWidth / 2; cursorY = scrollY + viewportHeight / 2; } let top = cursorY + offsetY; let left = cursorX + offsetX; if (left + tooltipWidth > scrollX + viewportWidth) { left = cursorX - tooltipWidth - offsetX; } if (top + tooltipHeight > scrollY + viewportHeight) { top = cursorY - tooltipHeight - offsetY; } if (left < scrollX) left = scrollX + 5; if (top < scrollY) top = scrollY + 5; tooltipContainer.style.left = `${left}px`; tooltipContainer.style.top = `${top}px`; }
+
+        // --- Data Fetching and Saving ---
+        async function loadDataFromServer() { /* ... unchanged ... */ console.log("Fetching data from /api/data..."); try { const response = await fetch('/api/data'); if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); } const combinedData = await response.json(); inputText = combinedData.inputText || ''; wordDataStore = combinedData.wordDatabase || {}; segmentsData = combinedData.segments || []; idiomsData = combinedData.idioms || []; knownSignaturesSet.clear(); if (Array.isArray(combinedData.knownWords)) { combinedData.knownWords.forEach(sig => { if (typeof sig === 'string' && sig.includes(SIGNATURE_SEPARATOR)) { knownSignaturesSet.add(sig.trim()); } }); } updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); console.log("Data loaded from server."); handleError(''); processLoadedData(); } catch (error) { console.error("Failed to load data from server:", error); handleError(`Failed to load data: ${error.message}. Check server connection and data file.`); } }
+        async function saveKnownWordsToServer() { /* ... unchanged ... */ console.log("Saving known words to server..."); const payload = { knownWords: Array.from(knownSignaturesSet).sort() }; try { const response = await fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify(payload) }); if (!response.ok) { let errorMsg = `HTTP error! status: ${response.status}`; try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { errorMsg = response.statusText || errorMsg; console.warn("Response from server was not valid JSON."); } throw new Error(errorMsg); } const result = await response.json(); console.log("Save result:", result.message); handleError(''); } catch (error) { console.error("Failed to save data to server:", error); handleError(`Failed to save known words: ${error.message}. Changes might not be persisted.`); } }
+
+
+        // --- Core Processing Function (Uses loaded state) ---
+        function processLoadedData() {
+            console.log("Processing loaded data...");
+            const startTime = performance.now();
+            // Reset derived state
+            allTokens = []; originalFirstInstanceTokens = [];
+            processedPages = []; currentPageLeftSpanRefs = {}; currentPageRightSpanRefs = {};
+            wordKeyToSegmentMap = {}; wordKeyToIdiomMap = {};
+            allFoundPosTags.clear(); highlightedPOS.clear(); // Clear highlights on reprocess
+            currentPage = 1; totalPages = 0;
+
+            try {
+                if (typeof wordDataStore !== 'object' || wordDataStore === null) throw new Error("Word database is missing or invalid.");
+                if (typeof inputText !== 'string') throw new Error("Input text is missing or invalid.");
+
+                // Pre-process segments and idioms into maps
+                if (Array.isArray(segmentsData)) { segmentsData.forEach((seg) => { if (typeof seg.startWordKey === 'number' && typeof seg.endWordKey === 'number') { for (let k = seg.startWordKey; k <= seg.endWordKey; k++) { wordKeyToSegmentMap[k] = seg; } } }); }
+                if (Array.isArray(idiomsData)) { idiomsData.forEach((idiom) => { if (typeof idiom.startWordKey === 'number' && typeof idiom.endWordKey === 'number') { for (let k = idiom.startWordKey; k <= idiom.endWordKey; k++) { wordKeyToIdiomMap[k] = idiom; } } }); }
+                // Collect all POS tags found in the database
+                for (const key in wordDataStore) { if (wordDataStore[key]?.pos) { allFoundPosTags.add(wordDataStore[key].pos); } }
+                console.log("Found POS tags:", Array.from(allFoundPosTags));
+
+                console.time("Tokenization & Association");
+                const tokenRegex = /([\p{L}'’]+)|(\s+)|(\n+)|([^\p{L}\s\n'’]+)/gu;
+                let match; let wordCounter = 1;
+                while ((match = tokenRegex.exec(inputText)) !== null) {
+                    const wordGroup = match[1], spaceGroup = match[2], newlineGroup = match[3], nonWordGroup = match[4];
+                    const fullMatchText = match[0];
+                    // *** MODIFIED: Include grammar property ***
+                    let tokenObj = { text: fullMatchText, type: 'unknown', key: undefined, pos: null, lemma: null, firstInstance: false, grammar: null, signature: null };
+                    let attemptAssociation = false;
+                    if (wordGroup) { tokenObj.type = 'word'; attemptAssociation = true; }
+                    else if (nonWordGroup) { tokenObj.type = 'punct'; attemptAssociation = true; }
+                    else if (spaceGroup) { tokenObj.type = 'space'; }
+                    else if (newlineGroup) { tokenObj.type = 'newline'; }
+                    if (attemptAssociation) {
+                        const dbKey = wordCounter.toString();
+                        const dbEntry = wordDataStore[dbKey];
+                        if (dbEntry && dbEntry.word && dbEntry.word.toLowerCase() === fullMatchText.toLowerCase()) {
+                            tokenObj.key = wordCounter;
+                            tokenObj.pos = dbEntry.pos || null;
+                            tokenObj.lemma = dbEntry.lemma || null;
+                            tokenObj.firstInstance = dbEntry.first_inst === true;
+                            // *** NEW: Populate grammar object from details ***
+                            if (dbEntry.details && typeof dbEntry.details === 'object') {
+                                tokenObj.grammar = {};
+                                if (dbEntry.details.Gender) tokenObj.grammar.gender = dbEntry.details.Gender;
+                                if (dbEntry.details.Number) tokenObj.grammar.number = dbEntry.details.Number;
+                                // Add other details here if needed for other features
+                            }
+                            // *** END NEW ***
+                            tokenObj.signature = getSignature(dbEntry.word, tokenObj.pos);
+                            if (tokenObj.firstInstance) { originalFirstInstanceTokens.push(tokenObj); }
+                            wordCounter++;
+                        } else {
+                            console.warn(`Mismatch/missing DB entry for counter ${wordCounter}. Text: "${fullMatchText}", Expected: "${dbEntry?.word}".`);
+                            tokenObj.type = wordGroup ? 'word' : 'punct';
+                        }
+                    }
+                    allTokens.push(tokenObj);
+                }
+                console.timeEnd("Tokenization & Association");
+                updateAddAllButtonState(); updateToggleAllButtonState();
+                paginateAndRender();
+            } catch (error) { handleError(`Processing error: ${error.message}`); }
+            finally { const endTime = performance.now(); console.log(`Processing loaded data took: ${(endTime - startTime).toFixed(2)} ms`); }
+        }
+
+
+        // --- Known Words / Signatures Functions ---
+        function parseKnownSignatures() { const signaturesText = knownWordsInput.value; const newSignatures = new Set(); signaturesText.split(/[\n]+/).map(line => line.trim()).filter(line => line.length > 0 && line.includes(SIGNATURE_SEPARATOR)).forEach(line => newSignatures.add(line)); knownSignaturesSet = newSignatures; }
+        function updateKnownWordsTextarea() { const sortedSignatures = Array.from(knownSignaturesSet).sort(); knownWordsInput.value = sortedSignatures.join('\n'); }
+
+        // --- Helper to apply/remove highlight classes on a single span ---
+        function updateSpanHighlightClasses(span) { if (!span || !span.dataset || span.dataset.key === undefined) return; const pos = span.dataset.pos; const signature = span.dataset.signature; const isFirst = span.dataset.firstInstance === "true"; const isKnown = signature && knownSignaturesSet.has(signature); const isPosSelected = pos && highlightedPOS.has(pos); let shouldHighlight = isPosSelected; let isFaded = false; if (shouldHighlight) { if (filterFirstInstanceActive && !isFirst) { shouldHighlight = false; } if (shouldHighlight && filterNewWordsActive && isKnown) { isFaded = true; } } const classList = span.classList; const classesToRemove = []; classList.forEach(className => { if (className.startsWith('highlight-') || className === 'highlight-active' || className === 'highlight-filtered-known') { classesToRemove.push(className); } }); if (classesToRemove.length > 0) { classList.remove(...classesToRemove); } if (shouldHighlight && pos) { classList.add('highlight-active'); classList.add(`highlight-${pos}`); if (isFaded) { classList.add('highlight-filtered-known'); } } }
+
+        // --- Helper to update highlight classes on all visible spans ---
+        function updateAllVisibleSpanHighlights() { /* ... unchanged ... */ console.log("Updating highlights on visible spans via class manipulation..."); const startTime = performance.now(); Object.values(currentPageLeftSpanRefs).forEach(updateSpanHighlightClasses); if (isDualPageView && !isSegmentModeActive) { Object.values(currentPageRightSpanRefs).forEach(updateSpanHighlightClasses); } const endTime = performance.now(); console.log(`Visible span highlights updated in ${(endTime - startTime).toFixed(2)} ms.`); }
+
+
+        // --- Optimized Interaction Handlers ---
+        function handleKnownWordsChange() {
+            parseKnownSignatures(); // Update set from textarea
+            updateClearKnownWordsButtonState();
+            if (filterNewWordsActive && allTokens.length > 0) {
+                updateAllVisibleSpanHighlights(); // Update main view if filter active
+            }
+            saveKnownWordsToServer(); // Save changes to server
+        }
+        function handleMainViewWordClick(event) { /* ... unchanged ... */ if (isSegmentModeActive) return; const clickedSpan = event.target.closest('.word-span[data-key]'); if (!clickedSpan || !dualPageContainer.contains(clickedSpan)) return; const word = clickedSpan.dataset.word; const pos = clickedSpan.dataset.pos; const signature = getSignature(word, pos); if (!signature) { console.warn("Could not generate signature for clicked word:", clickedSpan); return; } const wasKnown = knownSignaturesSet.has(signature); if (wasKnown) { knownSignaturesSet.delete(signature); } else { knownSignaturesSet.add(signature); } updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); if (filterNewWordsActive) { console.log(`Toggled known status for ${signature}. Updating highlights...`); const updateRefs = (refs) => { for(const key in refs) { const spanWord = refs[key].dataset.word; const spanPos = refs[key].dataset.pos; const spanSignature = getSignature(spanWord, spanPos); if(spanSignature === signature) { updateSpanHighlightClasses(refs[key]); } } }; updateRefs(currentPageLeftSpanRefs); if (isDualPageView && !isSegmentModeActive) { updateRefs(currentPageRightSpanRefs); } } saveKnownWordsToServer(); }
+        function handleClearKnownWords() { /* ... unchanged ... */ if (knownSignaturesSet.size === 0) return; if (scopeMode === 'entire') { const previouslyKnown = new Set(knownSignaturesSet); knownSignaturesSet.clear(); updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); if (filterNewWordsActive && allTokens.length > 0) { console.log("Cleared all known words. Updating highlights..."); const updateRefs = (refs) => { for(const key in refs) { const span = refs[key]; if (span.dataset.signature && previouslyKnown.has(span.dataset.signature)) { updateSpanHighlightClasses(span); } } }; updateRefs(currentPageLeftSpanRefs); updateRefs(currentPageRightSpanRefs); } saveKnownWordsToServer(); } else { console.log("Clearing known words visible on current page(s)..."); const visibleSignatures = new Set(); const collectVisibleSigs = (refs) => { for (const key in refs) { if (refs[key].dataset.signature) { visibleSignatures.add(refs[key].dataset.signature); } } }; collectVisibleSigs(currentPageLeftSpanRefs); if (isDualPageView && !isSegmentModeActive) { collectVisibleSigs(currentPageRightSpanRefs); } if (visibleSignatures.size === 0) { console.log("No words with signatures visible to clear."); return; } let clearedCount = 0; const signaturesToKeep = new Set(); const clearedVisibleSignatures = new Set(); knownSignaturesSet.forEach(knownSig => { if (visibleSignatures.has(knownSig)) { clearedCount++; clearedVisibleSignatures.add(knownSig); } else { signaturesToKeep.add(knownSig); } }); if (clearedCount > 0) { knownSignaturesSet = signaturesToKeep; updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); console.log(`Cleared ${clearedCount} known signatures found in visible text.`); if (filterNewWordsActive) { console.log("Updating highlights after clearing visible known words..."); const updateRefs = (refs) => { for(const key in refs) { const span = refs[key]; if (span.dataset.signature && clearedVisibleSignatures.has(span.dataset.signature)) { updateSpanHighlightClasses(span); } } }; updateRefs(currentPageLeftSpanRefs); updateRefs(currentPageRightSpanRefs); } saveKnownWordsToServer(); } else { console.log("No known words found among visible words to clear."); } } }
+        function handleAddAllFirstInstances() { /* ... unchanged ... */ if (!originalFirstInstanceTokens || originalFirstInstanceTokens.length === 0) return; let addedCount = 0; const newlyAddedSignatures = new Set(); let tokensToAdd = []; if (scopeMode === 'entire') { tokensToAdd = originalFirstInstanceTokens; console.log("Adding first instances from entire text..."); } else { console.log("Adding first instances from visible text..."); const visibleKeys = new Set(); Object.keys(currentPageLeftSpanRefs).forEach(key => visibleKeys.add(parseInt(key, 10))); if (isDualPageView && !isSegmentModeActive) { Object.keys(currentPageRightSpanRefs).forEach(key => visibleKeys.add(parseInt(key, 10))); } if (visibleKeys.size === 0) { console.log("No words visible to add."); return; } tokensToAdd = originalFirstInstanceTokens.filter(token => token.key && visibleKeys.has(token.key)); } tokensToAdd.forEach(token => { const signature = token.signature; if (signature && !knownSignaturesSet.has(token.signature)) { knownSignaturesSet.add(signature); newlyAddedSignatures.add(signature); addedCount++; } }); if (addedCount > 0) { console.log(`Added ${addedCount} first instance signatures (Scope: ${scopeMode}).`); updateKnownWordsTextarea(); updateClearKnownWordsButtonState(); if (filterNewWordsActive && allTokens.length > 0) { console.log("Updating highlights for newly added known words..."); const updateRefs = (refs) => { for(const key in refs) { const span = refs[key]; const spanSignature = span.dataset.signature; if (spanSignature && newlyAddedSignatures.has(spanSignature)) { updateSpanHighlightClasses(span); } } }; updateRefs(currentPageLeftSpanRefs); if (isDualPageView && !isSegmentModeActive) { updateRefs(currentPageRightSpanRefs); } } saveKnownWordsToServer(); } else { console.log(`All relevant first instance words (Scope: ${scopeMode}) were already known.`); } }
+
+        // --- Segment & Idiom Highlighting & Translation Functions ---
+        function findSegmentForKey(key) { return wordKeyToSegmentMap[key] || null; }
+        function findIdiomForKey(key) { return wordKeyToIdiomMap[key] || null; }
+        function findIdiomsInSegment(segment) { if (!segment) return []; const idioms = new Set(); for (let k = segment.startWordKey; k <= segment.endWordKey; k++) { const idiom = wordKeyToIdiomMap[k]; if (idiom) { idioms.add(idiom); } } return Array.from(idioms); }
+        function updateRightPane(segment) { if (!textDisplayRight) return; let contentHTML = ''; segmentDisplayState = { id: null, keys: [], index: 0 }; if (segment && segment.translations && typeof segment.translations === 'object' && Object.keys(segment.translations).length > 0) { const translations = segment.translations; const keys = Object.keys(translations); segmentDisplayState.id = segment.id || `${segment.startWordKey}-${segment.endWordKey}`; segmentDisplayState.keys = keys; segmentDisplayState.index = 0; const currentKey = keys[segmentDisplayState.index]; const currentTranslation = translations[currentKey]; const totalTranslations = keys.length; contentHTML += `<div class="translation-block" id="segment-translation-display-area">`; contentHTML += `<span class="translation-lang-key">[${escapeHTML(currentKey)}]</span> `; contentHTML += escapeHTML(currentTranslation); if (totalTranslations > 1) { contentHTML += ` <span class="segment-translation-cycle" data-action="cycle-translation" title="Next Translation (1/${totalTranslations})">Next &gt;</span>`; } contentHTML += `</div>`; } else { contentHTML += '<i>No segment translations available.</i>'; } const idioms = segment ? findIdiomsInSegment(segment) : []; if (idioms.length > 0) { contentHTML += '<hr class="idiom-info-separator">'; idioms.forEach(idiom => { let fullIdiomText = ''; for (let k = idiom.startWordKey; k <= idiom.endWordKey; k++) { fullIdiomText += (wordDataStore[k]?.word || '') + ' '; } fullIdiomText = fullIdiomText.trim(); contentHTML += '<div class="idiom-info-block">'; contentHTML += `<span class="idiom-text">${escapeHTML(fullIdiomText || idiom.text || '')}</span>`; contentHTML += `<span class="idiom-translation-display">${escapeHTML(idiom.translation || idiom.meaning || '')}</span>`; contentHTML += '</div>'; }); } textDisplayRight.innerHTML = contentHTML; }
+        function displaySegmentTranslation(segmentId, newIndex) { if (!segmentId || segmentId !== segmentDisplayState.id) return; const displayArea = document.getElementById('segment-translation-display-area'); if (!displayArea) return; const segment = segmentsData.find(s => (s.id || `${s.startWordKey}-${s.endWordKey}`) === segmentId); if (!segment || !segment.translations) return; const keys = segmentDisplayState.keys; const totalTranslations = keys.length; if (totalTranslations <= 1) return; segmentDisplayState.index = newIndex % totalTranslations; const currentKey = keys[segmentDisplayState.index]; const currentTranslation = segment.translations[currentKey]; let newHTML = `<span class="translation-lang-key">[${escapeHTML(currentKey)}]</span> `; newHTML += escapeHTML(currentTranslation); newHTML += ` <span class="segment-translation-cycle" data-action="cycle-translation" title="Next Translation (${segmentDisplayState.index + 1}/${totalTranslations})">Next &gt;</span>`; displayArea.innerHTML = newHTML; }
+        function clearSegmentHighlight() { if (!textDisplayLeft || currentlyHighlightedSegmentId === null) return; const segment = segmentsData.find(s => (s.id || `${s.startWordKey}-${s.endWordKey}`) === currentlyHighlightedSegmentId); if (segment) { for (let k = segment.startWordKey; k <= segment.endWordKey; k++) { if (currentPageLeftSpanRefs[k]) { currentPageLeftSpanRefs[k].classList.remove(segmentWordHighlightClass); } } } currentlyHighlightedSegmentId = null; segmentDisplayState = { id: null, keys: [], index: 0 }; }
+        function highlightSegment(segment) { if (!segment || !textDisplayLeft) return; currentlyHighlightedSegmentId = segment.id || `${segment.startWordKey}-${segment.endWordKey}`; const startKey = segment.startWordKey; const endKey = segment.endWordKey; for (let k = startKey; k <= endKey; k++) { const spanRef = currentPageLeftSpanRefs[k]; if (spanRef) { spanRef.classList.add(segmentWordHighlightClass); } } }
+        function clearIdiomHighlight() { if (!textDisplayLeft) return; for (const key in currentPageLeftSpanRefs) { currentPageLeftSpanRefs[key].classList.remove(idiomWordHighlightClass); } }
+        function highlightIdioms(idioms) { if (!idioms || idioms.length === 0 || !textDisplayLeft) return; idioms.forEach(idiom => { for (let k = idiom.startWordKey; k <= idiom.endWordKey; k++) { const spanRef = currentPageLeftSpanRefs[k]; if (spanRef) { spanRef.classList.add(idiomWordHighlightClass); } } }); }
+
+        // --- Get Validated Input Values ---
+        function getWordsPerPage() { const defaultValue = 100; const minValue = 5; const maxValue = 500; let value = parseInt(wordsPerPageInput.value, 10); if (isNaN(value) || value < minValue || value > maxValue) { value = Math.max(minValue, Math.min(maxValue, isNaN(value) ? defaultValue : value)); wordsPerPageInput.value = value; } return value; }
+
+        // --- Helper to build interactive span HTML (MODIFIED to include grammar) ---
+        function buildInteractiveSpan(token) {
+            // Handle non-word/punct tokens or tokens without a key
+            if (!token || (token.type !== 'word' && token.type !== 'punct') || token.key === undefined) {
+                // Return a simple text node for spaces, newlines, or unassociated text
+                return document.createTextNode(token?.text || '');
+            }
+
+            // Create the main span for the word/punctuation
+            const span = document.createElement('span');
+            span.className = 'word-span';
+            span.textContent = token.text; // Use textContent for performance and security
+
+            // Add data attributes for interaction and styling
+            span.dataset.key = token.key;
+            if (token.pos) span.dataset.pos = token.pos;
+            if (token.firstInstance) span.dataset.firstInstance = "true";
+            span.dataset.word = token.text; // Store original word text
+            if (token.signature) span.dataset.signature = token.signature;
+
+            // Apply initial highlight classes based on current state
+            updateSpanHighlightClasses(span); // This function adds highlight-*, highlight-active, highlight-filtered-known
+
+            // *** NEW: Conditionally add grammar details superscript ***
+            if (showGrammarDetails && token.grammar) {
+                let grammarString = '';
+                // Check if gender and number exist and are non-empty strings
+                const hasGender = token.grammar.gender && typeof token.grammar.gender === 'string' && token.grammar.gender.length > 0;
+                const hasNumber = token.grammar.number && typeof token.grammar.number === 'string' && token.grammar.number.length > 0;
+
+                // Format the string: "g.n" or just "g" or just "n"
+                if (hasGender && hasNumber) {
+                    grammarString = token.grammar.gender + '.' + token.grammar.number;
+                } else if (hasGender) {
+                    grammarString = token.grammar.gender;
+                } else if (hasNumber) {
+                    grammarString = token.grammar.number;
+                }
+
+                // Only add the superscript if there's something to display
+                if (grammarString) {
+                    const sup = document.createElement('sup');
+                    sup.className = 'grammar-details'; // Assign the specific CSS class
+                    sup.textContent = escapeHTML(grammarString); // Ensure content is safe
+                    span.appendChild(sup); // Append the superscript to the word span
+                }
+            }
+            // *** END NEW ***
+
+            return span; // Return the complete span element
+        }
+
+
+        // --- Pagination ---
+        function paginateTokensByWordCount() { const wordsPerPage = getWordsPerPage(); processedPages = []; if (allTokens.length === 0) { totalPages = 0; return; } let currentPageContent = [], wordCountOnPage = 0; for (let i = 0; i < allTokens.length; i++) { const token = allTokens[i]; currentPageContent.push(token); if (token.key !== undefined) { wordCountOnPage++; } if ((wordCountOnPage >= wordsPerPage && token.key !== undefined) || i === allTokens.length - 1) { if (currentPageContent.length > 0) { processedPages.push(currentPageContent); currentPageContent = []; wordCountOnPage = 0; } } } totalPages = processedPages.length; currentPage = Math.max(1, Math.min(currentPage, totalPages)); if (!isSegmentModeActive && isDualPageView && currentPage > 1 && currentPage % 2 === 0) { currentPage--; } } // Adjusted pagination logic
+        function updatePaginationInfo() { if (totalPages <= 0) { pageInfoSpan.textContent = ''; return; } if (isSegmentModeActive) { pageInfoSpan.textContent = `Page ${currentPage} of ${totalPages}`; } else { if (isDualPageView) { const rightPage = currentPage + 1; if (totalPages === 1) { pageInfoSpan.textContent = `Page ${currentPage} of ${totalPages}`; } else if (rightPage > totalPages) { pageInfoSpan.textContent = `Page ${currentPage} of ${totalPages}`; } else { pageInfoSpan.textContent = `Pages ${currentPage}-${rightPage} of ${totalPages}`; } } else { pageInfoSpan.textContent = `Page ${currentPage} of ${totalPages}`; } } }
+        function updatePaginationButtons() { paginationControlsDiv.style.display = totalPages > 0 ? 'flex' : 'none'; if (totalPages <= 0) return; const onFirst = currentPage === 1; let onLast; if (isSegmentModeActive) { onLast = (currentPage === totalPages); } else { onLast = isDualPageView ? (currentPage + 1 >= totalPages) : (currentPage === totalPages); } prevPageButton.disabled = onFirst; nextPageButton.disabled = onLast; if(pageJumpInput) { pageJumpInput.max = totalPages; pageJumpInput.disabled = totalPages <= 1; } if(pageJumpButton) { pageJumpButton.disabled = totalPages <= 1; } }
+        function goToPrevPage() { const step = (!isSegmentModeActive && isDualPageView) ? 2 : 1; if (currentPage > 1) { renderPagePair(Math.max(1, currentPage - step)); } } // Adjusted step logic
+        function goToNextPage() { const step = (!isSegmentModeActive && isDualPageView) ? 2 : 1; let nextTargetPage = currentPage + step; if (nextTargetPage <= totalPages) { renderPagePair(nextTargetPage); } else if (!isSegmentModeActive && isDualPageView && currentPage + 1 === totalPages) { /* Let renderPagePair handle last page */ } } // Adjusted step logic
+        function goToPage(targetPage) { const pageNum = parseInt(targetPage, 10); if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) { if(pageJumpInput) pageJumpInput.value = ''; return; } let startPage = pageNum; if (!isSegmentModeActive && isDualPageView) { startPage = (pageNum % 2 === 0) ? pageNum - 1 : pageNum; startPage = Math.max(1, startPage); } renderPagePair(startPage); } // Adjusted startPage logic
+
+         // --- Render Page(s) (MODIFIED to include grammar class) ---
+         function renderPagePair(firstPageNumber) {
+             if (totalPages === 0 && allTokens.length > 0) {
+                 paginateTokensByWordCount();
+                 if (totalPages === 0) {
+                     textDisplayLeft.innerHTML = "No content to display with current Words Per Page setting.";
+                     textDisplayRight.innerHTML = "";
+                     textDisplayRight.style.display = 'none';
+                     updatePaginationInfo();
+                     updatePaginationButtons();
+                     return;
+                 }
+                 firstPageNumber = Math.max(1, Math.min(firstPageNumber, totalPages));
+             } else if (totalPages === 0) {
+                 textDisplayLeft.innerHTML = 'Load and Process Combined JSON to see the text.';
+                 textDisplayRight.innerHTML = '';
+                 textDisplayRight.style.display = 'none';
+                 paginationControlsDiv.style.display = 'none';
+                 textDisplayRight.classList.remove('segment-translation-display');
+                 textDisplayRight.classList.add('text-display-page');
+                 currentPageLeftSpanRefs = {};
+                 currentPageRightSpanRefs = {};
+                 return;
+             }
+
+             firstPageNumber = Math.max(1, Math.min(firstPageNumber, totalPages));
+             // *** MODIFIED: Adjust start page only if NOT in segment mode ***
+             if (!isSegmentModeActive && isDualPageView && firstPageNumber > 1 && firstPageNumber % 2 === 0) {
+                 firstPageNumber--; // Adjust starting page for dual view
+             }
+             currentPage = firstPageNumber;
+
+             const pageNumberLeft = currentPage;
+             const pageTokensLeft = processedPages[pageNumberLeft - 1] || [];
+
+             const highlightModeClass = `highlight-mode-${highlightStyleMode}`;
+             // *** NEW: Add grammar class conditionally ***
+             const grammarClass = showGrammarDetails ? 'show-grammar-details' : '';
+
+             // Render left page
+             textDisplayLeft.innerHTML = ''; // Clear previous content
+             currentPageLeftSpanRefs = {}; // Reset refs
+             const leftFragment = buildPageHTMLAndStoreRefs(pageTokensLeft, currentPageLeftSpanRefs);
+             textDisplayLeft.appendChild(leftFragment);
+             // *** MODIFIED: Apply grammar class ***
+             textDisplayLeft.className = `text-display-page ${highlightModeClass} ${grammarClass}`;
+
+             // Render right page (or clear/hide it)
+             currentPageRightSpanRefs = {}; // Reset refs
+             if (isSegmentModeActive) {
+                 textDisplayRight.className = 'text-display-page segment-translation-display'; // No grammar class needed here
+                 textDisplayRight.innerHTML = ''; // Clear previous content
+                 textDisplayRight.style.display = ''; // Ensure visible
+                 updateRightPane(null); // Show placeholder or initial content
+             } else {
+                 textDisplayRight.classList.remove('segment-translation-display');
+                 // *** MODIFIED: Apply grammar class ***
+                 textDisplayRight.className = `text-display-page ${highlightModeClass} ${grammarClass}`;
+                 if (isDualPageView) {
+                     const pageNumberRight = currentPage + 1;
+                     const pageTokensRight = (pageNumberRight <= totalPages) ? (processedPages[pageNumberRight - 1] || []) : [];
+                     textDisplayRight.innerHTML = ''; // Clear previous content
+                     const rightFragment = buildPageHTMLAndStoreRefs(pageTokensRight, currentPageRightSpanRefs);
+                     textDisplayRight.appendChild(rightFragment);
+                     textDisplayRight.style.display = ''; // Ensure visible
+                 } else {
+                     textDisplayRight.innerHTML = ''; // Clear content
+                     textDisplayRight.style.display = 'none'; // Hide
+                 }
+             }
+
+             updatePaginationInfo();
+             updatePaginationButtons();
+             if(pageJumpInput) pageJumpInput.value = ''; // Clear jump input
+             clearSegmentHighlight(); // Clear any lingering segment highlights
+             clearIdiomHighlight(); // Clear any lingering idiom highlights
+         }
+         function buildPageHTMLAndStoreRefs(tokens, refStore) { const fragment = document.createDocumentFragment(); for (const token of tokens) { const node = buildInteractiveSpan(token); fragment.appendChild(node); if (node.nodeType === Node.ELEMENT_NODE && node.dataset.key) { refStore[node.dataset.key] = node; } } return fragment; }
+         function paginateAndRender() { paginateTokensByWordCount(); updatePosButtonActiveStates(); if (totalPages > 0) { updateFilterTogglesState(); updateHighlightStyleMode(); updateGrammarDetailsVisibility(); renderPagePair(currentPage); } else { textDisplayLeft.innerHTML = 'Load and Process Combined JSON to see the text.'; textDisplayRight.innerHTML = ''; textDisplayRight.style.display = 'none'; paginationControlsDiv.style.display = 'none'; textDisplayRight.classList.remove('segment-translation-display'); textDisplayRight.classList.add('text-display-page'); currentPageLeftSpanRefs = {}; currentPageRightSpanRefs = {}; } }
+
+        // --- Button Generation and State Updates ---
+        function generatePosButtons() { const posRow1 = document.getElementById('pos-row-1'); const posRow2 = document.getElementById('pos-row-2'); const posRow3 = document.getElementById('pos-row-3'); if (!posRow1 || !posRow2 || !posRow3) { console.error("Could not find POS button row containers."); return; } posRow1.innerHTML = ''; posRow2.innerHTML = ''; posRow3.innerHTML = ''; posButtonGroups.forEach(config => { const button = document.createElement('button'); button.textContent = config.text; button.dataset.posGroup = config.group; let isActive = false; let tagsToCheck; if (config.group === 'other') { tagsToCheck = getOtherPosTags(); } else { tagsToCheck = config.tags; } isActive = tagsToCheck.length > 0 && tagsToCheck.every(tag => highlightedPOS.has(tag)); button.classList.toggle('active-pos', isActive); button.addEventListener('click', handleHighlightToggle); if (config.group === 'verb' || config.group === 'noun-propn') { posRow1.appendChild(button); } else if (config.group === 'adj' || config.group === 'aux') { posRow2.appendChild(button); } else if (config.group === 'other') { posRow3.appendChild(button); } }); updateToggleAllButtonState(); }
+        function getOtherPosTags() { return [...allFoundPosTags].filter(tag => !staticallyCoveredTags.has(tag) && tag !== 'TBD'); }
+        function updatePosButtonActiveStates() { const buttons = document.querySelectorAll('.highlight-controls button[data-pos-group]'); buttons.forEach(button => { const group = button.dataset.posGroup; const config = posButtonGroups.find(c => c.group === group); if (config) { let isActive = false; let tagsToCheck; if (group === 'other') { tagsToCheck = getOtherPosTags(); } else { tagsToCheck = config.tags; } isActive = tagsToCheck.length > 0 && tagsToCheck.every(tag => highlightedPOS.has(tag)); button.classList.toggle('active-pos', isActive); } }); updateToggleAllButtonState(); }
+        function updateToggleAllButtonState() { if (!toggleAllButton) return; const allCurrentlyActive = allFoundPosTags.size > 0 && [...allFoundPosTags].every(tag => highlightedPOS.has(tag)); toggleAllButton.textContent = allCurrentlyActive ? 'Unhighlight All' : 'Highlight All'; }
+
+        // --- Event Handlers ---
+        function handleHighlightToggle(event) { const button = event.target; const group = button.dataset.posGroup; const config = posButtonGroups.find(c => c.group === group); if (!config) return; let tagsToModify; let currentlyActive; if (group === 'other') { tagsToModify = getOtherPosTags(); currentlyActive = tagsToModify.length > 0 && tagsToModify.every(tag => highlightedPOS.has(tag)); } else { tagsToModify = config.tags; currentlyActive = tagsToModify.length > 0 && tagsToModify.every(tag => highlightedPOS.has(tag)); } const shouldActivate = !currentlyActive; if (shouldActivate) { tagsToModify.forEach(tag => highlightedPOS.add(tag)); } else { tagsToModify.forEach(tag => highlightedPOS.delete(tag)); } updatePosButtonActiveStates(); const allActiveNow = allFoundPosTags.size > 0 && [...allFoundPosTags].every(tag => highlightedPOS.has(tag)); if (!allActiveNow && filterNewWordsActive) { console.log("Deactivating 'Filter New Words' due to manual POS toggle."); newWordsToggle.checked = false; updateFilterTogglesState(); } if (allTokens.length > 0) { updateAllVisibleSpanHighlights(); } }
+        function handleToggleAllHighlights() { const turnOn = toggleAllButton.textContent === 'Highlight All'; highlightedPOS.clear(); if (turnOn) { allFoundPosTags.forEach(tag => highlightedPOS.add(tag)); } else { if (filterNewWordsActive) { console.log("Deactivating 'Filter New Words' due to Unhighlight All."); newWordsToggle.checked = false; updateFilterTogglesState(); } } updatePosButtonActiveStates(); if (allTokens.length > 0) { updateAllVisibleSpanHighlights(); } }
+        function handleFilterFirstInstanceToggle() { updateFilterTogglesState(); if (allTokens.length > 0) { updateAllVisibleSpanHighlights(); } }
+        function handleFilterNewWordsToggle() { updateFilterTogglesState(); console.log("Filter New Words Toggled:", filterNewWordsActive); if (filterNewWordsActive) { console.log("Activating all POS highlights for 'Filter New Words'..."); allFoundPosTags.forEach(tag => highlightedPOS.add(tag)); updatePosButtonActiveStates(); } if (allTokens.length > 0) { updateAllVisibleSpanHighlights(); } }
+        function handleHighlightStyleToggle() { updateHighlightStyleMode(); if (allTokens.length > 0) { const modeClass = `highlight-mode-${highlightStyleMode}`; textDisplayLeft.classList.remove('highlight-mode-underline', 'highlight-mode-background'); textDisplayLeft.classList.add(modeClass); if (isDualPageView && !isSegmentModeActive) { textDisplayRight.classList.remove('highlight-mode-underline', 'highlight-mode-background'); textDisplayRight.classList.add(modeClass); } } }
+        function handleGrammarToggle() {
+            updateGrammarDetailsVisibility(); // Update the state variable
+            if (processedPages.length > 0) {
+                console.log("Grammar toggle changed, re-rendering page pair...");
+                // Re-render is necessary to add/remove the <sup> elements
+                renderPagePair(currentPage);
+            }
+        }
+        function handleScopeToggle() { updateScopeMode(); console.log("Scope mode changed to:", scopeMode); }
+        function handleWordsPerPageChange() { if (allTokens.length > 0) { paginateAndRender(); } }
+        function handlePageJump() { if (pageJumpInput) { goToPage(pageJumpInput.value); } }
+        function handleWppAdjust(amount) { let currentValue = parseInt(wordsPerPageInput.value, 10); if (isNaN(currentValue)) currentValue = 100; let newValue = currentValue + amount; const min = parseInt(wordsPerPageInput.min, 10) || 5; const max = parseInt(wordsPerPageInput.max, 10) || 500; newValue = Math.max(min, Math.min(max, newValue)); wordsPerPageInput.value = newValue; wordsPerPageInput.dispatchEvent(new Event('change')); }
+        function handleViewModeToggle() {
+            updateViewMode(); // Update the state variable
+            // If switching to dual view, ensure we are on an odd page
+            if (isDualPageView && currentPage > 1 && currentPage % 2 === 0) {
+                currentPage--;
+            }
+            if (processedPages.length > 0) {
+                renderPagePair(currentPage);
+            }
+        }
+        // *** MODIFIED: Segment Mode Toggle Handler ***
+        function handleSegmentModeToggle() {
+            updateSegmentMode(); // This now handles the view mode switch internally
+            if (processedPages.length > 0) {
+                renderPagePair(currentPage); // Re-render with potentially new view mode
+            } else if (!isSegmentModeActive) {
+                // Ensure right pane is hidden if no data and segment mode is off
+                textDisplayRight.innerHTML = '';
+                textDisplayRight.style.display = 'none';
+                textDisplayRight.classList.remove('segment-translation-display');
+                textDisplayRight.classList.add('text-display-page');
+            }
+        }
+        function handleCreateCombinedJson() { console.log("Creating combined JSON..."); const button = createCombinedButton; const originalText = button.textContent; try { parseKnownSignatures(); const knownWordsArray = Array.from(knownSignaturesSet).sort(); const combinedData = { inputText: inputText, wordDatabase: wordDataStore, knownWords: knownWordsArray, segments: segmentsData, idioms: idiomsData }; const jsonString = JSON.stringify(combinedData, null, 2); combinedJsonOutput.value = jsonString; if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(jsonString).then(() => { button.textContent = 'Copied!'; setTimeout(() => { button.textContent = originalText; }, 1500); }).catch(err => { console.error('Failed to copy: ', err); handleError('Failed to copy JSON.'); button.textContent = 'Copy Failed'; setTimeout(() => { button.textContent = originalText; }, 2000); }); } else { console.warn("Clipboard API not available."); handleError('Clipboard API not supported.'); } console.log("Combined JSON created."); } catch (error) { handleError(`Error creating combined JSON: ${error.message}.`); } }
+
+        // --- State Update Functions ---
+        // (Definitions moved above initializeApp)
+
+        // --- Utility Functions ---
+        function escapeHTML(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
+        function handleError(message) { console.error("Error:", message); errorDisplayDiv.textContent = message; errorDisplayDiv.style.display = message ? 'block' : 'none'; }
+        function resetStateAndUI() { handleError(''); textDisplayLeft.innerHTML = 'Loading data...'; textDisplayRight.innerHTML = ''; originalFirstInstanceTokens = []; wordKeyToSegmentMap = {}; wordKeyToIdiomMap = {}; currentPageLeftSpanRefs = {}; currentPageRightSpanRefs = {}; idiomsData = []; wordDataStore = null; segmentsData = []; allTokens = []; processedPages = []; totalPages = 0; currentPage = 1; allFoundPosTags.clear(); highlightedPOS.clear(); textDisplayRight.classList.remove('segment-translation-display'); textDisplayRight.classList.add('text-display-page'); textDisplayRight.style.display = (isDualPageView && !isSegmentModeActive) ? '' : 'none'; if(paginationControlsDiv) paginationControlsDiv.style.display = 'none'; if(pageJumpInput) pageJumpInput.value = ''; tooltipContainer.style.display = 'none'; currentlyHighlightedSegmentId = null; segmentDisplayState = { id: null, keys: [], index: 0 }; updateFilterTogglesState(); updateHighlightStyleMode(); updateViewMode(); updateSegmentMode(); updatePosButtonActiveStates(); updateGrammarDetailsVisibility(); // <-- Reset grammar state
+         updateClearKnownWordsButtonState(); updateAddAllButtonState(); updateScopeMode(); }
+
+        // --- Event Listeners Setup (MODIFIED to include grammar toggle) ---
+        function addEventListeners() {
+            firstInstanceToggle.addEventListener('change', handleFilterFirstInstanceToggle);
+            newWordsToggle.addEventListener('change', handleFilterNewWordsToggle);
+            highlightStyleToggle.addEventListener('change', handleHighlightStyleToggle);
+            showGrammarToggle.addEventListener('change', handleGrammarToggle);
+            segmentModeToggle.addEventListener('change', handleSegmentModeToggle);
+            scopeToggle.addEventListener('change', handleScopeToggle);
+            viewModeToggle.addEventListener('change', handleViewModeToggle);
+            wordsPerPageInput.addEventListener('change', handleWordsPerPageChange);
+            wppDecrementButton.addEventListener('click', () => handleWppAdjust(-10));
+            wppIncrementButton.addEventListener('click', () => handleWppAdjust(10));
+            prevPageButton.addEventListener('click', goToPrevPage);
+            nextPageButton.addEventListener('click', goToNextPage);
+            toggleAllButton.addEventListener('click', handleToggleAllHighlights);
+            pageJumpButton.addEventListener('click', handlePageJump);
+            pageJumpInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); handlePageJump(); } });
+            if (clearKnownWordsButton) { clearKnownWordsButton.addEventListener('click', handleClearKnownWords); }
+            if (addFirstInstancesButton) { addFirstInstancesButton.addEventListener('click', handleAddAllFirstInstances); }
+            knownWordsInput.addEventListener('input', handleKnownWordsChange);
+            dualPageContainer.addEventListener('click', handleMainViewWordClick);
+            createCombinedButton.addEventListener('click', handleCreateCombinedJson);
+            addTooltipInteractionListeners();
+            textDisplayRight.addEventListener('click', handleRightPaneClick);
+        }
+
+        // --- Handler for clicks within the right pane (for cycling) ---
+        function handleRightPaneClick(event) { const target = event.target; if (target.matches('.segment-translation-cycle[data-action="cycle-translation"]')) { event.preventDefault(); console.log("Cycle translation clicked"); if (segmentDisplayState.id === currentlyHighlightedSegmentId && segmentDisplayState.keys.length > 1) { const nextIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length; displaySegmentTranslation(segmentDisplayState.id, nextIndex); } } }
+
+
+        // --- Tooltip & Segment Hover Listeners ---
+        function addTooltipInteractionListeners() { dualPageContainer.addEventListener('mouseover', (event) => { lastMouseEvent = event; const targetSpan = event.target.closest('span[data-key]'); if (!targetSpan) return; const key = parseInt(targetSpan.dataset.key, 10); if (isNaN(key)) return; const segment = findSegmentForKey(key); const segmentId = segment ? (segment.id || `${segment.startWordKey}-${segment.endWordKey}`) : null; if (isSegmentModeActive) { if (segmentId !== currentlyHighlightedSegmentId) { clearSegmentHighlight(); clearIdiomHighlight(); if (segment) { updateRightPane(segment); highlightSegment(segment); const idiomsInSegment = findIdiomsInSegment(segment); highlightIdioms(idiomsInSegment); } else { updateRightPane(null); } } } else if (currentlyHighlightedSegmentId) { clearSegmentHighlight(); clearIdiomHighlight(); } const wordData = wordDataStore[key]; const idiom = findIdiomForKey(key); let showContainer = false; let showWordInfoContainer = false; wordInfoTooltip.innerHTML = ''; wordInfoTooltip.style.display = 'none'; idiomInfoTooltip.innerHTML = ''; idiomInfoTooltip.style.display = 'none'; if (wordData) { let tooltipColor = ''; if (wordData.pos) { const groupInfo = posButtonGroups.find(g => g.tags.includes(wordData.pos)); if (groupInfo) { tooltipColor = `hsl(var(${groupInfo.hueVar}), var(${groupInfo.satVar}), var(${groupInfo.lightVar}))`; } } const tooltipParts = formatWordTooltipContent(wordData, key.toString(), tooltipColor); if (tooltipParts.conciseHTML || tooltipParts.detailedHTML) { wordInfoTooltip.innerHTML = ` <div class="tooltip-part concise-part">${tooltipParts.conciseHTML || ''}</div> <div class="tooltip-part detailed-part" style="display: none;">${tooltipParts.detailedHTML || ''}</div> `; wordInfoTooltip.style.display = 'flex'; showWordInfoContainer = true; showContainer = true; } } if (idiom) { const idiomHtml = formatIdiomTooltipContent(idiom); idiomInfoTooltip.innerHTML = idiomHtml; idiomInfoTooltip.style.display = 'block'; showContainer = true; } if (!showWordInfoContainer) { wordInfoTooltip.style.display = 'none'; } if (showContainer) { tooltipContainer.style.display = 'flex'; positionTooltip(event); } else { tooltipContainer.style.display = 'none'; } }); dualPageContainer.addEventListener('mouseout', (event) => { lastMouseEvent = null; if (!dualPageContainer.contains(event.relatedTarget) || (event.relatedTarget && !event.relatedTarget.closest('span[data-key]'))) { tooltipContainer.style.display = 'none'; if (!dualPageContainer.contains(event.relatedTarget) && isSegmentModeActive) { clearSegmentHighlight(); clearIdiomHighlight(); updateRightPane(null); } } }); dualPageContainer.addEventListener('mousemove', (event) => { lastMouseEvent = event; if (tooltipContainer.style.display !== 'none') { positionTooltip(event); } }); dualPageContainer.addEventListener('contextmenu', (event) => { const targetSpan = event.target.closest('span[data-key]'); if (targetSpan && tooltipContainer.style.display !== 'none') { event.preventDefault(); const detailedPart = wordInfoTooltip.querySelector('.detailed-part'); if (detailedPart) { const isExpanded = detailedPart.style.display !== 'none'; detailedPart.style.display = isExpanded ? 'none' : 'block'; positionTooltip(lastMouseEvent || event); } } }); }
+
+
+        // --- Initialize ---
+        initializeApp(); // Call initializeApp after all function definitions
+
+    }); // End DOMContentLoaded
+    </script>
+
+<!-- POS Edit Modal injection if not present -->
+<script>
+(function injectPosEditModal() {
+    if (!document.getElementById('pos-edit-modal')) {
+        const modalHtml = `
+        <div id="pos-edit-modal" class="modal-overlay" style="display:none;">
+          <div class="modal-content">
+            <button id="close-pos-modal" style="float:right;">&times;</button>
+            <h2>Edit POS Tag</h2>
+            <p style="margin-bottom: 10px; color: var(--text-secondary, #bdc1c6);">Lemma: <strong id="pos-edit-lemma" style="color: var(--text-primary, #e8eaed);"></strong></p>
+            <div class="control-group">
+              <label for="pos-edit-input">POS:</label>
+              <input type="text" id="pos-edit-input" />
+            </div>
+            <input type="hidden" id="pos-edit-key" />
+            <input type="hidden" id="pos-edit-filename" />
+            <div class="button-row">
+              <button id="save-pos-btn">Save</button>
+              <button id="cancel-pos-btn">Cancel</button>
+            </div>
+            <div id="pos-edit-status" style="margin-top:10px;"></div>
+          </div>
+        </div>
+        <style>
+          .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+          .modal-content { background: var(--bg-secondary, #252a30); color: var(--text-primary, #e8eaed); padding: 32px 28px; border-radius: 12px; min-width: 320px; max-width: 95vw; box-shadow: 0 4px 32px rgba(0,0,0,0.3); position: relative; }
+          .modal-content h2 { margin-top: 0; }
+          .button-row { margin-top: 18px; display: flex; gap: 12px; }
+        </style>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- POS Edit Modal Logic ---
+    function hideModal() {
+        const modalElement = document.getElementById('pos-edit-modal');
+        const statusDivElement = document.getElementById('pos-edit-status');
+        if (modalElement) modalElement.style.display = 'none';
+        if (statusDivElement) statusDivElement.textContent = ''; // Clear status on close
+    }
+
+     function getDataFilename() {
+         // Try to get filename from hidden input first, then window, then fallback
+         const hiddenInput = document.getElementById('pos-edit-filename');
+         if (hiddenInput && hiddenInput.value) return hiddenInput.value;
+         return window.DATA_FILENAME || 'combinedData.json';
+     }
+     const modal = document.getElementById('pos-edit-modal');
+     const posInput = document.getElementById('pos-edit-input');
+     const keyInput = document.getElementById('pos-edit-key');
+     const saveBtn = document.getElementById('save-pos-btn');
+     const cancelBtn = document.getElementById('cancel-pos-btn');
+     const closeBtn = document.getElementById('close-pos-modal');
+     const statusDiv = document.getElementById('pos-edit-status');
+ 
+     function showModal(key, currentPos) {
+         keyInput.value = key;
+         posInput.value = currentPos || '';
+
+         // --- Check if database is loaded --- START
+         if (!wordDataStore) {
+            console.error("Database not loaded yet. Cannot show modal details.");
+            // Display a 'Loading data...' message in the modal
+            const lemmaDisplay = document.getElementById('pos-edit-lemma');
+            if (lemmaDisplay) lemmaDisplay.textContent = 'Loading data...';
+            // Clear status and show the modal frame, but don't proceed further
+            statusDiv.textContent = '';
+            modal.style.display = 'flex';
+            return; // Exit the function early
+         }
+         // --- Check if database is loaded --- END
+
+         // --- Find and display lemma --- START
+         const wordData = wordDataStore[key]; 
+         const lemma = wordData ? wordData.lemma : 'N/A';
+         const lemmaDisplay = document.getElementById('pos-edit-lemma');
+         if (lemmaDisplay) lemmaDisplay.textContent = lemma;
+         // --- Find and display lemma --- END
+
+         statusDiv.textContent = '';
+
+         // Store the current data filename in the hidden input
+         const filenameInput = document.getElementById('pos-edit-filename');
+         if (filenameInput) filenameInput.value = window.DATA_FILENAME || 'combinedData.json';
+
+         modal.style.display = 'flex';
+         posInput.focus();
+     }
+     if (saveBtn && posInput && keyInput) {
+         saveBtn.onclick = async function() {
+             const key = keyInput.value;
+             const pos = posInput.value.trim();
+             if (!key || !pos) { statusDiv.textContent = 'Key and POS required.'; return; }
+             statusDiv.textContent = 'Saving...';
+             try {
+                 const resp = await fetch('/api/update-pos', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ key, pos, filename: getDataFilename() })
+                 });
+                 const result = await resp.json();
+                 if (result.success) {
+                     statusDiv.textContent = 'POS updated!';
+                     setTimeout(hideModal, 700);
+                     // Optionally, update UI in-page:
+                     const span = document.querySelector(`.word-span[data-key="${key}"]`);
+                     if (span) span.setAttribute('data-pos', pos);
+                 } else {
+                     statusDiv.textContent = result.message || 'Failed to update POS.';
+                 }
+             } catch (e) {
+                 statusDiv.textContent = 'Error: ' + e.message;
+             }
+         };
+     }
+     if (cancelBtn) cancelBtn.onclick = hideModal;
+     if (closeBtn) closeBtn.onclick = hideModal;
+     // Double-click handler for words
+     document.body.addEventListener('dblclick', function(e) {
+         const span = e.target.closest('.word-span[data-key]');
+         if (span) {
+             const key = span.getAttribute('data-key');
+             const pos = span.getAttribute('data-pos') || '';
+             showModal(key, pos);
+             e.preventDefault();
+         }
+     });
+     // ESC to close
+     document.addEventListener('keydown', function(e) {
+         if (modal.style.display !== 'none' && e.key === 'Escape') hideModal();
+     });
+});
+</script>
+
+</body>
+</html>
