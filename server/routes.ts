@@ -172,6 +172,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all analysis data for page view (no pagination)
+  app.get("/api/databases/:id/analysis-data", async (req, res) => {
+    try {
+      const database = await storage.getLinguisticDatabase(req.params.id);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      res.json(database.analysisData || []);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch analysis data" });
+    }
+  });
+
   // Get unique words for list view
   app.get("/api/databases/:id/unique-words", async (req, res) => {
     try {

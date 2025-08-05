@@ -20,8 +20,8 @@ export default function Home() {
     enabled: !!selectedDatabaseId,
   });
 
-  const { data: wordsData } = useQuery<{ words: WordEntry[], totalCount: number }>({
-    queryKey: ["/api/databases", selectedDatabaseId, "words"],
+  const { data: analysisData } = useQuery<WordEntry[]>({
+    queryKey: ["/api/databases", selectedDatabaseId, "analysis-data"],
     enabled: !!selectedDatabaseId,
   });
 
@@ -73,7 +73,7 @@ export default function Home() {
           {/* Page View Section */}
           <PageViewSection
             selectedDatabase={selectedDatabase || null}
-            analysisData={wordsData?.words || []}
+            analysisData={analysisData || []}
             knownWords={selectedDatabase?.knownWords as string[] || []}
             onKnownWordsChange={handleKnownWordsChange}
             data-testid="page-view-section"
