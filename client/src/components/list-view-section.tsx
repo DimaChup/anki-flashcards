@@ -589,7 +589,7 @@ Left-click to toggle known status`;
                 max={totalBatches}
                 value={downloadBatchFrom}
                 onChange={(e) => setDownloadBatchFrom(parseInt(e.target.value) || 1)}
-                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
               />
               <span className="text-sm">To:</span>
               <input
@@ -598,7 +598,7 @@ Left-click to toggle known status`;
                 max={totalBatches}
                 value={downloadBatchTo}
                 onChange={(e) => setDownloadBatchTo(parseInt(e.target.value) || 1)}
-                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
               />
             </div>
             

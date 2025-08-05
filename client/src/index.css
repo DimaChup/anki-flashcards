@@ -534,6 +534,18 @@
     color: var(--text-primary);
   }
 
+  /* Input field styling for better visibility */
+  input[type="number"] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+  }
+
+  input[type="number"]:focus {
+    outline: 2px solid hsl(var(--ring)) !important;
+    outline-offset: 2px !important;
+  }
+
   .grid-cell.row-number-cell {
     flex: 0 0 50px;
     text-align: center;
