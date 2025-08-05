@@ -310,36 +310,33 @@ Left-click to toggle known status`;
     );
   };
 
-  // Render batches in list view (original batch layout)
-  const renderGridBatches = () => {
+  // Render list view - exact copy from original HTML (shows batches in rows)
+  const renderListView = () => {
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
     const batches = createBatches(posFilteredWords);
     
     if (batches.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-8">
-          No words found matching current filters
-        </div>
-      );
+      return <div className="no-items">No words found matching current filters</div>;
     }
     
     return (
-      <div className="batch-grid">
+      <>
         {batches.map((batch, batchIndex) => {
           const maxKey = Math.max(...batch.map(w => w.position || 0));
+          const maxKeyDisplay = maxKey > 0 ? (
+            <div className="batch-max-key">( {maxKey} )</div>
+          ) : null;
           
           return (
             <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
               <div className="grid-cell row-number-cell">
-                <div>{batchIndex + 1}</div>
-                {maxKey > 0 && (
-                  <div className="batch-max-key">({maxKey})</div>
-                )}
+                {batchIndex + 1}
+                {maxKeyDisplay}
               </div>
               <div className="grid-cell list-view-words-cell">
-                {batch.map(word => (
-                  <span key={`${word.word}-${word.pos}`}>
+                {batch.map((word, wordIndex) => (
+                  <span key={`${word.word}-${word.pos}-${wordIndex}`}>
                     {renderWordSpan(word, true)}{' '}
                   </span>
                 ))}
@@ -347,84 +344,70 @@ Left-click to toggle known status`;
             </div>
           );
         })}
-      </div>
+      </>
     );
   };
 
 
 
-  // Render POS-based grid view (organized by POS columns)
-  const renderPOSGridBatches = () => {
+  // Render grid view - exact copy from original HTML (shows POS columns)
+  const renderGridView = () => {
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
     const batches = createBatches(posFilteredWords);
     
     if (batches.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-8">
-          No words found matching current filters
-        </div>
-      );
+      return <div className="no-items">No words found matching current filters</div>;
     }
     
-    // Define the 5 POS columns exactly like original list-view.html
-    const posColumns = [
-      { key: "pink", tags: ["VERB"], label: "V" },
-      { key: "blue", tags: ["NOUN", "PROPN"], label: "N" },
-      { key: "green", tags: ["ADJ"], label: "Adj" },
-      { key: "orange", tags: ["AUX"], label: "Aux" },
-      { key: "yellow", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"], label: "Oth" }
+    // Define POS groups exactly like original
+    const posButtonGroups = [
+      { key: "pink", tags: ["VERB"] },
+      { key: "blue", tags: ["NOUN", "PROPN"] },
+      { key: "green", tags: ["ADJ"] },
+      { key: "orange", tags: ["AUX"] },
+      { key: "yellow", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"] }
     ];
     
     return (
-      <div className="first-instance-grid">
-        {/* Header row showing column labels */}
-        <div className="grid-batch-row grid-header-row">
-          <div className="grid-cell row-number-cell">
-            <div>#</div>
-          </div>
-          {posColumns.filter(col => selectedPosColumns.has(col.key)).map(column => (
-            <div key={column.key} className="grid-cell grid-header-cell">
-              {column.label}
-            </div>
-          ))}
-        </div>
-        
-        {/* Data rows */}
+      <div id="first-instance-grid">
         {batches.map((batch, batchIndex) => {
-          const maxKey = Math.max(...batch.map(w => w.position || 0));
+          // Group words by POS like original
+          const cellContents: Record<string, string> = {};
+          posButtonGroups.forEach(g => cellContents[g.key] = '');
+          
+          let maxKeyInBatch: number | null = null;
+          
+          batch.forEach(word => {
+            const groupKey = posButtonGroups.find(g => g.tags.includes(word.pos))?.key;
+            if (groupKey && cellContents[groupKey] !== undefined) {
+              cellContents[groupKey] += renderWordSpan(word, true) + ' ';
+            }
+            
+            // Calculate max key like original
+            const currentKey = word.position;
+            if (currentKey !== undefined && currentKey !== null) {
+              if (maxKeyInBatch === null || currentKey > maxKeyInBatch) {
+                maxKeyInBatch = currentKey;
+              }
+            }
+          });
+          
+          const maxKeyDisplay = maxKeyInBatch !== null ? (
+            <div className="batch-max-key">( {maxKeyInBatch} )</div>
+          ) : null;
           
           return (
             <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
               <div className="grid-cell row-number-cell">
-                <div>{batchIndex + 1}</div>
-                {maxKey > 0 && (
-                  <div className="batch-max-key">{maxKey}</div>
-                )}
+                {batchIndex + 1}
+                {maxKeyDisplay}
               </div>
-              
-              {/* Create exactly one column for each selected POS category */}
-              {posColumns.filter(col => selectedPosColumns.has(col.key)).map(column => {
-                const columnWords = batch.filter(word => {
-                  if (column.key === "yellow") {
-                    // "Other" category - words that don't match the first 4 categories
-                    return column.tags.includes(word.pos);
-                  }
-                  return column.tags.includes(word.pos);
-                });
-                
+              {posButtonGroups.filter(g => selectedPosColumns.has(g.key)).map(group => {
+                const content = cellContents[group.key].trim();
                 return (
-                  <div key={column.key} className="grid-cell">
-                    {columnWords.length > 0 ? (
-                      columnWords.map((word, wordIndex) => (
-                        <span key={`${word.word}-${word.pos}-${wordIndex}`}>
-                          {renderWordSpan(word, true)}
-                          {wordIndex < columnWords.length - 1 && ' '}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="no-items">—</span>
-                    )}
+                  <div key={group.key} className={`grid-cell ${group.key}-cell`}>
+                    {content || <div className="no-items">&nbsp;</div>}
                   </div>
                 );
               })}
@@ -435,12 +418,12 @@ Left-click to toggle known status`;
     );
   };
 
-  // Render content based on view mode
+  // Render content based on view mode - exact copy from original logic
   const renderBatches = () => {
     if (isGridView) {
-      return renderPOSGridBatches(); // Grid view shows POS-organized columns
+      return renderGridView(); // Grid View
     } else {
-      return renderGridBatches(); // List view shows separate batches (original behavior)
+      return renderListView(); // List View (default)
     }
   };
 
@@ -654,15 +637,18 @@ Left-click to toggle known status`;
         </div>
       </div>
 
-      {/* Word List Display */}
-      <div className="list-display bg-background border border-border rounded-lg p-4">
-        {isLoading ? (
-          <div className="text-center text-muted-foreground py-8">
-            Loading words...
-          </div>
-        ) : (
-          renderBatches()
-        )}
+      {/* First Instance List Display - Exact copy from original HTML structure */}
+      <div className="details-content">
+        <div 
+          id="first-instance-list" 
+          className={`details-content ${isGridView ? 'grid-view' : 'list-view'}`}
+        >
+          {isLoading ? (
+            <div className="no-items">Loading data from server...</div>
+          ) : (
+            renderBatches()
+          )}
+        </div>
       </div>
     </div>
   );
