@@ -33,6 +33,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   const [downloadBatchFrom, setDownloadBatchFrom] = useState(1);
   const [downloadBatchTo, setDownloadBatchTo] = useState(1);
   const [knownWordsText, setKnownWordsText] = useState("");
+  const [isGridView, setIsGridView] = useState(false);
 
   // Get current known words for filtering
   const getCurrentKnownWords = () => {
@@ -309,8 +310,8 @@ Left-click to toggle known status`;
     );
   };
 
-  // Render batches
-  const renderBatches = () => {
+  // Render batches in grid view (default)
+  const renderGridBatches = () => {
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
     const batches = createBatches(posFilteredWords);
@@ -324,19 +325,19 @@ Left-click to toggle known status`;
     }
     
     return (
-      <div className="batch-grid">
+      <div className="first-instance-grid">
         {batches.map((batch, batchIndex) => {
           const maxKey = Math.max(...batch.map(w => w.position || 0));
           
           return (
             <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
               <div className="grid-cell row-number-cell">
-                {batchIndex + 1}
+                <div>{batchIndex + 1}</div>
                 {maxKey > 0 && (
-                  <div className="batch-max-key">({maxKey})</div>
+                  <div className="batch-max-key">{maxKey}</div>
                 )}
               </div>
-              <div className="grid-cell list-view-words-cell">
+              <div className="grid-cell">
                 {batch.map(word => (
                   <span key={`${word.word}-${word.pos}`}>
                     {renderWordSpan(word, true)}{' '}
@@ -348,6 +349,44 @@ Left-click to toggle known status`;
         })}
       </div>
     );
+  };
+
+  // Render batches in list view (continuous text)
+  const renderListBatches = () => {
+    const filteredWords = getFilteredWords();
+    const posFilteredWords = filterByPosColumns(filteredWords);
+    const batches = createBatches(posFilteredWords);
+    
+    if (batches.length === 0) {
+      return (
+        <div className="text-center text-muted-foreground py-8">
+          No words found matching current filters
+        </div>
+      );
+    }
+    
+    // Flatten all batches into continuous text
+    const allWords = batches.flat();
+    
+    return (
+      <div className="first-instance-list">
+        {allWords.map((word, index) => (
+          <span key={`${word.word}-${word.pos}-${index}`}>
+            {renderWordSpan(word, false)}
+            {index < allWords.length - 1 && ' '}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  // Render content based on view mode
+  const renderBatches = () => {
+    if (isGridView) {
+      return renderListBatches(); // Grid view shows continuous text
+    } else {
+      return renderGridBatches(); // List view shows grid layout (this matches original behavior)
+    }
   };
 
   // Update batch range when total batches change
@@ -457,6 +496,20 @@ Left-click to toggle known status`;
               </div>
               <span className="text-sm">Batch by Unknown</span>
             </label>
+          </div>
+
+          {/* View Controls */}
+          <div className="control-group flex flex-col gap-3">
+            <h3 className="text-sm font-medium">View</h3>
+            
+            <Button
+              onClick={() => setIsGridView(!isGridView)}
+              variant="outline"
+              size="sm"
+              className="view-toggle-button"
+            >
+              {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
+            </Button>
           </div>
 
           {/* Download Settings */}

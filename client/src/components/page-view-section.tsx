@@ -588,27 +588,7 @@ export default function PageViewSection({
           )}
         </div>
 
-        {/* First Instances List Section */}
-        <div className="first-instances-section mt-6">
-          <details className="details-section" open>
-            <summary className="first-instance-section-header">
-              <span className="details-summary">First Instances List</span>
-            </summary>
-            <div className="details-controls">
-              <button
-                onClick={() => setIsGridView(!isGridView)}
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm view-toggle-button"
-              >
-                {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
-              </button>
-            </div>
-            <div className="details-content">
-              <div className={`first-instance-list ${isGridView ? 'grid-view' : 'list-view'}`}>
-                {renderFirstInstancesList()}
-              </div>
-            </div>
-          </details>
-        </div>
+
 
         {/* Pagination Controls */}
         <div className="pagination-controls flex justify-between items-center mt-4 p-3 bg-muted rounded-lg">
