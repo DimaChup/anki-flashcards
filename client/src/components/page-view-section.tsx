@@ -299,40 +299,8 @@ export default function PageViewSection({
     );
   };
 
-  // Render grid view content
-  const renderGridContent = (words: WordEntry[], startIndex: number = 0) => {
-    const pageWords = words.slice(startIndex, startIndex + wordsPerPage);
-    const batchSize = 25; // Match original list-view
-    const batches = [];
-    
-    for (let i = 0; i < pageWords.length; i += batchSize) {
-      batches.push(pageWords.slice(i, i + batchSize));
-    }
-
-    return (
-      <div className="first-instance-grid">
-        {batches.map((batch, batchIndex) => (
-          <div key={batchIndex} className="grid-batch-row">
-            <div className="grid-cell row-number-cell">
-              <div>{batchIndex + 1}</div>
-              <div className="batch-max-key">{Math.min((batchIndex + 1) * batchSize, pageWords.length)}</div>
-            </div>
-            <div className="grid-cell">
-              {batch.map((word, wordIndex) => (
-                <span key={startIndex + batchIndex * batchSize + wordIndex}>
-                  {renderWordSpan(word, startIndex + batchIndex * batchSize + wordIndex)}
-                  {wordIndex < batch.length - 1 && ' '}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Render list view content
-  const renderListContent = (words: WordEntry[], startIndex: number = 0) => {
+  // Render page content (main text display - always in text flow)
+  const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
     return (
       <div className="text-display-content">
         {words.slice(startIndex, startIndex + wordsPerPage).map((word, index) => (
@@ -345,12 +313,59 @@ export default function PageViewSection({
     );
   };
 
-  // Render page content based on view mode
-  const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
+  // Get first instances for the first instances list
+  const getFirstInstances = () => {
+    if (!analysisData) return [];
+    return analysisData.filter(word => word.firstInstance);
+  };
+
+  // Render first instances list content based on view mode
+  const renderFirstInstancesList = () => {
+    const firstInstances = getFirstInstances();
+    if (firstInstances.length === 0) {
+      return <div className="text-muted-foreground p-4">No first instances found</div>;
+    }
+
     if (isGridView) {
-      return renderGridContent(words, startIndex);
+      // Grid view for first instances
+      const batchSize = 25;
+      const batches = [];
+      for (let i = 0; i < firstInstances.length; i += batchSize) {
+        batches.push(firstInstances.slice(i, i + batchSize));
+      }
+
+      return (
+        <div className="first-instance-grid">
+          {batches.map((batch, batchIndex) => (
+            <div key={batchIndex} className="grid-batch-row">
+              <div className="grid-cell row-number-cell">
+                <div>{batchIndex + 1}</div>
+                <div className="batch-max-key">{Math.min((batchIndex + 1) * batchSize, firstInstances.length)}</div>
+              </div>
+              <div className="grid-cell">
+                {batch.map((word, wordIndex) => (
+                  <span key={batchIndex * batchSize + wordIndex}>
+                    {renderWordSpan(word, batchIndex * batchSize + wordIndex)}
+                    {wordIndex < batch.length - 1 && ' '}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
     } else {
-      return renderListContent(words, startIndex);
+      // List view for first instances
+      return (
+        <div className="first-instance-list">
+          {firstInstances.map((word, index) => (
+            <span key={index}>
+              {renderWordSpan(word, index)}
+              {index < firstInstances.length - 1 && ' '}
+            </span>
+          ))}
+        </div>
+      );
     }
   };
 
@@ -540,13 +555,6 @@ export default function PageViewSection({
           </label>
           
           <button
-            onClick={() => setIsGridView(!isGridView)}
-            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm view-toggle-button"
-          >
-            {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
-          </button>
-          
-          <button
             onClick={addFirstInstances}
             disabled={!analysisData?.some(word => word.firstInstance)}
             className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
@@ -578,6 +586,28 @@ export default function PageViewSection({
               {renderPageContent(filteredWords, currentPage * wordsPerPage)}
             </div>
           )}
+        </div>
+
+        {/* First Instances List Section */}
+        <div className="first-instances-section mt-6">
+          <details className="details-section" open>
+            <summary className="first-instance-section-header">
+              <span className="details-summary">First Instances List</span>
+            </summary>
+            <div className="details-controls">
+              <button
+                onClick={() => setIsGridView(!isGridView)}
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm view-toggle-button"
+              >
+                {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
+              </button>
+            </div>
+            <div className="details-content">
+              <div className={`first-instance-list ${isGridView ? 'grid-view' : 'list-view'}`}>
+                {renderFirstInstancesList()}
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* Pagination Controls */}
