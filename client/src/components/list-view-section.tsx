@@ -394,17 +394,30 @@ Left-click to toggle known status`;
       );
     }
     
-    // Group words by POS categories for grid display
-    const posCategories = [
-      { key: "pink", group: "verb", tags: ["VERB"], label: "Verb" },
-      { key: "blue", group: "noun-propn", tags: ["NOUN", "PROPN"], label: "Noun/PropN" },
-      { key: "green", group: "adj", tags: ["ADJ"], label: "Adjective" },
-      { key: "orange", group: "aux", tags: ["AUX"], label: "Aux" },
-      { key: "yellow", group: "other", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"], label: "Other" }
+    // Define the 5 POS columns exactly like original list-view.html
+    const posColumns = [
+      { key: "pink", tags: ["VERB"], label: "V" },
+      { key: "blue", tags: ["NOUN", "PROPN"], label: "N" },
+      { key: "green", tags: ["ADJ"], label: "Adj" },
+      { key: "orange", tags: ["AUX"], label: "Aux" },
+      { key: "yellow", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"], label: "Oth" }
     ];
     
     return (
       <div className="first-instance-grid">
+        {/* Header row showing column labels */}
+        <div className="grid-batch-row grid-header-row">
+          <div className="grid-cell row-number-cell">
+            <div>#</div>
+          </div>
+          {posColumns.filter(col => selectedPosColumns.has(col.key)).map(column => (
+            <div key={column.key} className="grid-cell grid-header-cell">
+              {column.label}
+            </div>
+          ))}
+        </div>
+        
+        {/* Data rows */}
         {batches.map((batch, batchIndex) => {
           const maxKey = Math.max(...batch.map(w => w.position || 0));
           
@@ -416,23 +429,24 @@ Left-click to toggle known status`;
                   <div className="batch-max-key">{maxKey}</div>
                 )}
               </div>
-              {/* POS columns */}
-              {posCategories.filter(cat => selectedPosColumns.has(cat.key)).map(category => {
-                const categoryWords = batch.filter(word => {
-                  if (category.tags.length === 0) {
-                    // "Other" category - words that don't match other categories
-                    return !posCategories.slice(0, -1).some(cat => cat.tags.includes(word.pos));
+              
+              {/* Create exactly one column for each selected POS category */}
+              {posColumns.filter(col => selectedPosColumns.has(col.key)).map(column => {
+                const columnWords = batch.filter(word => {
+                  if (column.key === "yellow") {
+                    // "Other" category - words that don't match the first 4 categories
+                    return column.tags.includes(word.pos);
                   }
-                  return category.tags.includes(word.pos);
+                  return column.tags.includes(word.pos);
                 });
                 
                 return (
-                  <div key={category.key} className="grid-cell">
-                    {categoryWords.length > 0 ? (
-                      categoryWords.map((word, wordIndex) => (
+                  <div key={column.key} className="grid-cell">
+                    {columnWords.length > 0 ? (
+                      columnWords.map((word, wordIndex) => (
                         <span key={`${word.word}-${word.pos}-${wordIndex}`}>
                           {renderWordSpan(word, true)}
-                          {wordIndex < categoryWords.length - 1 && ' '}
+                          {wordIndex < columnWords.length - 1 && ' '}
                         </span>
                       ))
                     ) : (

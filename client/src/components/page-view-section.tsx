@@ -380,7 +380,7 @@ export default function PageViewSection({
           
           {/* POS Button Rows */}
           <div className="highlight-row button-container">
-            {posButtonGroups[0]?.tags.map((pos) => (
+            {(posButtonGroups[0]?.tags || []).map((pos) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
@@ -401,7 +401,7 @@ export default function PageViewSection({
           </div>
           
           <div className="highlight-row button-container">
-            {posButtonGroups[1]?.tags.map((pos) => (
+            {(posButtonGroups[1]?.tags || []).map((pos) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
@@ -422,7 +422,7 @@ export default function PageViewSection({
           </div>
           
           <div className="highlight-row button-container">
-            {posButtonGroups[2]?.tags.map((pos) => (
+            {(posButtonGroups[2]?.tags || []).map((pos) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
