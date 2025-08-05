@@ -313,61 +313,7 @@ export default function PageViewSection({
     );
   };
 
-  // Get first instances for the first instances list
-  const getFirstInstances = () => {
-    if (!analysisData) return [];
-    return analysisData.filter(word => word.firstInstance);
-  };
 
-  // Render first instances list content based on view mode
-  const renderFirstInstancesList = () => {
-    const firstInstances = getFirstInstances();
-    if (firstInstances.length === 0) {
-      return <div className="text-muted-foreground p-4">No first instances found</div>;
-    }
-
-    if (isGridView) {
-      // Grid view for first instances
-      const batchSize = 25;
-      const batches = [];
-      for (let i = 0; i < firstInstances.length; i += batchSize) {
-        batches.push(firstInstances.slice(i, i + batchSize));
-      }
-
-      return (
-        <div className="first-instance-grid">
-          {batches.map((batch, batchIndex) => (
-            <div key={batchIndex} className="grid-batch-row">
-              <div className="grid-cell row-number-cell">
-                <div>{batchIndex + 1}</div>
-                <div className="batch-max-key">{Math.min((batchIndex + 1) * batchSize, firstInstances.length)}</div>
-              </div>
-              <div className="grid-cell">
-                {batch.map((word, wordIndex) => (
-                  <span key={batchIndex * batchSize + wordIndex}>
-                    {renderWordSpan(word, batchIndex * batchSize + wordIndex)}
-                    {wordIndex < batch.length - 1 && ' '}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    } else {
-      // List view for first instances
-      return (
-        <div className="first-instance-list">
-          {firstInstances.map((word, index) => (
-            <span key={index}>
-              {renderWordSpan(word, index)}
-              {index < firstInstances.length - 1 && ' '}
-            </span>
-          ))}
-        </div>
-      );
-    }
-  };
 
   const filteredWords = getFilteredWords();
   const totalWordsCount = filteredWords.length;
@@ -444,8 +390,8 @@ export default function PageViewSection({
                     : 'bg-background border-border hover:bg-muted'
                 }`}
                 style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
+                  backgroundColor: `hsl(var(${posButtonGroups[0]?.hueVar}), var(${posButtonGroups[0]?.satVar}), var(${posButtonGroups[0]?.lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[0]?.hueVar}), var(${posButtonGroups[0]?.satVar}), var(${posButtonGroups[0]?.lightVar}))`,
                   color: 'white'
                 } : {}}
               >
@@ -465,8 +411,8 @@ export default function PageViewSection({
                     : 'bg-background border-border hover:bg-muted'
                 }`}
                 style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
+                  backgroundColor: `hsl(var(${posButtonGroups[1]?.hueVar}), var(${posButtonGroups[1]?.satVar}), var(${posButtonGroups[1]?.lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[1]?.hueVar}), var(${posButtonGroups[1]?.satVar}), var(${posButtonGroups[1]?.lightVar}))`,
                   color: 'white'
                 } : {}}
               >
@@ -486,8 +432,8 @@ export default function PageViewSection({
                     : 'bg-background border-border hover:bg-muted'
                 }`}
                 style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+                  backgroundColor: `hsl(var(${posButtonGroups[2]?.hueVar}), var(${posButtonGroups[2]?.satVar}), var(${posButtonGroups[2]?.lightVar}))`,
+                  borderColor: `hsl(var(${posButtonGroups[2]?.hueVar}), var(${posButtonGroups[2]?.satVar}), var(${posButtonGroups[2]?.lightVar}))`,
                   color: 'white'
                 } : {}}
               >

@@ -380,12 +380,80 @@ Left-click to toggle known status`;
     );
   };
 
+  // Render POS-based grid view (organized by POS columns)
+  const renderPOSGridBatches = () => {
+    const filteredWords = getFilteredWords();
+    const posFilteredWords = filterByPosColumns(filteredWords);
+    const batches = createBatches(posFilteredWords);
+    
+    if (batches.length === 0) {
+      return (
+        <div className="text-center text-muted-foreground py-8">
+          No words found matching current filters
+        </div>
+      );
+    }
+    
+    // Group words by POS categories for grid display
+    const posCategories = [
+      { key: "pink", group: "verb", tags: ["VERB"], label: "Verb" },
+      { key: "blue", group: "noun-propn", tags: ["NOUN", "PROPN"], label: "Noun/PropN" },
+      { key: "green", group: "adj", tags: ["ADJ"], label: "Adjective" },
+      { key: "orange", group: "aux", tags: ["AUX"], label: "Aux" },
+      { key: "yellow", group: "other", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"], label: "Other" }
+    ];
+    
+    return (
+      <div className="first-instance-grid">
+        {batches.map((batch, batchIndex) => {
+          const maxKey = Math.max(...batch.map(w => w.position || 0));
+          
+          return (
+            <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
+              <div className="grid-cell row-number-cell">
+                <div>{batchIndex + 1}</div>
+                {maxKey > 0 && (
+                  <div className="batch-max-key">{maxKey}</div>
+                )}
+              </div>
+              {/* POS columns */}
+              {posCategories.filter(cat => selectedPosColumns.has(cat.key)).map(category => {
+                const categoryWords = batch.filter(word => {
+                  if (category.tags.length === 0) {
+                    // "Other" category - words that don't match other categories
+                    return !posCategories.slice(0, -1).some(cat => cat.tags.includes(word.pos));
+                  }
+                  return category.tags.includes(word.pos);
+                });
+                
+                return (
+                  <div key={category.key} className="grid-cell">
+                    {categoryWords.length > 0 ? (
+                      categoryWords.map((word, wordIndex) => (
+                        <span key={`${word.word}-${word.pos}-${wordIndex}`}>
+                          {renderWordSpan(word, true)}
+                          {wordIndex < categoryWords.length - 1 && ' '}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="no-items">—</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Render content based on view mode
   const renderBatches = () => {
     if (isGridView) {
-      return renderListBatches(); // Grid view shows continuous text
+      return renderPOSGridBatches(); // Grid view shows POS-organized columns
     } else {
-      return renderGridBatches(); // List view shows grid layout (this matches original behavior)
+      return renderListBatches(); // List view shows continuous text
     }
   };
 
