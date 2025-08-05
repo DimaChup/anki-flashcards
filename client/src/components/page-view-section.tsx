@@ -156,17 +156,102 @@ export default function PageViewSection({
     return filtered;
   };
 
-  // Render words with highlighting
+  // Handle word click (toggle known status)
+  const handleWordClick = (word: WordEntry, index: number) => {
+    if (segmentMode) return; // Don't handle clicks in segment mode
+    
+    const signature = `${word.word}::${word.pos}`;
+    const currentKnownWords = knownWords || [];
+    
+    if (knownSignaturesSet.has(signature)) {
+      // Remove from known words
+      const updatedKnownWords = currentKnownWords.filter(kw => kw !== signature);
+      onKnownWordsChange(updatedKnownWords);
+    } else {
+      // Add to known words
+      const updatedKnownWords = [...currentKnownWords, signature];
+      onKnownWordsChange(updatedKnownWords);
+    }
+  };
+
+  // Handle right-click (show word details)
+  const handleWordRightClick = (e: React.MouseEvent, word: WordEntry, index: number) => {
+    e.preventDefault();
+    
+    // Create and show tooltip with word details
+    const tooltip = tooltipRef.current;
+    const wordInfo = wordInfoTooltipRef.current;
+    
+    if (tooltip && wordInfo) {
+      const contextDetails = [];
+      if (word.contextualInfo?.gender) contextDetails.push(`Gender: ${word.contextualInfo.gender}`);
+      if (word.contextualInfo?.number) contextDetails.push(`Number: ${word.contextualInfo.number}`);
+      if (word.contextualInfo?.tense) contextDetails.push(`Tense: ${word.contextualInfo.tense}`);
+      if (word.contextualInfo?.mood) contextDetails.push(`Mood: ${word.contextualInfo.mood}`);
+      if (word.contextualInfo?.person) contextDetails.push(`Person: ${word.contextualInfo.person}`);
+      
+      wordInfo.innerHTML = `
+        <div class="word-tooltip-content">
+          <div class="word-tooltip-header">
+            <strong>${word.word}</strong> <span class="pos-tag">${word.pos}</span>
+          </div>
+          <div class="word-tooltip-body">
+            <div><strong>Translation:</strong> ${word.translation || 'N/A'}</div>
+            <div><strong>Frequency:</strong> ${word.frequency || 1}</div>
+            <div><strong>Position:</strong> ${word.position || index + 1}</div>
+            <div><strong>First Instance:</strong> ${word.firstInstance ? 'Yes' : 'No'}</div>
+            ${contextDetails.length > 0 ? `<div><strong>Grammar:</strong> ${contextDetails.join(', ')}</div>` : ''}
+            <div class="word-tooltip-hint">Left-click to toggle known status</div>
+          </div>
+        </div>
+      `;
+      
+      // Position tooltip near mouse
+      tooltip.style.left = `${e.pageX + 10}px`;
+      tooltip.style.top = `${e.pageY - 10}px`;
+      tooltip.style.display = 'block';
+      
+      // Hide tooltip after 3 seconds or on next click
+      setTimeout(() => {
+        if (tooltip.style.display === 'block') {
+          tooltip.style.display = 'none';
+        }
+      }, 3000);
+    }
+  };
+  
+  // Hide tooltip on any click outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (tooltipRef.current) {
+        tooltipRef.current.style.display = 'none';
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Render words with highlighting and click functionality
   const renderWordSpan = (word: WordEntry, index: number) => {
     const isHighlighted = highlightedPOS.has(word.pos);
-    const isKnown = knownSignaturesSet.has(`${word.word}::${word.pos}`);
+    const signature = `${word.word}::${word.pos}`;
+    const isKnown = knownSignaturesSet.has(signature);
     
     let className = "word-span";
     let style: React.CSSProperties = {};
     
+    // Add known word styling
+    if (isKnown) {
+      className += " known-word";
+      style.opacity = 'var(--known-word-opacity, 0.6)';
+    }
+    
     if (isHighlighted) {
       const group = posButtonGroups.find(g => g.tags.includes(word.pos));
       if (group) {
+        className += " highlight-active";
+        
         if (highlightStyle === 'background') {
           style.backgroundColor = `hsl(var(${group.hueVar}), var(${group.satVar}), var(${group.lightVar}))`;
           style.color = 'var(--hl-text)';
@@ -176,7 +261,7 @@ export default function PageViewSection({
         }
         
         if (isKnown) {
-          style.opacity = 'var(--highlight-known-alpha)';
+          style.opacity = 'var(--highlight-known-alpha, 0.4)';
         }
       }
     }
@@ -189,12 +274,21 @@ export default function PageViewSection({
         data-key={index}
         data-word={word.word}
         data-pos={word.pos}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          // Handle right-click to show detailed tooltip
-        }}
+        data-signature={signature}
+        data-first-instance={word.firstInstance ? 'true' : 'false'}
+        onClick={() => handleWordClick(word, index)}
+        onContextMenu={(e) => handleWordRightClick(e, word, index)}
+        title={`${word.word} (${word.pos}) - Click to toggle known status, right-click for details`}
       >
         {word.word}
+        {showGrammar && word.contextualInfo && (
+          <sup className="grammar-details">
+            {[
+              word.contextualInfo.gender,
+              word.contextualInfo.number
+            ].filter(Boolean).join('.')}
+          </sup>
+        )}
       </span>
     );
   };
