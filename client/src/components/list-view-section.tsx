@@ -3,9 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { usePOSAnalyzer } from "@/hooks/use-pos-analyzer";
@@ -15,8 +13,6 @@ import {
   Download, 
   Plus, 
   Trash, 
-  ChevronLeft, 
-  ChevronRight, 
   CheckCircle,
   Minus,
   Save,
@@ -28,16 +24,26 @@ interface ListViewSectionProps {
 }
 
 export default function ListViewSection({ database }: ListViewSectionProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [wordsPerPage, setWordsPerPage] = useState(25);
-  const [jumpToPage, setJumpToPage] = useState("");
+  // State matching original
+  const [batchSize, setBatchSize] = useState(25);
   const [firstInstancesOnly, setFirstInstancesOnly] = useState(true);
+  const [newWordsOnly, setNewWordsOnly] = useState(true);
+  const [batchByUnknown, setBatchByUnknown] = useState(true);
+  const [ankiFormat, setAnkiFormat] = useState(true);
+  const [downloadBatchFrom, setDownloadBatchFrom] = useState(1);
+  const [downloadBatchTo, setDownloadBatchTo] = useState(1);
   const [knownWordsText, setKnownWordsText] = useState("");
+  
+  // POS column filters (matching original checkbox values)
+  const [selectedPosColumns, setSelectedPosColumns] = useState<Set<string>>(
+    new Set(['pink', 'blue', 'green', 'orange', 'yellow'])
+  );
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { getPosGroup, getPosIndicatorClass } = usePOSAnalyzer();
 
+  // Fetch unique words
   const { data: uniqueWords, isLoading } = useQuery({
     queryKey: ["/api/databases", database?.id, "unique-words", firstInstancesOnly],
     enabled: !!database?.id,
@@ -57,10 +63,9 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     } else {
       setKnownWordsText('');
     }
-    setCurrentPage(1);
-    setJumpToPage("");
   }, [database?.id]);
 
+  // Update known words mutation
   const updateKnownWordsMutation = useMutation({
     mutationFn: async (knownWords: string[]) => {
       const response = await apiRequest('PUT', `/api/databases/${database?.id}/known-words`, {
@@ -73,402 +78,455 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
       toast({
         title: "Success",
-        description: "Known words updated successfully.",
+        description: "Known words updated successfully"
       });
     },
-    onError: (error: Error) => {
+    onError: () => {
       toast({
-        title: "Update Failed",
-        description: error.message,
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to update known words",
+        variant: "destructive"
       });
-    },
+    }
   });
 
-  const exportMutation = useMutation({
-    mutationFn: async ({ format, includeKnownWords }: { format: 'csv' | 'json', includeKnownWords: boolean }) => {
-      const response = await apiRequest('POST', `/api/databases/${database?.id}/export`, {
-        format,
-        includeKnownWords,
-        firstInstancesOnly,
-      });
+  // Save known words
+  const handleSaveKnownWords = () => {
+    const words = knownWordsText
+      .split('\n')
+      .map(word => word.trim())
+      .filter(word => word.length > 0);
+    updateKnownWordsMutation.mutate(words);
+  };
+
+  // Get filtered words based on settings
+  const getFilteredWords = () => {
+    if (!uniqueWords) return [];
+    
+    let filtered = [...uniqueWords];
+    const knownWordsSet = new Set(
+      knownWordsText.split('\n').map(w => w.trim()).filter(w => w.length > 0)
+    );
+
+    if (newWordsOnly) {
+      filtered = filtered.filter(word => 
+        !knownWordsSet.has(`${word.word}::${word.pos}`) && 
+        !knownWordsSet.has(word.word.toLowerCase())
+      );
+    }
+
+    return filtered;
+  };
+
+  // Create batches based on settings
+  const createBatches = (words: WordEntry[]) => {
+    const batches: WordEntry[][] = [];
+    
+    if (batchByUnknown) {
+      // Batch by unknown words count (similar to original logic)
+      let currentBatch: WordEntry[] = [];
+      let unknownCount = 0;
       
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${database?.name}-export.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Data exported successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Export Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleUpdateKnownWords = () => {
-    const knownWords = knownWordsText
-      .split('\n')
-      .map(word => word.trim())
-      .filter(word => word.length > 0);
+      for (const word of words) {
+        const isUnknown = newWordsOnly; // If we're showing only new words, they're all unknown
+        currentBatch.push(word);
+        
+        if (isUnknown) {
+          unknownCount++;
+        }
+        
+        if (unknownCount >= batchSize) {
+          batches.push([...currentBatch]);
+          currentBatch = [];
+          unknownCount = 0;
+        }
+      }
+      
+      if (currentBatch.length > 0) {
+        batches.push(currentBatch);
+      }
+    } else {
+      // Simple batching by count
+      for (let i = 0; i < words.length; i += batchSize) {
+        batches.push(words.slice(i, i + batchSize));
+      }
+    }
     
-    updateKnownWordsMutation.mutate(knownWords);
+    return batches;
   };
 
-  const handleAddAllToKnown = () => {
-    if (!uniqueWords) return;
+  // Filter by POS columns
+  const filterByPosColumns = (words: WordEntry[]) => {
+    if (selectedPosColumns.size === 0) return words;
     
-    const currentKnownWords = knownWordsText
-      .split('\n')
-      .map(word => word.trim())
-      .filter(word => word.length > 0);
-    
-    const newWords = uniqueWords
-      .map((word: WordEntry) => word.word.toLowerCase())
-      .filter((word: string) => !currentKnownWords.includes(word));
-    
-    const allKnownWords = [...currentKnownWords, ...newWords];
-    setKnownWordsText(allKnownWords.join('\n'));
+    return words.filter(word => {
+      const posGroup = getPosGroup(word.pos);
+      const posKey = getPosColumnKey(posGroup);
+      return selectedPosColumns.has(posKey);
+    });
   };
 
-  const handleClearKnownWords = () => {
-    setKnownWordsText('');
-  };
-
-  const handleAddWordToKnown = (word: string) => {
-    const currentWords = knownWordsText
-      .split('\n')
-      .map(w => w.trim())
-      .filter(w => w.length > 0);
-    
-    if (!currentWords.includes(word.toLowerCase())) {
-      setKnownWordsText([...currentWords, word.toLowerCase()].join('\n'));
+  // Map POS groups to column keys (matching original)
+  const getPosColumnKey = (posGroup: string) => {
+    switch (posGroup) {
+      case 'verb': return 'pink';
+      case 'noun': return 'blue';
+      case 'adjective': return 'green';
+      case 'auxiliary': return 'orange';
+      default: return 'yellow';
     }
   };
 
-  const handleRemoveWordFromKnown = (word: string) => {
-    const currentWords = knownWordsText
-      .split('\n')
-      .map(w => w.trim())
-      .filter(w => w.length > 0 && w !== word.toLowerCase());
+  // Toggle POS column selection
+  const togglePosColumn = (columnKey: string) => {
+    setSelectedPosColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(columnKey)) {
+        newSet.delete(columnKey);
+      } else {
+        newSet.add(columnKey);
+      }
+      return newSet;
+    });
+  };
+
+  // Download functionality
+  const handleDownload = () => {
+    const filteredWords = getFilteredWords();
+    const posFilteredWords = filterByPosColumns(filteredWords);
+    const batches = createBatches(posFilteredWords);
     
-    setKnownWordsText(currentWords.join('\n'));
+    const selectedBatches = batches.slice(downloadBatchFrom - 1, downloadBatchTo);
+    const flatWords = selectedBatches.flat();
+    
+    let content = '';
+    let filename = '';
+    
+    if (ankiFormat) {
+      // Anki format with key
+      content = flatWords.map((word, index) => 
+        `${word.word}::${word.pos}\t${word.translations?.[0] || ''}\t${index + 1}`
+      ).join('\n');
+      filename = `anki_unknown_batch_${downloadBatchFrom}-${downloadBatchTo}.txt`;
+    } else {
+      // Simple signatures format
+      content = flatWords.map(word => `${word.word}::${word.pos}`).join('\n');
+      filename = `unknown_signatures_batch_${downloadBatchFrom}-${downloadBatchTo}_ordered.txt`;
+    }
+    
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Download Complete",
+      description: `Downloaded ${flatWords.length} words from batches ${downloadBatchFrom}-${downloadBatchTo}`
+    });
   };
 
-  const handlePageChange = (direction: number) => {
-    const totalPages = Math.ceil((uniqueWords?.length || 0) / wordsPerPage);
-    const newPage = currentPage + direction;
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
+  // Render word span with highlighting
+  const renderWordSpan = (word: WordEntry, showKey: boolean = false) => {
+    const posGroup = getPosGroup(word.pos);
+    const posKey = getPosColumnKey(posGroup);
+    const isKnown = knownWordsText.includes(`${word.word}::${word.pos}`) || 
+                   knownWordsText.includes(word.word.toLowerCase());
+    
+    return (
+      <span
+        key={`${word.word}-${word.pos}`}
+        className={`word-span pos-${posKey} ${isKnown ? 'known-word' : ''}`}
+        data-word={word.word}
+        data-pos={word.pos}
+        style={{
+          opacity: isKnown ? 'var(--known-word-opacity)' : 1
+        }}
+      >
+        {word.word}
+        {showKey && word.position && (
+          <span className="word-key">({word.position})</span>
+        )}
+      </span>
+    );
   };
 
-  const handleJumpToPage = () => {
-    const totalPages = Math.ceil((uniqueWords?.length || 0) / wordsPerPage);
-    const pageNum = parseInt(jumpToPage);
-    if (pageNum >= 1 && pageNum <= totalPages) {
-      setCurrentPage(pageNum);
-      setJumpToPage("");
+  // Render batches
+  const renderBatches = () => {
+    const filteredWords = getFilteredWords();
+    const posFilteredWords = filterByPosColumns(filteredWords);
+    const batches = createBatches(posFilteredWords);
+    
+    if (batches.length === 0) {
+      return (
+        <div className="text-center text-muted-foreground py-8">
+          No words found matching current filters
+        </div>
+      );
     }
+    
+    return (
+      <div className="batch-grid">
+        {batches.map((batch, batchIndex) => {
+          const maxKey = Math.max(...batch.map(w => w.position || 0));
+          
+          return (
+            <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
+              <div className="grid-cell row-number-cell">
+                {batchIndex + 1}
+                {maxKey > 0 && (
+                  <div className="batch-max-key">({maxKey})</div>
+                )}
+              </div>
+              <div className="grid-cell list-view-words-cell">
+                {batch.map(word => (
+                  <span key={`${word.word}-${word.pos}`}>
+                    {renderWordSpan(word, true)}{' '}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
-  const handleWordsPerPageChange = (value: string) => {
-    const newValue = parseInt(value);
-    if (newValue >= 10 && newValue <= 100) {
-      setWordsPerPage(newValue);
-      setCurrentPage(1);
+  // Update batch range when total batches change
+  useEffect(() => {
+    const filteredWords = getFilteredWords();
+    const posFilteredWords = filterByPosColumns(filteredWords);
+    const batches = createBatches(posFilteredWords);
+    const totalBatches = batches.length;
+    
+    if (downloadBatchTo > totalBatches) {
+      setDownloadBatchTo(totalBatches);
     }
-  };
+  }, [uniqueWords, batchSize, batchByUnknown, selectedPosColumns, newWordsOnly, knownWordsText]);
 
   if (!database) {
     return (
-      <section 
-        className="p-6 rounded-xl"
-        style={{ backgroundColor: 'var(--bg-tertiary)' }}
-      >
-        <h2 className="flex items-center gap-3 text-xl font-bold mb-4">
-          <List className="w-5 h-5" />
-          Word Analysis List
-        </h2>
-        <div className="text-center py-12 text-muted-foreground">
-          <List className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Select a database to view word analysis</p>
+      <div className="list-view-section">
+        <div className="text-center text-muted-foreground py-8">
+          Select a database to view word list
         </div>
-      </section>
+      </div>
     );
   }
 
-  const knownWordsSet = new Set((database.knownWords as string[]) || []);
-  const totalPages = Math.ceil((uniqueWords?.length || 0) / wordsPerPage);
-  const startIndex = (currentPage - 1) * wordsPerPage;
-  const endIndex = startIndex + wordsPerPage;
-  const currentWords = uniqueWords?.slice(startIndex, endIndex) || [];
+  const filteredWords = getFilteredWords();
+  const posFilteredWords = filterByPosColumns(filteredWords);
+  const batches = createBatches(posFilteredWords);
+  const totalBatches = batches.length;
 
   return (
-    <section 
-      className="p-6 rounded-xl flex flex-col gap-5"
-      style={{ backgroundColor: 'var(--bg-tertiary)' }}
-    >
-      <h2 className="flex items-center gap-3 text-xl font-bold">
-        <List className="w-5 h-5" />
-        Word Analysis List
-      </h2>
-
-      {/* List Controls */}
-      <div 
-        className="p-4 rounded-xl flex flex-wrap gap-0 items-stretch justify-between"
-        style={{ backgroundColor: 'var(--bg-secondary)' }}
-      >
-        <div className="flex flex-wrap gap-4 items-center px-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="list-words-per-page" className="text-sm whitespace-nowrap">
-              Words per page:
-            </Label>
-            <Input
-              id="list-words-per-page"
-              type="number"
-              value={wordsPerPage}
-              onChange={(e) => handleWordsPerPageChange(e.target.value)}
-              min={10}
-              max={100}
-              className="w-16 text-center bg-input"
-              data-testid="list-words-per-page-input"
-            />
-          </div>
-          
-          <Toggle
-            pressed={firstInstancesOnly}
-            onPressedChange={setFirstInstancesOnly}
-            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-            data-testid="first-instances-toggle"
-          >
-            First Instances Only
-          </Toggle>
-        </div>
-
-        <div className="control-separator" />
-
-        <div className="flex flex-wrap gap-2 items-center px-4">
-          <Button
-            onClick={() => exportMutation.mutate({ format: 'csv', includeKnownWords: false })}
-            disabled={exportMutation.isPending}
-            className="btn-download flex items-center gap-2"
-            data-testid="download-csv-button"
-          >
-            <Download className="w-4 h-4" />
-            Download CSV
-          </Button>
-          <Button
-            onClick={handleAddAllToKnown}
-            disabled={!uniqueWords?.length}
-            className="btn-add flex items-center gap-2"
-            data-testid="add-all-known-button"
-          >
-            <Plus className="w-4 h-4" />
-            Add All to Known
-          </Button>
-          <Button
-            onClick={handleClearKnownWords}
-            className="btn-clear flex items-center gap-2"
-            data-testid="clear-known-button"
-          >
-            <Trash className="w-4 h-4" />
-            Clear Known Words
-          </Button>
-        </div>
-      </div>
-
-      {/* Word List Table */}
-      <div className="border rounded-lg overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
-        <Table>
-          <TableHeader>
-            <TableRow style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              <TableHead>Word</TableHead>
-              <TableHead>POS</TableHead>
-              <TableHead>Translation</TableHead>
-              <TableHead>Frequency</TableHead>
-              <TableHead>First Instance</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  Loading words...
-                </TableCell>
-              </TableRow>
-            ) : currentWords.length > 0 ? (
-              currentWords.map((word: WordEntry, index: number) => {
-                const isKnown = knownWordsSet.has(word.word.toLowerCase());
-                return (
-                  <TableRow
-                    key={`${word.id}-${index}`}
-                    className={isKnown ? "known-word-row" : ""}
-                    data-testid={`word-row-${index}`}
-                  >
-                    <TableCell className="font-semibold">{word.word}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <span className={`pos-indicator ${getPosIndicatorClass(word.pos)}`} />
-                        {word.pos}
-                      </div>
-                    </TableCell>
-                    <TableCell>{word.translation}</TableCell>
-                    <TableCell>{word.frequency}</TableCell>
-                    <TableCell>
-                      {word.firstInstance && (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {isKnown ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleRemoveWordFromKnown(word.word)}
-                          className="btn-clear flex items-center gap-1"
-                          data-testid={`remove-word-${index}`}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddWordToKnown(word.word)}
-                          className="btn-add flex items-center gap-1"
-                          data-testid={`add-word-${index}`}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No words found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* List Pagination */}
-      <div className="flex flex-wrap justify-between items-center gap-4">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => handlePageChange(-1)}
-            disabled={currentPage <= 1 || isLoading}
-            data-testid="list-prev-page-button"
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage >= totalPages || isLoading}
-            data-testid="list-next-page-button"
-          >
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-
-        <div className="text-sm text-muted-foreground" data-testid="list-page-info">
-          {uniqueWords && (
-            <>
-              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong> 
-              {" "}(Words {startIndex + 1}-{Math.min(endIndex, uniqueWords.length)} of {uniqueWords.length})
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Label htmlFor="list-jump-to-page" className="text-sm whitespace-nowrap">
-            Jump to page:
-          </Label>
-          <Input
-            id="list-jump-to-page"
-            type="number"
-            value={jumpToPage}
-            onChange={(e) => setJumpToPage(e.target.value)}
-            min={1}
-            max={totalPages}
-            className="w-16 text-center"
-            data-testid="list-jump-to-page-input"
+    <div className="list-view-section">
+      {/* Known Words Input */}
+      <div className="input-section mb-6">
+        <div className="textarea-group">
+          <label htmlFor="known-words-list" className="text-sm font-medium text-muted-foreground mb-2 block">
+            Known Words (Signatures):
+          </label>
+          <textarea
+            id="known-words-list"
+            value={knownWordsText}
+            onChange={(e) => setKnownWordsText(e.target.value)}
+            className="w-full h-32 p-3 bg-muted border border-border rounded-lg font-mono text-sm resize-vertical"
+            placeholder="Enter known words, one per line..."
           />
-          <Button
-            variant="outline"
-            onClick={handleJumpToPage}
-            disabled={!jumpToPage || isLoading}
-            data-testid="list-jump-page-button"
-          >
-            Go
-          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={handleSaveKnownWords}
+              disabled={updateKnownWordsMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+              size="sm"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              Save Known Words
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Known Words Management */}
-      <div className="flex flex-col gap-4">
-        <Label htmlFor="known-words-textarea" className="flex items-center gap-2 text-sm font-semibold">
-          <Bookmark className="w-4 h-4" />
-          Known Words (one per line):
-        </Label>
-        <Textarea
-          id="known-words-textarea"
-          value={knownWordsText}
-          onChange={(e) => setKnownWordsText(e.target.value)}
-          placeholder="Add known words here, one per line..."
-          className="min-h-24 font-mono text-sm bg-input"
-          data-testid="known-words-textarea"
-        />
-        
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={handleUpdateKnownWords}
-            disabled={updateKnownWordsMutation.isPending}
-            className="flex items-center gap-2"
-            data-testid="update-known-words-button"
-          >
-            <Save className="w-4 h-4" />
-            {updateKnownWordsMutation.isPending ? "Updating..." : "Update Known Words"}
-          </Button>
-          <Button
-            onClick={() => exportMutation.mutate({ format: 'json', includeKnownWords: true })}
-            disabled={exportMutation.isPending}
-            className="btn-download flex items-center gap-2"
-            data-testid="export-known-words-button"
-          >
-            <Download className="w-4 h-4" />
-            Export Known Words
-          </Button>
-          <Button
-            onClick={handleClearKnownWords}
-            className="btn-clear flex items-center gap-2"
-            data-testid="clear-all-known-button"
-          >
-            <Trash className="w-4 h-4" />
-            Clear All
-          </Button>
+      {/* Controls Container */}
+      <div className="controls-container bg-muted p-4 rounded-lg mb-6">
+        <div className="flex flex-wrap gap-6 justify-between items-start">
+          
+          {/* Filter Toggles */}
+          <div className="control-group flex flex-col gap-3">
+            <h3 className="text-sm font-medium">Filters</h3>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={firstInstancesOnly}
+                onChange={(e) => setFirstInstancesOnly(e.target.checked)}
+                className="sr-only"
+              />
+              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${firstInstancesOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-sm">First Instances</span>
+            </label>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newWordsOnly}
+                onChange={(e) => setNewWordsOnly(e.target.checked)}
+                className="sr-only"
+              />
+              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${newWordsOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-sm">New Words Only</span>
+            </label>
+          </div>
+
+          {/* Batch Settings */}
+          <div className="control-group flex flex-col gap-3">
+            <h3 className="text-sm font-medium">Batch Settings</h3>
+            
+            <div className="setting-control flex items-center gap-2">
+              <label className="text-sm">Words per Batch:</label>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={batchSize}
+                onChange={(e) => setBatchSize(parseInt(e.target.value) || 25)}
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+              />
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setBatchSize(Math.min(200, batchSize + 1))}
+                  className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => setBatchSize(Math.max(1, batchSize - 1))}
+                  className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={batchByUnknown}
+                onChange={(e) => setBatchByUnknown(e.target.checked)}
+                className="sr-only"
+              />
+              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${batchByUnknown ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-sm">Batch by Unknown</span>
+            </label>
+          </div>
+
+          {/* Download Settings */}
+          <div className="control-group flex flex-col gap-3">
+            <h3 className="text-sm font-medium">Download</h3>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ankiFormat}
+                onChange={(e) => setAnkiFormat(e.target.checked)}
+                className="sr-only"
+              />
+              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${ankiFormat ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-sm">Anki Format</span>
+            </label>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Batch From:</label>
+              <input
+                type="number"
+                min="1"
+                max={totalBatches}
+                value={downloadBatchFrom}
+                onChange={(e) => setDownloadBatchFrom(parseInt(e.target.value) || 1)}
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+              />
+              <span className="text-sm">To:</span>
+              <input
+                type="number"
+                min="1"
+                max={totalBatches}
+                value={downloadBatchTo}
+                onChange={(e) => setDownloadBatchTo(parseInt(e.target.value) || 1)}
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+              />
+            </div>
+            
+            <Button
+              onClick={handleDownload}
+              disabled={totalBatches === 0}
+              className="bg-green-600 hover:bg-green-700"
+              size="sm"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Download
+            </Button>
+          </div>
+
+          {/* POS Column Filters */}
+          <div className="control-group flex flex-col gap-3">
+            <h3 className="text-sm font-medium">POS Columns</h3>
+            
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: 'pink', label: 'V', title: 'Verb' },
+                { key: 'blue', label: 'N', title: 'Noun' },
+                { key: 'green', label: 'Adj', title: 'Adjective' },
+                { key: 'orange', label: 'Aux', title: 'Auxiliary' },
+                { key: 'yellow', label: 'Oth', title: 'Other' }
+              ].map(({ key, label, title }) => (
+                <label key={key} className="checkbox-label flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedPosColumns.has(key)}
+                    onChange={() => togglePosColumn(key)}
+                    className="w-3 h-3"
+                  />
+                  <span className="text-sm" title={title}>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+
+      {/* Summary */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <List className="w-5 h-5" />
+          First Instances List
+        </h2>
+        <div className="text-sm text-muted-foreground">
+          {filteredWords.length} words, {totalBatches} batches
+        </div>
+      </div>
+
+      {/* Word List Display */}
+      <div className="list-display bg-background border border-border rounded-lg p-4">
+        {isLoading ? (
+          <div className="text-center text-muted-foreground py-8">
+            Loading words...
+          </div>
+        ) : (
+          renderBatches()
+        )}
+      </div>
+    </div>
   );
 }

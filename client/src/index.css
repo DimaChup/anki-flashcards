@@ -177,6 +177,99 @@
     background-color: white;
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
+
+  /* List View Specific Styles */
+  .list-view-section {
+    @apply space-y-6;
+  }
+
+  .batch-grid {
+    @apply space-y-2;
+  }
+
+  .grid-batch-row {
+    @apply flex w-full border-b border-border;
+  }
+
+  .grid-batch-row:last-child {
+    @apply border-b-0;
+  }
+
+  .grid-cell {
+    @apply p-2;
+  }
+
+  .row-number-cell {
+    @apply w-16 text-center font-medium text-muted-foreground flex-shrink-0;
+  }
+
+  .batch-max-key {
+    @apply text-xs text-muted-foreground mt-1;
+  }
+
+  .list-view-words-cell {
+    @apply flex-1 font-mono text-sm leading-relaxed;
+  }
+
+  .word-span {
+    @apply inline-block mx-1 px-1 py-0.5 rounded-sm cursor-pointer;
+    transition: opacity var(--transition-speed-fast) var(--transition-timing);
+  }
+
+  .word-span:hover {
+    background-color: var(--word-hover-bg);
+  }
+
+  .word-span.known-word {
+    opacity: var(--known-word-opacity);
+  }
+
+  .word-key {
+    @apply text-xs text-muted-foreground ml-1;
+  }
+
+  /* POS highlighting circles for list view */
+  .word-span.pos-pink::before {
+    content: '●';
+    color: hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light));
+    margin-right: 4px;
+  }
+
+  .word-span.pos-blue::before {
+    content: '●';
+    color: hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light));
+    margin-right: 4px;
+  }
+
+  .word-span.pos-green::before {
+    content: '●';
+    color: hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light));
+    margin-right: 4px;
+  }
+
+  .word-span.pos-orange::before {
+    content: '●';
+    color: hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light));
+    margin-right: 4px;
+  }
+
+  .word-span.pos-yellow::before {
+    content: '●';
+    color: hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light));
+    margin-right: 4px;
+  }
+
+  .checkbox-label {
+    @apply flex items-center gap-1 text-sm cursor-pointer transition-colors;
+  }
+
+  .checkbox-label:hover {
+    @apply text-primary;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    @apply w-3 h-3;
+  }
 }
 
   .pos-verb {
