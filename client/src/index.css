@@ -434,6 +434,93 @@
     line-height: 1.2;
   }
 
+  /* Grid View Styles for Page View */
+  .first-instance-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid-batch-row {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .grid-batch-row:last-child {
+    border-bottom: none;
+  }
+
+  .grid-cell {
+    flex: 1;
+    padding: 10px;
+    border-right: 1px solid var(--border-color);
+    min-width: 0;
+    line-height: 1.7;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .grid-cell:last-child {
+    border-right: none;
+  }
+
+  .grid-cell .word-span {
+    display: inline;
+    margin: 0 0.05em;
+    padding: 0.1em 0.2em;
+  }
+
+  .grid-cell.row-number-cell {
+    flex: 0 0 50px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-secondary);
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-right: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .batch-max-key {
+    font-size: 0.75em;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    line-height: 1;
+    font-weight: normal;
+  }
+
+  .view-toggle-button {
+    background-color: var(--accent-secondary);
+    color: var(--text-primary);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease, transform 0.1s ease, opacity 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .view-toggle-button:hover:not(:disabled) {
+    background-color: var(--accent-secondary-hover);
+    color: var(--text-heading);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transform: translateY(-1px);
+  }
+
+  .view-toggle-button:active:not(:disabled) {
+    background-color: var(--accent-primary);
+    color: var(--text-primary-inverted);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    transform: translateY(0);
+  }
+
   /* Word Tooltip Styles */
   .tooltip-container {
     z-index: 1000;

@@ -19,6 +19,7 @@ export default function PageViewSection({
   const [totalPages, setTotalPages] = useState(1);
   const [wordsPerPage, setWordsPerPage] = useState(100);
   const [isDualPageView, setIsDualPageView] = useState(true);
+  const [isGridView, setIsGridView] = useState(false);
   const [viewModeBeforeSegments, setViewModeBeforeSegments] = useState(true);
   
   // Toggle states
@@ -298,8 +299,40 @@ export default function PageViewSection({
     );
   };
 
-  // Render page content
-  const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
+  // Render grid view content
+  const renderGridContent = (words: WordEntry[], startIndex: number = 0) => {
+    const pageWords = words.slice(startIndex, startIndex + wordsPerPage);
+    const batchSize = 25; // Match original list-view
+    const batches = [];
+    
+    for (let i = 0; i < pageWords.length; i += batchSize) {
+      batches.push(pageWords.slice(i, i + batchSize));
+    }
+
+    return (
+      <div className="first-instance-grid">
+        {batches.map((batch, batchIndex) => (
+          <div key={batchIndex} className="grid-batch-row">
+            <div className="grid-cell row-number-cell">
+              <div>{batchIndex + 1}</div>
+              <div className="batch-max-key">{Math.min((batchIndex + 1) * batchSize, pageWords.length)}</div>
+            </div>
+            <div className="grid-cell">
+              {batch.map((word, wordIndex) => (
+                <span key={startIndex + batchIndex * batchSize + wordIndex}>
+                  {renderWordSpan(word, startIndex + batchIndex * batchSize + wordIndex)}
+                  {wordIndex < batch.length - 1 && ' '}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Render list view content
+  const renderListContent = (words: WordEntry[], startIndex: number = 0) => {
     return (
       <div className="text-display-content">
         {words.slice(startIndex, startIndex + wordsPerPage).map((word, index) => (
@@ -310,6 +343,15 @@ export default function PageViewSection({
         ))}
       </div>
     );
+  };
+
+  // Render page content based on view mode
+  const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
+    if (isGridView) {
+      return renderGridContent(words, startIndex);
+    } else {
+      return renderListContent(words, startIndex);
+    }
   };
 
   const filteredWords = getFilteredWords();
@@ -496,6 +538,13 @@ export default function PageViewSection({
             <span className="toggle-switch"></span>
             <span className="toggle-text">Scope</span>
           </label>
+          
+          <button
+            onClick={() => setIsGridView(!isGridView)}
+            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm view-toggle-button"
+          >
+            {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
+          </button>
           
           <button
             onClick={addFirstInstances}
