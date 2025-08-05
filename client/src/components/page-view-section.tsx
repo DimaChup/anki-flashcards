@@ -139,20 +139,18 @@ export default function PageViewSection({
     }
   };
 
-  // Get words to display based on filters
+  // Get words to display (don't filter out, just return all for proper fading)
   const getFilteredWords = () => {
     if (!analysisData) return [];
     
     let filtered = [...analysisData];
     
-    if (filterFirstInstance) {
-      filtered = filtered.filter(word => word.firstInstance);
-    }
-    
+    // Only apply filterNewWords as a real filter (removes words)
     if (filterNewWords) {
       filtered = filtered.filter(word => !knownSignaturesSet.has(`${word.word}::${word.pos}`));
     }
     
+    // filterFirstInstance should not remove words, just fade them in rendering
     return filtered;
   };
 
@@ -237,12 +235,16 @@ export default function PageViewSection({
     const isHighlighted = highlightedPOS.has(word.pos);
     const signature = `${word.word}::${word.pos}`;
     const isKnown = knownSignaturesSet.has(signature);
+    const isFirstInstance = word.firstInstance;
     
     let className = "word-span";
     let style: React.CSSProperties = {};
     
-    // Add known word styling
-    if (isKnown) {
+    // Apply first instance filter fading (like original)
+    if (filterFirstInstance && !isFirstInstance) {
+      style.opacity = '0.3'; // Fade non-first instances
+      className += " filtered-non-first";
+    } else if (isKnown) {
       className += " known-word";
       style.opacity = 'var(--known-word-opacity, 0.6)';
     }
@@ -260,7 +262,10 @@ export default function PageViewSection({
           style.textDecorationColor = `hsl(var(${group.hueVar}), var(${group.satVar}), var(${group.lightVar}))`;
         }
         
-        if (isKnown) {
+        // Apply combined opacity for highlighted known words or filtered words
+        if (filterFirstInstance && !isFirstInstance) {
+          style.opacity = '0.3'; // Faded non-first instances have priority
+        } else if (isKnown) {
           style.opacity = 'var(--highlight-known-alpha, 0.4)';
         }
       }

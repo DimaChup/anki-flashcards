@@ -301,6 +301,13 @@
     --known-word-opacity: 0.6;
     --highlight-known-alpha: 0.4;
     --word-hover-bg: rgba(255, 255, 255, 0.1);
+    --first-instance-filter-opacity: 0.3;
+  }
+
+  /* First instance filter styling */
+  .filtered-non-first {
+    opacity: var(--first-instance-filter-opacity) !important;
+    transition: opacity 0.2s ease;
   }
 
   /* Word Tooltip Styles */
