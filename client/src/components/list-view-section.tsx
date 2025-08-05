@@ -229,19 +229,70 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     });
   };
 
-  // Render word span with highlighting
+  // Handle word click (toggle known status)
+  const handleWordClick = (word: WordEntry) => {
+    const signature = `${word.word}::${word.pos}`;
+    const currentKnownWords = (database?.knownWords as string[]) || [];
+    
+    if (currentKnownWords.includes(signature)) {
+      // Remove from known words
+      const updatedKnownWords = currentKnownWords.filter((kw: string) => kw !== signature);
+      updateKnownWordsMutation.mutate(updatedKnownWords);
+    } else {
+      // Add to known words
+      const updatedKnownWords = [...currentKnownWords, signature];
+      updateKnownWordsMutation.mutate(updatedKnownWords);
+    }
+  };
+
+  // Handle right-click (show word details)
+  const handleWordRightClick = (e: React.MouseEvent, word: WordEntry) => {
+    e.preventDefault();
+    
+    const contextDetails = [];
+    if (word.contextualInfo?.gender) contextDetails.push(`Gender: ${word.contextualInfo.gender}`);
+    if (word.contextualInfo?.number) contextDetails.push(`Number: ${word.contextualInfo.number}`);
+    if (word.contextualInfo?.tense) contextDetails.push(`Tense: ${word.contextualInfo.tense}`);
+    if (word.contextualInfo?.mood) contextDetails.push(`Mood: ${word.contextualInfo.mood}`);
+    if (word.contextualInfo?.person) contextDetails.push(`Person: ${word.contextualInfo.person}`);
+    
+    const tooltipContent = `
+Word: ${word.word}
+POS: ${word.pos}
+Translation: ${word.translation || 'N/A'}
+Frequency: ${word.frequency || 1}
+Position: ${word.position || 'N/A'}
+First Instance: ${word.firstInstance ? 'Yes' : 'No'}
+${contextDetails.length > 0 ? `Grammar: ${contextDetails.join(', ')}` : ''}
+
+Left-click to toggle known status`;
+    
+    toast({
+      title: `${word.word} (${word.pos})`,
+      description: tooltipContent.trim(),
+      duration: 3000,
+    });
+  };
+
+  // Render word span with highlighting and click functionality
   const renderWordSpan = (word: WordEntry, showKey: boolean = false) => {
     const posGroup = getPosGroup(word.pos);
     const posKey = getPosColumnKey(posGroup);
-    const isKnown = knownWordsText.includes(`${word.word}::${word.pos}`) || 
+    const signature = `${word.word}::${word.pos}`;
+    const isKnown = knownWordsText.includes(signature) || 
                    knownWordsText.includes(word.word.toLowerCase());
     
     return (
       <span
         key={`${word.word}-${word.pos}`}
-        className={`word-span pos-${posKey} ${isKnown ? 'known-word' : ''}`}
+        className={`word-span pos-${posKey} ${isKnown ? 'known-word' : ''} cursor-pointer hover:scale-105 transition-transform`}
         data-word={word.word}
         data-pos={word.pos}
+        data-signature={signature}
+        data-first-instance={word.firstInstance ? 'true' : 'false'}
+        onClick={() => handleWordClick(word)}
+        onContextMenu={(e) => handleWordRightClick(e, word)}
+        title={`${word.word} (${word.pos}) - Click to toggle known status, right-click for details`}
         style={{
           opacity: isKnown ? 'var(--known-word-opacity)' : 1
         }}
