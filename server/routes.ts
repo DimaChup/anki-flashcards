@@ -60,9 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileContent = req.file.buffer.toString('utf-8');
       const jsonData = JSON.parse(fileContent);
 
-      console.log('Uploaded JSON keys:', Object.keys(jsonData));
-      console.log('Has inputText:', !!jsonData.inputText);
-      console.log('Has wordDatabase:', !!jsonData.wordDatabase);
+
 
       // Check if this is the user's format with inputText and wordDatabase
       if (jsonData.inputText && jsonData.wordDatabase) {
