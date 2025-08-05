@@ -310,7 +310,7 @@ Left-click to toggle known status`;
     );
   };
 
-  // Render batches in grid view (default)
+  // Render batches in list view (original batch layout)
   const renderGridBatches = () => {
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
@@ -325,7 +325,7 @@ Left-click to toggle known status`;
     }
     
     return (
-      <div className="first-instance-grid">
+      <div className="batch-grid">
         {batches.map((batch, batchIndex) => {
           const maxKey = Math.max(...batch.map(w => w.position || 0));
           
@@ -334,10 +334,10 @@ Left-click to toggle known status`;
               <div className="grid-cell row-number-cell">
                 <div>{batchIndex + 1}</div>
                 {maxKey > 0 && (
-                  <div className="batch-max-key">{maxKey}</div>
+                  <div className="batch-max-key">({maxKey})</div>
                 )}
               </div>
-              <div className="grid-cell">
+              <div className="grid-cell list-view-words-cell">
                 {batch.map(word => (
                   <span key={`${word.word}-${word.pos}`}>
                     {renderWordSpan(word, true)}{' '}
@@ -351,34 +351,7 @@ Left-click to toggle known status`;
     );
   };
 
-  // Render batches in list view (continuous text)
-  const renderListBatches = () => {
-    const filteredWords = getFilteredWords();
-    const posFilteredWords = filterByPosColumns(filteredWords);
-    const batches = createBatches(posFilteredWords);
-    
-    if (batches.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-8">
-          No words found matching current filters
-        </div>
-      );
-    }
-    
-    // Flatten all batches into continuous text
-    const allWords = batches.flat();
-    
-    return (
-      <div className="first-instance-list">
-        {allWords.map((word, index) => (
-          <span key={`${word.word}-${word.pos}-${index}`}>
-            {renderWordSpan(word, false)}
-            {index < allWords.length - 1 && ' '}
-          </span>
-        ))}
-      </div>
-    );
-  };
+
 
   // Render POS-based grid view (organized by POS columns)
   const renderPOSGridBatches = () => {
@@ -467,7 +440,7 @@ Left-click to toggle known status`;
     if (isGridView) {
       return renderPOSGridBatches(); // Grid view shows POS-organized columns
     } else {
-      return renderListBatches(); // List view shows continuous text
+      return renderGridBatches(); // List view shows separate batches (original behavior)
     }
   };
 
