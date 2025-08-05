@@ -60,25 +60,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileContent = req.file.buffer.toString('utf-8');
       const jsonData = JSON.parse(fileContent);
 
-      // Validate the uploaded JSON structure
-      if (!jsonData.name || !jsonData.language || !jsonData.originalText || !jsonData.analysisData) {
-        return res.status(400).json({ 
-          message: "Invalid JSON structure. Required fields: name, language, originalText, analysisData" 
+      console.log('Uploaded JSON keys:', Object.keys(jsonData));
+      console.log('Has inputText:', !!jsonData.inputText);
+      console.log('Has wordDatabase:', !!jsonData.wordDatabase);
+
+      // Check if this is the user's format with inputText and wordDatabase
+      if (jsonData.inputText && jsonData.wordDatabase) {
+        // Transform from user's format to our schema
+        const transformedData = {
+          name: req.file.originalname.replace('.json', '') || "Uploaded Database",
+          description: "Linguistic analysis database uploaded by user",
+          language: "Spanish", // Default to Spanish based on sample
+          originalText: jsonData.inputText,
+          wordCount: Object.keys(jsonData.wordDatabase).length,
+          analysisData: [],
+          knownWords: []
+        };
+
+        // Transform each word entry
+        Object.entries(jsonData.wordDatabase).forEach(([id, wordData]: [string, any]) => {
+          const transformedWord: WordEntry = {
+            id: id,
+            word: wordData.word,
+            lemma: wordData.lemma || wordData.word,
+            pos: wordData.pos || "UNKNOWN",
+            translation: wordData.best_translation || wordData.translation || "",
+            frequency: parseInt(wordData.freq) || 1,
+            firstInstance: wordData.first_inst === "true" || wordData.first_inst === true,
+            contextualInfo: {
+              gender: wordData.details?.Gender,
+              number: wordData.details?.Number,
+              tense: wordData.details?.Tense,
+              mood: wordData.details?.Mood,
+              person: wordData.details?.Person,
+            },
+            position: parseInt(id),
+            sentence: wordData.sentence || `Context for word: ${wordData.word}`
+          };
+          
+          (transformedData.analysisData as WordEntry[]).push(transformedWord);
         });
+
+        const database = await storage.createLinguisticDatabase(transformedData);
+        res.status(201).json(database);
+      } else {
+        // Try our original schema format
+        if (!jsonData.name || !jsonData.language || !jsonData.originalText || !jsonData.analysisData) {
+          return res.status(400).json({ 
+            message: "Invalid JSON structure. Expected format with 'inputText' and 'wordDatabase' properties, or our schema format." 
+          });
+        }
+
+        const validatedData = insertLinguisticDatabaseSchema.parse({
+          name: jsonData.name,
+          description: jsonData.description || "",
+          language: jsonData.language,
+          originalText: jsonData.originalText,
+          wordCount: jsonData.analysisData.length,
+          analysisData: jsonData.analysisData,
+          knownWords: jsonData.knownWords || [],
+        });
+
+        const database = await storage.createLinguisticDatabase(validatedData);
+        res.status(201).json(database);
       }
-
-      const validatedData = insertLinguisticDatabaseSchema.parse({
-        name: jsonData.name,
-        description: jsonData.description || "",
-        language: jsonData.language,
-        originalText: jsonData.originalText,
-        wordCount: jsonData.analysisData.length,
-        analysisData: jsonData.analysisData,
-        knownWords: jsonData.knownWords || [],
-      });
-
-      const database = await storage.createLinguisticDatabase(validatedData);
-      res.status(201).json(database);
     } catch (error) {
       if (error instanceof SyntaxError) {
         res.status(400).json({ message: "Invalid JSON file" });
