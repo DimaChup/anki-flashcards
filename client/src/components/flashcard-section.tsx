@@ -277,58 +277,32 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize }: Flas
             )}
           </div>
         ) : (
-          // Dashboard - Show actual words from selected batch
+          // Simple Dashboard - Just batch selector and start button
           <div className="space-y-6">
-            {/* Batch Info */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-              <h4 className="font-semibold mb-2">📦 Batch {selectedBatchNumber}</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Words from the first instances list in order of appearance
-              </p>
-              <div className="flex items-center justify-between">
-                <span>Words in this batch:</span>
-                <span className="font-semibold">{activeBatchData?.allCards?.length || 0}</span>
-              </div>
-            </div>
-
-            {/* Show words in this batch */}
-            {activeBatchData?.allCards && activeBatchData.allCards.length > 0 ? (
-              <div className="space-y-4">
-                <h5 className="font-medium">Words to Learn in Batch {selectedBatchNumber}:</h5>
-                <div className="grid gap-4 max-h-60 overflow-y-auto">
-                  {activeBatchData.allCards.map((card, index) => (
-                    <div 
-                      key={card.id} 
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-200 dark:to-gray-300 border-2 border-gray-600 dark:border-gray-400 rounded-xl hover:from-gray-600 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-gray-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
-                      onClick={() => {
-                        setCurrentCard(card);
-                        setShowAnswer(false);
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full min-w-8 text-center">{index + 1}</span>
-                        <span className="font-bold text-xl text-white dark:text-gray-900">{card.word}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full">Practice</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {stats && stats.totalBatches > 0 ? (
+              <div className="text-center space-y-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Ready to learn words from Batch {selectedBatchNumber}
+                </p>
                 
-                <div className="text-center">
-                  <Button 
-                    onClick={startReview} 
-                    size="lg" 
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                    data-testid="start-review-button"
-                  >
-                    <Brain className="h-5 w-5 mr-2" />
-                    Start Learning Batch {selectedBatchNumber}
-                  </Button>
-                </div>
+                <Button 
+                  onClick={startReview} 
+                  size="lg" 
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                  data-testid="start-review-button"
+                  disabled={!activeBatchData?.allCards || activeBatchData.allCards.length === 0}
+                >
+                  <Brain className="h-5 w-5 mr-2" />
+                  Start Learning Batch {selectedBatchNumber}
+                </Button>
+                
+                {activeBatchData?.allCards && (
+                  <p className="text-sm text-gray-500">
+                    {activeBatchData.allCards.length} words in this batch
+                  </p>
+                )}
               </div>
-            ) : stats && stats.totalBatches === 0 ? (
+            ) : (
               <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                 <Brain className="h-12 w-12 mx-auto mb-4 text-purple-600" />
                 <h4 className="font-semibold mb-2">Create Learning Batches</h4>
@@ -342,11 +316,6 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize }: Flas
                 >
                   {createBatchesMutation.isPending ? "Creating Batches..." : `Create Batches (${batchSize} words each)`}
                 </Button>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No words found in Batch {selectedBatchNumber}</p>
-                <p className="text-sm text-gray-500 mt-2">This batch might not exist yet.</p>
               </div>
             )}
           </div>
