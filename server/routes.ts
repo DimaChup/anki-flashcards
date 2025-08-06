@@ -64,10 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all linguistic databases (now user-filtered)
   app.get("/api/databases", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databases = await storage.getAllLinguisticDatabases(userId);
       res.json(databases);
     } catch (error) {
+      console.error("Error fetching databases:", error);
       res.status(500).json({ message: "Failed to fetch databases" });
     }
   });
@@ -75,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific linguistic database
   app.get("/api/databases/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const database = await storage.getLinguisticDatabase(req.params.id, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
@@ -89,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new linguistic database
   app.post("/api/databases", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertLinguisticDatabaseSchema.parse(req.body);
       const database = await storage.createLinguisticDatabase(validatedData, userId);
       res.status(201).json(database);
@@ -123,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         segments: [] // Empty initially
       };
 
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const database = await storage.createLinguisticDatabase(transformedData, userId);
       res.status(201).json(database);
     } catch (error) {
@@ -185,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (transformedData.analysisData as WordEntry[]).push(transformedWord);
         });
 
-        const userId = req.user.claims.sub;
+        const userId = req.user.id;
         const database = await storage.createLinguisticDatabase(transformedData, userId);
         res.status(201).json(database);
       } else {
@@ -207,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           segments: jsonData.segments || []
         });
 
-        const userId = req.user.claims.sub;
+        const userId = req.user.id;
         const database = await storage.createLinguisticDatabase(validatedData, userId);
         res.status(201).json(database);
       }
@@ -225,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update known words for a database
   app.put("/api/databases/:id/known-words", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = updateKnownWordsSchema.parse({
         databaseId: req.params.id,
         knownWords: req.body.knownWords,
@@ -255,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get words with pagination and filtering
   app.get("/api/databases/:id/words", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // First verify user owns this database
       const database = await storage.getLinguisticDatabase(req.params.id, userId);
@@ -279,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all analysis data for page view (no pagination)
   app.get("/api/databases/:id/analysis-data", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const database = await storage.getLinguisticDatabase(req.params.id, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
@@ -790,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create batches from first instances
   app.post('/api/spaced-repetition/create-batches', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = createBatchSchema.parse(req.body);
       
       // Get the database analysis data
@@ -818,7 +819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all batches for a database
   app.get('/api/spaced-repetition/batches/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       const batches = await SpacedRepetitionService.getBatchesForDatabase(userId, databaseId);
@@ -832,7 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active batch and due cards
   app.get('/api/spaced-repetition/active-batch/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       const activeBatch = await SpacedRepetitionService.getActiveBatch(userId, databaseId);
@@ -853,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get cards from a specific batch number
   app.get('/api/spaced-repetition/batch-cards/:databaseId/:batchNumber', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       const batchNumber = parseInt(req.params.batchNumber);
       
@@ -879,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activate next batch
   app.post('/api/spaced-repetition/activate-next/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       const nextBatch = await SpacedRepetitionService.activateNextBatch(userId, databaseId);
@@ -910,7 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get batch learning statistics
   app.get('/api/spaced-repetition/batch-stats/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       const stats = await SpacedRepetitionService.getBatchLearningStats(userId, databaseId);
@@ -924,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all cards for a database
   app.get('/api/spaced-repetition/cards/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       const cards = await SpacedRepetitionService.getCardsForDatabase(userId, databaseId);
@@ -938,7 +939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a card
   app.delete('/api/spaced-repetition/cards/:cardId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const cardId = req.params.cardId;
       
       await SpacedRepetitionService.deleteCard(cardId, userId);
