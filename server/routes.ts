@@ -1036,8 +1036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const databaseId = req.params.databaseId;
       
       // First verify user owns this database
-      const database = await storage.getDatabase(databaseId);
-      if (!database || database.userId !== userId) {
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
         return res.status(404).json({ message: "Database not found" });
       }
       
