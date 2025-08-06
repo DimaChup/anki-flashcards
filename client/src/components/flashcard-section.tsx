@@ -89,10 +89,9 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
       return apiRequest('POST', '/api/spaced-repetition/review', { cardId, quality });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      // Only invalidate stats, not the active batch data to avoid resetting cards
       queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
-      setShowAnswer(false);
-      setCurrentCard(null);
+      // Don't reset currentCard here - let handleReview manage card progression
       toast({ title: "Card reviewed!", description: "Your progress has been saved." });
     },
   });
