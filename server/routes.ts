@@ -1035,6 +1035,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const databaseId = req.params.databaseId;
       const excludeKnownWords = req.query.excludeKnownWords !== 'false'; // Default to true
       
+      console.log('Anki study cards request:', { databaseId, excludeKnownWords, query: req.query });
+      
       // Get user's database
       const database = await storage.getLinguisticDatabase(databaseId, userId);
       if (!database) {
@@ -1045,12 +1047,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const knownWords = database.knownWords || [];
       const knownWordsSet = new Set(knownWords.map((word: string) => word.toLowerCase()));
       
+      console.log('Known words:', { count: knownWords.length, words: knownWords.slice(0, 5) });
+      
       // Filter for first instance words, optionally excluding known words
+      const allFirstInstance = database.analysisData.filter((word: any) => word.firstInstance === true);
+      console.log('All first instance words:', allFirstInstance.length);
+      
       const studyCards = database.analysisData
         .filter((word: any) => {
           const isFirstInstance = word.firstInstance === true;
           const hasTranslation = word.translation && word.translation.trim();
           const isKnownWord = knownWordsSet.has(word.word.toLowerCase());
+          
+          if (isFirstInstance && hasTranslation) {
+            console.log('Word check:', { 
+              word: word.word, 
+              isKnownWord, 
+              excludeKnownWords, 
+              shouldInclude: !excludeKnownWords || !isKnownWord 
+            });
+          }
           
           return isFirstInstance && hasTranslation && (!excludeKnownWords || !isKnownWord);
         })
@@ -1063,6 +1079,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lemma: word.lemma,
           sentence: word.sentence
         }));
+      
+      console.log('Final study cards count:', studyCards.length);
       
       res.json({
         databaseName: database.name,

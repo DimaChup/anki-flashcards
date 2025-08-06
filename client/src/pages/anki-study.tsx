@@ -60,7 +60,10 @@ export default function AnkiStudy() {
 
   // Get study cards for selected database
   const { data: studyData, isLoading: cardsLoading } = useQuery({
-    queryKey: [`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`],
+    queryKey: ['/api/anki/study-cards', selectedDatabase, excludeKnownWords],
+    queryFn: () => 
+      fetch(`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`)
+        .then(res => res.json()),
     enabled: !!selectedDatabase,
   });
 
