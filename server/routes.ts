@@ -1174,7 +1174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/settings/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       
       let settings = await storage.getAnkiStudySettings(userId, databaseId);
       
@@ -1201,7 +1201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/anki-study/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const settings = { ...req.body, userId };
       
       const created = await storage.createAnkiStudySettings(settings);
@@ -1232,7 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/cards/:databaseId/today', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       
       const cards = await storage.getTodaysStudyCards(userId, databaseId);
       
@@ -1257,20 +1257,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize new study cards from selected database words
   app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const { databaseId, wordKeys } = req.body;
       
-      if (!databaseId) {
-        return res.status(400).json({ message: 'Database ID is required' });
+      if (!Array.isArray(wordKeys) || wordKeys.length === 0) {
+        return res.status(400).json({ message: 'wordKeys must be a non-empty array' });
       }
       
-      // Initialize cards (if no wordKeys provided, it will use all eligible words from database)
       const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
-      
       res.status(201).json({
-        message: `Initialized ${cards.length} study cards from database words (first instances, excluding known words)`,
+        message: `Initialized ${cards.length} study cards`,
         cards: cards.length,
-        details: `Created Anki deck with words in order of appearance, automatically filtering out known words`
+        initialized: cards
       });
     } catch (error) {
       console.error('Error initializing study cards:', error);

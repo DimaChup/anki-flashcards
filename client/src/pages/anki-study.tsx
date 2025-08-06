@@ -62,8 +62,6 @@ export default function AnkiStudyPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [isInitializing, setIsInitializing] = useState(false);
-  
   // Extract database ID from URL params
   const databaseId = location.split('/anki-study/')[1];
   
@@ -140,35 +138,6 @@ export default function AnkiStudyPage() {
     onError: (error: Error) => {
       toast({
         title: 'Settings Update Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Initialize cards mutation
-  const initializeCardsMutation = useMutation({
-    mutationFn: async () => {
-      if (!databaseId) throw new Error('No database selected');
-      
-      // Initialize all eligible words from database (first_inst=true, excluding known words)
-      const initResponse = await apiRequest('POST', '/api/anki-study/cards/initialize', {
-        databaseId
-        // No wordKeys means it will use all eligible words
-      });
-      return await initResponse.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: 'Anki Deck Created!',
-        description: `${data.message}`,
-      });
-      // Refresh the session to show the new cards
-      refetchSession();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Initialization Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -283,17 +252,9 @@ export default function AnkiStudyPage() {
               You don't have any cards due for review today. You can:
             </p>
             <div className="space-y-2">
-              <Button 
-                onClick={() => initializeCardsMutation.mutate()}
-                disabled={initializeCardsMutation.isPending}
-                className="w-full bg-purple-600 hover:bg-purple-700"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                {initializeCardsMutation.isPending ? 'Creating Anki Deck...' : 'Create Anki Deck from Database'}
-              </Button>
               <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
                 <Home className="w-4 h-4 mr-2" />
-                Go back to Home
+                Go back and initialize new study cards
               </Button>
             </div>
           </CardContent>
