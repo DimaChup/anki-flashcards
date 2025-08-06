@@ -81,7 +81,16 @@ export default function AnkiStudy() {
       return allCards;
     }
     
-    const knownWordsSet = new Set(databaseData.knownWords.map(w => w.toLowerCase()));
+    // Extract just the word part from knownWords (format: "word::POS" -> "word")
+    const knownWordsSet = new Set(
+      databaseData.knownWords
+        .map(w => {
+          // Split on "::" and take the first part (the actual word)
+          const wordPart = w.split('::')[0];
+          return wordPart.toLowerCase();
+        })
+    );
+    
     const filtered = allCards.filter(card => {
       const cardWordLower = card.word.toLowerCase();
       const isKnown = knownWordsSet.has(cardWordLower);
@@ -94,7 +103,9 @@ export default function AnkiStudy() {
       filteredCards: filtered.length,
       knownWordsCount: databaseData.knownWords.length,
       sampleKnownWords: databaseData.knownWords.slice(0, 5),
-      sampleCardWords: allCards.slice(0, 5).map(c => c.word)
+      sampleKnownWordsExtracted: Array.from(knownWordsSet).slice(0, 5),
+      sampleCardWords: allCards.slice(0, 5).map(c => c.word),
+      wordsFiltered: allCards.filter(card => knownWordsSet.has(card.word.toLowerCase())).slice(0, 3).map(c => c.word)
     });
     
     return filtered;
