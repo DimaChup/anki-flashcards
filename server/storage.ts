@@ -583,7 +583,7 @@ export class DatabaseStorage implements IStorage {
       .limit(reviewLimit)
       .orderBy(ankiFlashcards.due);
 
-    // Get new cards up to the limit
+    // Get new cards up to the limit, ordered by position in text
     const remainingSlots = Math.max(0, newCardLimit + reviewLimit - reviewCards.length - learningCards.length);
     const newCards = remainingSlots > 0 ? await db.select().from(ankiFlashcards)
       .where(and(
@@ -591,17 +591,14 @@ export class DatabaseStorage implements IStorage {
         eq(ankiFlashcards.status, 'new')
       ))
       .limit(remainingSlots)
-      .orderBy(ankiFlashcards.wordKey) // Maintain text order
+      .orderBy(ankiFlashcards.wordKey) // Maintain original text order
       : [];
 
-    // Combine and shuffle for optimal learning (Anki-style interleaving)
-    const allCards = [...reviewCards, ...learningCards, ...newCards];
-    
-    // Anki-style shuffle: reviews first, then mix new cards
+    // For study queue, maintain text order for new cards (don't shuffle)
+    // Reviews come first (due cards), then new cards in text order
     const priorityCards = [...reviewCards, ...learningCards];
-    const shuffledNew = newCards.sort(() => Math.random() - 0.5);
     
-    return [...priorityCards, ...shuffledNew];
+    return [...priorityCards, ...newCards];
   }
 
   async resetSessionCounts(deckId: string): Promise<void> {
