@@ -630,7 +630,12 @@ export class DatabaseStorage implements IStorage {
     const eligibleWords = analysisData
       .filter(entry => entry.firstInstance === true)  // Only first instances
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
-      .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
+      .sort((a, b) => {
+        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
+        const numA = parseInt(a.id.toString(), 10);
+        const numB = parseInt(b.id.toString(), 10);
+        return numA - numB;
+      });
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
