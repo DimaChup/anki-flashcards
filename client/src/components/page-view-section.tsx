@@ -453,7 +453,7 @@ export default function PageViewSection({
           
           {/* POS Button Rows */}
           <div className="highlight-row button-container">
-            {(posButtonGroups[0]?.tags || []).map((pos) => (
+            {(posButtonGroups[0]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
@@ -474,7 +474,7 @@ export default function PageViewSection({
           </div>
           
           <div className="highlight-row button-container">
-            {(posButtonGroups[1]?.tags || []).map((pos) => (
+            {(posButtonGroups[1]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
@@ -495,7 +495,7 @@ export default function PageViewSection({
           </div>
           
           <div className="highlight-row button-container">
-            {(posButtonGroups[2]?.tags || []).map((pos) => (
+            {(posButtonGroups[2]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
                 onClick={() => togglePOSHighlight(pos)}
@@ -714,10 +714,10 @@ export default function PageViewSection({
             left: tooltipData.x + 10,
             top: tooltipData.y + 10,
             zIndex: 1000,
-            backgroundColor: 'var(--tooltip-bg)',
-            border: '1px solid var(--tooltip-border)',
+            backgroundColor: 'hsl(215, 15%, 19%)', /* Solid bg-tertiary color */
+            border: '1px solid hsl(215, 14%, 29%)', /* Solid border-color */
             borderRadius: '6px',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.8)', /* Stronger shadow for contrast */
             fontSize: '0.9em',
             maxWidth: '700px',
             pointerEvents: 'none'
@@ -725,7 +725,7 @@ export default function PageViewSection({
         >
           <div id="word-info-tooltip" style={{ display: 'flex' }}>
             {/* Concise part */}
-            <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'var(--tooltip-text)', maxWidth: '350px' }}>
+            <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'hsl(210, 9%, 91%)', maxWidth: '350px' }}>
               <div className="tooltip-line">
                 <strong style={{ 
                   color: tooltipData.pos === 'VERB' ? `hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light))` :
@@ -746,7 +746,7 @@ export default function PageViewSection({
               }}>
                 {tooltipData.translation || 'No translation'}
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '6px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid hsl(215, 14%, 29%)', margin: '6px 0' }} />
               <div className="tooltip-line">
                 <strong>Freq:</strong> {tooltipData.frequency}
               </div>
@@ -766,9 +766,9 @@ export default function PageViewSection({
                 className="tooltip-part detailed-part" 
                 style={{ 
                   padding: '8px 12px', 
-                  borderLeft: '1px solid var(--tooltip-separator-color)', 
+                  borderLeft: '1px solid hsl(215, 14%, 29%)', /* Solid separator color */
                   whiteSpace: 'pre-wrap', 
-                  color: 'var(--tooltip-text)', 
+                  color: 'hsl(210, 9%, 91%)', /* Solid text color */
                   maxWidth: '350px' 
                 }}
               >

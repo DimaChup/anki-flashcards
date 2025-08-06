@@ -46,7 +46,7 @@
   --hl-text: hsl(0, 0%, 100%);
   --hl-bg-text: hsl(215, 28%, 7%);
 
-  /* Tooltip - exact copy from page-view.html */
+  /* Tooltip - exact copy from page-view.html with solid backgrounds */
   --tooltip-bg: var(--bg-tertiary);
   --tooltip-border: var(--border-color);
   --tooltip-text: var(--text-primary);
