@@ -546,6 +546,30 @@
     outline-offset: 2px !important;
   }
 
+  /* Tooltip styles - exact copy from original page-view.html */
+  #tooltip-container {
+    --tooltip-bg: hsl(var(--card));
+    --tooltip-border: hsl(var(--border));
+    --tooltip-text: hsl(var(--foreground));
+    --tooltip-separator-color: hsl(var(--border));
+  }
+  
+  #tooltip-container .tooltip-line {
+    line-height: 1.4;
+    margin-bottom: 2px;
+  }
+  
+  #tooltip-container strong {
+    color: hsl(var(--muted-foreground));
+    font-weight: bold;
+  }
+  
+  #tooltip-container .tooltip-best-translation {
+    font-size: 1.8em !important;
+    line-height: 1.1 !important;
+    vertical-align: middle;
+  }
+
   .grid-cell.row-number-cell {
     flex: 0 0 50px;
     text-align: center;

@@ -249,34 +249,52 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     }
   };
 
-  // Handle right-click (show word details)
+  // Tooltip state - exactly like original page-view.html
+  const [tooltipData, setTooltipData] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    word: string;
+    pos: string;
+    translation: string;
+    frequency: number;
+    position: number | null;
+    firstInstance: boolean;
+    contextualInfo?: any;
+  } | null>(null);
+
+  // Handle right-click (show word details) - exact copy from page-view.html
   const handleWordRightClick = (e: React.MouseEvent, word: WordEntry) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    const contextDetails = [];
-    if (word.contextualInfo?.gender) contextDetails.push(`Gender: ${word.contextualInfo.gender}`);
-    if (word.contextualInfo?.number) contextDetails.push(`Number: ${word.contextualInfo.number}`);
-    if (word.contextualInfo?.tense) contextDetails.push(`Tense: ${word.contextualInfo.tense}`);
-    if (word.contextualInfo?.mood) contextDetails.push(`Mood: ${word.contextualInfo.mood}`);
-    if (word.contextualInfo?.person) contextDetails.push(`Person: ${word.contextualInfo.person}`);
+    // Calculate tooltip position like original
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
     
-    const tooltipContent = `
-Word: ${word.word}
-POS: ${word.pos}
-Translation: ${word.translation || 'N/A'}
-Frequency: ${word.frequency || 1}
-Position: ${word.position || 'N/A'}
-First Instance: ${word.firstInstance ? 'Yes' : 'No'}
-${contextDetails.length > 0 ? `Grammar: ${contextDetails.join(', ')}` : ''}
-
-Left-click to toggle known status`;
-    
-    toast({
-      title: `${word.word} (${word.pos})`,
-      description: tooltipContent.trim(),
-      duration: 3000,
+    setTooltipData({
+      visible: true,
+      x: mouseX,
+      y: mouseY,
+      word: word.word,
+      pos: word.pos,
+      translation: word.translation || '',
+      frequency: word.frequency || 1,
+      position: word.position || null,
+      firstInstance: word.firstInstance || false,
+      contextualInfo: word.contextualInfo
     });
   };
+
+  // Hide tooltip when clicking elsewhere
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setTooltipData(null);
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Render word span with highlighting and click functionality
   const renderWordSpan = (word: WordEntry, showKey: boolean = false) => {
@@ -661,6 +679,83 @@ Left-click to toggle known status`;
           renderBatches()
         )}
       </div>
+
+      {/* Tooltip - exact copy from original page-view.html */}
+      {tooltipData && (
+        <div
+          id="tooltip-container"
+          style={{
+            position: 'fixed',
+            left: tooltipData.x + 10,
+            top: tooltipData.y + 10,
+            zIndex: 1000,
+            backgroundColor: 'var(--tooltip-bg)',
+            border: '1px solid var(--tooltip-border)',
+            borderRadius: '6px',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            fontSize: '0.9em',
+            maxWidth: '700px',
+            pointerEvents: 'none'
+          }}
+        >
+          <div id="word-info-tooltip" style={{ display: 'flex' }}>
+            {/* Concise part */}
+            <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'var(--tooltip-text)', maxWidth: '350px' }}>
+              <div className="tooltip-line">
+                <strong>{tooltipData.word}</strong> ({tooltipData.pos})
+              </div>
+              <div className="tooltip-line tooltip-best-translation" style={{ fontSize: '1.8em', lineHeight: '1.1' }}>
+                {tooltipData.translation || 'No translation'}
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '6px 0' }} />
+              <div className="tooltip-line">
+                <strong>Freq:</strong> {tooltipData.frequency}
+              </div>
+              {tooltipData.position && (
+                <div className="tooltip-line">
+                  <strong>Pos:</strong> {tooltipData.position}
+                </div>
+              )}
+              <div className="tooltip-line">
+                <strong>First:</strong> {tooltipData.firstInstance ? 'Yes' : 'No'}
+              </div>
+            </div>
+            
+            {/* Detailed part - conditional display like original */}
+            {tooltipData.contextualInfo && (
+              <div 
+                className="tooltip-part detailed-part" 
+                style={{ 
+                  padding: '8px 12px', 
+                  borderLeft: '1px solid var(--tooltip-separator-color)', 
+                  whiteSpace: 'pre-wrap', 
+                  color: 'var(--tooltip-text)', 
+                  maxWidth: '350px' 
+                }}
+              >
+                <div className="tooltip-line">
+                  <strong>Grammar Details:</strong>
+                </div>
+                {tooltipData.contextualInfo.gender && (
+                  <div className="tooltip-line">Gender: {tooltipData.contextualInfo.gender}</div>
+                )}
+                {tooltipData.contextualInfo.number && (
+                  <div className="tooltip-line">Number: {tooltipData.contextualInfo.number}</div>
+                )}
+                {tooltipData.contextualInfo.tense && (
+                  <div className="tooltip-line">Tense: {tooltipData.contextualInfo.tense}</div>
+                )}
+                {tooltipData.contextualInfo.mood && (
+                  <div className="tooltip-line">Mood: {tooltipData.contextualInfo.mood}</div>
+                )}
+                {tooltipData.contextualInfo.person && (
+                  <div className="tooltip-line">Person: {tooltipData.contextualInfo.person}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
