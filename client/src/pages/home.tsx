@@ -112,11 +112,11 @@ export default function Home() {
             </h1>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setLocation('/anki-study')}
+                onClick={() => setLocation('/flashcards')}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                data-testid="anki-study-button"
+                data-testid="flashcards-button"
               >
-                🧠 Anki Study
+                🧠 Flashcards
               </button>
               <button
                 onClick={() => setLocation('/pricing')}

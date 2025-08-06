@@ -1045,54 +1045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no deck exists, create one automatically
       if (!deck) {
-        deck = await storage.createAnkiDeck({
-          userId,
-          databaseId,
-          name: `${database.name} Flashcards`,
-          totalCards: 0,
-          newCards: 0,
-          learningCards: 0,
-          reviewCards: 0,
-        });
-        
-        // Auto-create cards from first instance words
-        if (database.analysisData) {
-          const firstInstanceWords = database.analysisData.filter((word: any) => 
-            word.firstInstance && word.translation && word.translation.trim()
-          );
-          
-          let createdCount = 0;
-          for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
-            try {
-              await storage.createAnkiCard({
-                deckId: deck.id,
-                word: word.word,
-                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
-                pos: word.pos || null,
-                lemma: word.lemma || null,
-                sentence: word.sentence || null,
-                status: 'new',
-                easeFactor: 2500,
-                interval: 0,
-                repetitions: 0,
-                due: new Date(),
-              });
-              createdCount++;
-            } catch (error) {
-              console.error('Error creating card for word:', word.word, error);
-            }
-          }
-          
-          // Update deck stats
-          if (createdCount > 0) {
-            await storage.updateAnkiDeck(deck.id, {
-              totalCards: createdCount,
-              newCards: createdCount,
-            });
-            
-            deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
-          }
-        }
+        deck = await storage.generateAnkiDeckFromDatabase(databaseId, userId);
       }
       
       res.json(deck);
@@ -1109,6 +1062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deckId = req.params.deckId;
       const status = req.query.status as string;
       
+      // TODO: Add deck ownership verification if needed
       const cards = await storage.getAnkiCards(deckId, status);
       res.json(cards);
     } catch (error) {
