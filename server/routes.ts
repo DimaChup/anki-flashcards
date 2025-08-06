@@ -1156,6 +1156,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate new Anki deck from first-instance words
+  app.post('/api/anki/generate-deck/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const databaseId = req.params.databaseId;
+      
+      // First verify user owns this database
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
+      // Check if deck already exists and clear it
+      let deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+      if (deck) {
+        // Clear existing cards
+        await storage.clearAnkiCards(deck.id);
+      } else {
+        // Create new deck
+        deck = await storage.createAnkiDeck({
+          userId,
+          databaseId,
+          deckName: `${database.name} Flashcards`,
+          totalCards: 0,
+          newCards: 0,
+          learningCards: 0,
+          reviewCards: 0,
+        });
+      }
+      
+      // Get first-instance words from the database, maintaining order
+      if (database.analysisData && Array.isArray(database.analysisData)) {
+        const firstInstanceWords = database.analysisData
+          .filter((word: any) => word.firstInstance && word.translation && word.translation.trim())
+          .sort((a: any, b: any) => (a.position || 0) - (b.position || 0)); // Sort by position to maintain text order
+        
+        let createdCount = 0;
+        for (const word of firstInstanceWords) {
+          try {
+            await storage.createAnkiCard({
+              userId,
+              databaseId,
+              deckId: deck.id,
+              signature: `${word.word}::${word.pos || 'unknown'}`,
+              wordKey: word.position || createdCount, // Use position from text or fallback to index
+              word: word.word,
+              translations: Array.isArray(word.translation) ? word.translation : [word.translation],
+              pos: word.pos || null,
+              lemma: word.lemma || null,
+              sentence: word.sentence || null,
+              status: 'new',
+              easeFactor: 2500,
+              interval: 0,
+              repetitions: 0,
+              lapses: 0,
+              due: new Date(),
+            });
+            createdCount++;
+          } catch (error) {
+            console.error('Error creating card for word:', word.word, error);
+          }
+        }
+        
+        // Update deck stats
+        await storage.updateAnkiDeck(deck.id, {
+          totalCards: createdCount,
+          newCards: createdCount,
+          learningCards: 0,
+          reviewCards: 0,
+        });
+        
+        // Fetch updated deck
+        deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+      }
+      
+      res.json({ 
+        message: "Anki deck generated successfully",
+        deck: deck,
+        totalCards: deck?.totalCards || 0
+      });
+    } catch (error) {
+      console.error("Error generating Anki deck:", error);
+      res.status(500).json({ message: "Failed to generate Anki deck" });
+    }
+  });
+
   // Regenerate Anki deck from database (useful for updates)
   app.post('/api/anki/regenerate/:databaseId', isAuthenticated, async (req: any, res) => {
     try {

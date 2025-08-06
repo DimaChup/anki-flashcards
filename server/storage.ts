@@ -354,7 +354,11 @@ export class DatabaseStorage implements IStorage {
       ? and(eq(ankiFlashcards.deckId, deckId), eq(ankiFlashcards.status, status))
       : eq(ankiFlashcards.deckId, deckId);
     
-    return await db.select().from(ankiFlashcards).where(conditions);
+    return await db.select().from(ankiFlashcards).where(conditions).orderBy(ankiFlashcards.wordKey);
+  }
+
+  async clearAnkiCards(deckId: string): Promise<void> {
+    await db.delete(ankiFlashcards).where(eq(ankiFlashcards.deckId, deckId));
   }
 
   async getAnkiCardsDue(deckId: string, limit: number = 20): Promise<AnkiFlashcard[]> {

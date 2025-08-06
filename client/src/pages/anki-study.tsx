@@ -2,14 +2,33 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { Brain } from 'lucide-react';
-import type { AnkiStudyDeck, AnkiFlashcard } from '@shared/schema';
+import { Brain, ArrowLeft, Play, RotateCcw } from 'lucide-react';
+import type { LinguisticDatabase } from '@shared/schema';
+
+interface AnkiDeck {
+  id: string;
+  deckName: string;
+  totalCards: number;
+  newCards: number;
+  learningCards: number;
+  reviewCards: number;
+}
+
+interface AnkiCard {
+  id: string;
+  word: string;
+  translations: string[];
+  pos: string;
+  lemma: string;
+  sentence: string;
+  status: 'new' | 'learning' | 'review';
+  wordKey: number; // Position in original text
+}
 
 export default function AnkiStudy() {
   const { user, isAuthenticated } = useAuth();
@@ -18,12 +37,9 @@ export default function AnkiStudy() {
   const queryClient = useQueryClient();
   
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
-  const [currentCard, setCurrentCard] = useState<AnkiFlashcard | null>(null);
+  const [currentCard, setCurrentCard] = useState<AnkiCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [newWordsLimit, setNewWordsLimit] = useState(20);
-  const [enablePosColors, setEnablePosColors] = useState(true);
-  const [excludeKnownWords, setExcludeKnownWords] = useState(true);
+  const [studyStarted, setStudyStarted] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -33,380 +49,354 @@ export default function AnkiStudy() {
   }, [isAuthenticated, setLocation]);
 
   // Get user's databases
-  const { data: databases = [] } = useQuery({
+  const { data: databases = [] } = useQuery<LinguisticDatabase[]>({
     queryKey: ['/api/databases'],
     enabled: isAuthenticated,
   });
 
   // Get Anki deck for selected database
-  const { data: deck, isLoading: deckLoading } = useQuery<AnkiStudyDeck>({
+  const { data: deck, isLoading: deckLoading, refetch: refetchDeck } = useQuery<AnkiDeck>({
     queryKey: ['/api/anki/deck', selectedDatabase],
     enabled: !!selectedDatabase,
   });
 
-  // Get cards due for review
-  const { 
-    data: dueCards = [], 
-    isLoading: cardsLoading, 
-    refetch: refetchCards 
-  } = useQuery<AnkiFlashcard[]>({
-    queryKey: ['/api/anki/deck', deck?.id, 'due'],
-    enabled: !!deck?.id && sessionStarted,
+  // Get cards for the deck (ordered by wordKey to maintain original text order)
+  const { data: cards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
+    queryKey: ['/api/anki/cards', deck?.id],
+    enabled: !!deck?.id && studyStarted,
   });
 
-  // Set the first due card as current when session starts
-  useEffect(() => {
-    if (sessionStarted && dueCards.length > 0 && !currentCard) {
-      setCurrentCard(dueCards[0]);
+  // Generate Anki deck mutation
+  const generateDeckMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      const response = await apiRequest('POST', `/api/anki/generate-deck/${databaseId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Anki Deck Generated!", 
+        description: "Your flashcard deck has been created from first-instance words." 
+      });
+      refetchDeck();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to generate Anki deck",
+        variant: "destructive" 
+      });
     }
-  }, [sessionStarted, dueCards, currentCard]);
+  });
 
-  // Review card mutation
-  const reviewMutation = useMutation({
+  // Review card mutation  
+  const reviewCardMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
-      return apiRequest('POST', '/api/anki/review', { cardId, rating });
+      const response = await apiRequest('POST', '/api/anki/review', { cardId, rating });
+      return response.json();
     },
     onSuccess: () => {
       // Move to next card
-      const currentIndex = dueCards.findIndex(card => card.id === currentCard?.id);
-      const nextCard = dueCards[currentIndex + 1];
+      const currentIndex = cards.findIndex(card => card.id === currentCard?.id);
+      const nextCard = cards[currentIndex + 1];
       
       if (nextCard) {
         setCurrentCard(nextCard);
+        setShowAnswer(false);
       } else {
-        // Session complete
+        // Study session complete
+        setStudyStarted(false);
         setCurrentCard(null);
-        setSessionStarted(false);
-        toast({
-          title: "Session Complete!",
-          description: "You've reviewed all due cards. Great job!",
-        });
+        toast({ title: "Study Session Complete!", description: "Great work! All cards reviewed." });
       }
       
-      setShowAnswer(false);
-      
-      // Refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
-      refetchCards();
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards'] });
     },
-    onError: (error) => {
-      toast({
-        title: "Review failed",
-        description: error.message,
-        variant: "destructive",
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to review card",
+        variant: "destructive" 
       });
-    },
+    }
   });
 
-  const handleReview = (rating: number) => {
-    if (!currentCard) return;
-    reviewMutation.mutate({ cardId: currentCard.id, rating });
-  };
-
-  const startSession = () => {
-    setSessionStarted(true);
-    setShowAnswer(false);
-    setCurrentCard(null);
-  };
-
-  const resetSession = () => {
-    setSessionStarted(false);
-    setCurrentCard(null);
-    setShowAnswer(false);
-  };
-
-  // Get POS styling class
-  const getPosColor = (pos: string) => {
-    switch (pos?.toUpperCase()) {
-      case 'VERB': return 'bg-pink-100 text-pink-800 border-pink-300';
-      case 'NOUN':
-      case 'PROPN': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'ADJ': return 'bg-green-100 text-green-800 border-green-300';
-      case 'AUX': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+  const startStudy = () => {
+    if (cards.length > 0) {
+      setCurrentCard(cards[0]);
+      setStudyStarted(true);
+      setShowAnswer(false);
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const handleCardReview = (rating: number) => {
+    if (currentCard) {
+      reviewCardMutation.mutate({ cardId: currentCard.id, rating });
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4">
-      <div className="w-full max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
         
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
-              <Brain className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Anki Study System</h1>
-              <p className="text-slate-300">Master your vocabulary with spaced repetition</p>
-            </div>
-          </div>
+        {/* Header */}
+        <div className="mb-8">
           <Button
             onClick={() => setLocation('/')}
             variant="outline"
-            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700 mb-4"
+            data-testid="button-back-home"
           >
-            ← Back to Home
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
           </Button>
+          
+          <h1 className="text-4xl font-bold text-white mb-2">
+            <Brain className="inline h-8 w-8 mr-3 text-purple-400" />
+            Anki Study System
+          </h1>
+          <p className="text-slate-300 text-lg">
+            Generate flashcard decks from your linguistic databases and study with spaced repetition
+          </p>
         </div>
 
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="w-full max-w-2xl">
-        
-            {/* Database Selection */}
-            {!selectedDatabase && (
-              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-                <CardHeader className="text-center pb-8">
-                  <h1 className="text-3xl font-bold text-white mb-2">Flashcard Study System</h1>
-                  <p className="text-slate-300">Select a database to begin your Anki-style study session</p>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Choose Database
-                    </label>
-                    <Select onValueChange={setSelectedDatabase}>
-                      <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
-                        <SelectValue placeholder="Select a database..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600">
-                        {(databases as any[]).map((db: any) => (
-                          <SelectItem key={db.id} value={db.id} className="text-white hover:bg-slate-600">
-                            {db.name} ({db.language}) - {db.wordCount} words
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Session Setup */}
-            {selectedDatabase && !sessionStarted && (
-              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto">
-            <CardHeader className="text-center">
-              <h2 className="text-2xl font-bold text-white">Study Session Setup</h2>
-              <p className="text-slate-300">Configure your study session</p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              
-              {/* New words per session control */}
-              <div className="flex items-center justify-between">
-                <label className="text-slate-300 text-lg">New words per session:</label>
-                <input
-                  type="number"
-                  value={newWordsLimit}
-                  onChange={(e) => setNewWordsLimit(Number(e.target.value))}
-                  className="w-20 p-2 bg-slate-900 border border-slate-600 text-white text-center rounded text-xl"
-                  min="1"
-                  max="100"
-                />
-              </div>
-
-              {/* Toggle for POS color assistance */}
-              <div className="flex items-center justify-between">
-                <label className="text-slate-300 text-lg cursor-pointer flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={enablePosColors}
-                    onChange={(e) => setEnablePosColors(e.target.checked)}
-                    className="hidden"
-                  />
-                  <div className={`relative inline-block w-10 h-5 rounded-full transition-colors ${
-                    enablePosColors ? 'bg-blue-600' : 'bg-slate-600'
-                  }`}>
-                    <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${
-                      enablePosColors ? 'translate-x-5' : 'translate-x-0.5'
-                    }`}></div>
-                  </div>
-                  Enable POS color assistance
-                </label>
-              </div>
-
-              {/* Toggle for excluding known words */}
-              <div className="flex items-center justify-between">
-                <label className="text-slate-300 text-lg cursor-pointer flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={excludeKnownWords}
-                    onChange={(e) => setExcludeKnownWords(e.target.checked)}
-                    className="hidden"
-                  />
-                  <div className={`relative inline-block w-10 h-5 rounded-full transition-colors ${
-                    excludeKnownWords ? 'bg-blue-600' : 'bg-slate-600'
-                  }`}>
-                    <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${
-                      excludeKnownWords ? 'translate-x-5' : 'translate-x-0.5'
-                    }`}></div>
-                  </div>
-                  Exclude known words
-                </label>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <Button
-                  onClick={() => {
-                    console.log('Start session clicked!', { deck, deckLoading });
-                    startSession();
-                  }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg"
-                  disabled={deckLoading || !deck}
-                  data-testid="start-session-btn"
-                >
-                  Start Study Session
-                </Button>
-                <Button
-                  onClick={() => setSelectedDatabase('')}
-                  variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700 px-6"
-                >
-                  Change Database
-                </Button>
-              </div>
-              </CardContent>
-              </Card>
-            )}
-
-            {/* Study Session */}
-            {sessionStarted && (
-              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
-                {dueCards.length === 0 ? (
-                  <CardContent className="flex flex-col items-center justify-center py-16">
-                    <div className="text-6xl mb-4">🎉</div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Session Complete!</h3>
-                    <p className="text-slate-300 mb-6 text-center">
-                      You've reviewed all due cards. Come back later for more practice.
-                    </p>
-                    <Button
-                      onClick={resetSession}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Start New Session
-                    </Button>
-                  </CardContent>
-                ) : currentCard ? (
-                  <>
-                    <CardHeader className="text-center border-b border-slate-700 pb-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <Badge variant="outline" className="border-slate-600 text-slate-300">
-                          {dueCards.findIndex(card => card.id === currentCard.id) + 1} / {dueCards.length}
-                        </Badge>
-                        <Button
-                          onClick={resetSession}
-                          variant="ghost"
-                          className="text-slate-400 hover:text-white hover:bg-slate-700"
-                          size="sm"
-                        >
-                          End Session
-                        </Button>
-                      </div>
-                  
-                  {/* Question */}
-                  <div className="space-y-4">
-                    <div className="text-4xl font-bold text-white mb-4">
-                      {currentCard.word}
-                    </div>
-                    
-                    {currentCard.pos && (
-                      <Badge className={`${enablePosColors ? getPosColor(currentCard.pos) : 'bg-gray-100 text-gray-800 border-gray-300'} text-xs font-medium`}>
-                        {currentCard.pos}
-                      </Badge>
-                    )}
-                    
-                    {currentCard.sentence && (
-                      <p className="text-slate-300 italic mt-4 text-lg leading-relaxed">
-                        "{currentCard.sentence}"
-                      </p>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-6">
-                  {/* Answer Section */}
-                  {showAnswer && (
-                    <div className="border-t border-slate-600 pt-6 mb-6">
-                      <div className="text-center space-y-3">
-                        <div className="text-2xl font-semibold text-green-400">
-                          {Array.isArray(currentCard.translations) 
-                            ? currentCard.translations.join(', ') 
-                            : (currentCard.translations as string)}
-                        </div>
-                        
-                        {currentCard.lemma && currentCard.lemma !== currentCard.word && (
-                          <div className="text-slate-400">
-                            <span className="text-sm">Lemma: </span>
-                            <span className="font-medium">{currentCard.lemma}</span>
-                          </div>
-                        )}
-                        
-                        <div className="text-xs text-slate-500 space-x-4">
-                          <span>Status: {currentCard.status}</span>
-                          <span>Ease: {(currentCard.easeFactor / 100).toFixed(1)}</span>
-                          <span>Interval: {currentCard.interval} days</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="space-y-4">
-                    {!showAnswer ? (
-                      <Button
-                        onClick={() => setShowAnswer(true)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 text-lg"
+        <div className="max-w-4xl mx-auto">
+          
+          {/* Database Selection */}
+          {!selectedDatabase && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl">Select Database</CardTitle>
+                <p className="text-slate-300">Choose a linguistic database to create your Anki deck from</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Select onValueChange={setSelectedDatabase} data-testid="select-database">
+                  <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
+                    <SelectValue placeholder="Select a database..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    {databases.map((db) => (
+                      <SelectItem 
+                        key={db.id} 
+                        value={db.id} 
+                        className="text-white hover:bg-slate-600"
+                        data-testid={`option-database-${db.id}`}
                       >
-                        Show Answer
+                        {db.name} ({db.language}) - {db.wordCount} words
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Deck Generation/Management */}
+          {selectedDatabase && !studyStarted && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl flex items-center gap-3">
+                  <Brain className="h-6 w-6 text-purple-400" />
+                  Anki Deck Management
+                </CardTitle>
+                <p className="text-slate-300">
+                  Generate and study flashcards from first-instance words in your selected database
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* Database Info */}
+                <div className="bg-slate-700/50 p-4 rounded-lg">
+                  <p className="text-slate-300">
+                    <span className="font-medium">Selected Database:</span>{' '}
+                    {databases.find(db => db.id === selectedDatabase)?.name}
+                  </p>
+                  <Button
+                    onClick={() => setSelectedDatabase('')}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-change-database"
+                  >
+                    Change Database
+                  </Button>
+                </div>
+
+                {/* Deck Status */}
+                {deckLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-slate-300">Loading deck information...</div>
+                  </div>
+                ) : deck ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-900/20 border border-green-700 p-4 rounded-lg">
+                      <h3 className="text-green-400 font-semibold mb-2">✓ Anki Deck Ready</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-white" data-testid="text-total-cards">{deck.totalCards}</div>
+                          <div className="text-slate-400">Total Cards</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-400" data-testid="text-new-cards">{deck.newCards}</div>
+                          <div className="text-slate-400">New</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-yellow-400" data-testid="text-learning-cards">{deck.learningCards}</div>
+                          <div className="text-slate-400">Learning</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-400" data-testid="text-review-cards">{deck.reviewCards}</div>
+                          <div className="text-slate-400">Review</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <Button
+                        onClick={startStudy}
+                        disabled={deck.totalCards === 0 || cardsLoading}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                        data-testid="button-start-study"
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Study Session
                       </Button>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      
+                      <Button
+                        onClick={() => generateDeckMutation.mutate(selectedDatabase)}
+                        disabled={generateDeckMutation.isPending}
+                        variant="outline"
+                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                        data-testid="button-regenerate-deck"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Regenerate Deck
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="text-slate-300 mb-4">
+                      No Anki deck found for this database. Generate one to start studying!
+                    </div>
+                    <Button
+                      onClick={() => generateDeckMutation.mutate(selectedDatabase)}
+                      disabled={generateDeckMutation.isPending}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg"
+                      data-testid="button-generate-deck"
+                    >
+                      <Brain className="h-5 w-5 mr-2" />
+                      {generateDeckMutation.isPending ? 'Generating...' : 'Generate Anki Deck'}
+                    </Button>
+                    <p className="text-sm text-slate-400">
+                      This will create flashcards from all first-instance words in your database, 
+                      maintaining their original order in the text.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Study Session */}
+          {studyStarted && currentCard && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
+                <div className="flex justify-between text-sm text-slate-400">
+                  <span>Card {cards.findIndex(c => c.id === currentCard.id) + 1} of {cards.length}</span>
+                  <span>Position in text: {currentCard.wordKey}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* Flash Card */}
+                <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
+                  <div className="text-4xl font-bold text-white mb-4" data-testid="text-card-word">
+                    {currentCard.word}
+                  </div>
+                  
+                  {!showAnswer ? (
+                    <Button
+                      onClick={() => setShowAnswer(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white mx-auto"
+                      data-testid="button-show-answer"
+                    >
+                      Show Answer
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-xl text-green-400" data-testid="text-card-translations">
+                        {currentCard.translations.join(', ')}
+                      </div>
+                      {currentCard.pos && (
+                        <div className="text-sm text-slate-400">
+                          <span className="font-medium">POS:</span> {currentCard.pos}
+                        </div>
+                      )}
+                      {currentCard.sentence && (
+                        <div className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-4">
+                          "{currentCard.sentence}"
+                        </div>
+                      )}
+                      
+                      {/* Rating Buttons */}
+                      <div className="flex gap-2 justify-center mt-6">
                         <Button
-                          onClick={() => handleReview(1)}
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
+                          onClick={() => handleCardReview(1)}
+                          disabled={reviewCardMutation.isPending}
+                          variant="destructive"
+                          data-testid="button-again"
                         >
                           Again
                         </Button>
                         <Button
-                          onClick={() => handleReview(2)}
-                          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
+                          onClick={() => handleCardReview(2)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                          data-testid="button-hard"
                         >
                           Hard
                         </Button>
                         <Button
-                          onClick={() => handleReview(3)}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
+                          onClick={() => handleCardReview(3)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid="button-good"
                         >
                           Good
                         </Button>
                         <Button
-                          onClick={() => handleReview(4)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
+                          onClick={() => handleCardReview(4)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700"
+                          data-testid="button-easy"
                         >
                           Easy
                         </Button>
                       </div>
-                    )}
-                  </div>
-                    </CardContent>
-                  </>
-                ) : (
-                  <CardContent className="flex items-center justify-center py-16">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                    <span className="ml-4 text-white">Loading cards...</span>
-                  </CardContent>
-                )}
-              </Card>
-            )}
-          </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Study Controls */}
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => {
+                      setStudyStarted(false);
+                      setCurrentCard(null);
+                      setShowAnswer(false);
+                    }}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-end-session"
+                  >
+                    End Study Session
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
