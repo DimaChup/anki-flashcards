@@ -11,6 +11,7 @@ import {
   insertProcessingJobSchema,
   reviewCardSchema,
   createBatchSchema,
+  ankiReviewSchema,
   type WordEntry 
 } from "@shared/schema";
 import { SpacedRepetitionService } from "./spacedRepetition";
@@ -126,6 +127,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = req.user.id;
       const database = await storage.createLinguisticDatabase(transformedData, userId);
+      
+      // Automatically create associated Anki deck
+      try {
+        await storage.generateAnkiDeckFromDatabase(database.id, userId);
+      } catch (error) {
+        console.error("Failed to create Anki deck:", error);
+        // Don't fail the database creation if Anki deck creation fails
+      }
+      
       res.status(201).json(database);
     } catch (error) {
       if (error instanceof Error) {
@@ -188,6 +198,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const userId = req.user.id;
         const database = await storage.createLinguisticDatabase(transformedData, userId);
+        
+        // Automatically create associated Anki deck
+        try {
+          await storage.generateAnkiDeckFromDatabase(database.id, userId);
+        } catch (error) {
+          console.error("Failed to create Anki deck:", error);
+          // Don't fail the database creation if Anki deck creation fails
+        }
+        
         res.status(201).json(database);
       } else {
         // Try our original schema format
@@ -210,6 +229,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const userId = req.user.id;
         const database = await storage.createLinguisticDatabase(validatedData, userId);
+        
+        // Automatically create associated Anki deck
+        try {
+          await storage.generateAnkiDeckFromDatabase(database.id, userId);
+        } catch (error) {
+          console.error("Failed to create Anki deck:", error);
+          // Don't fail the database creation if Anki deck creation fails
+        }
+        
         res.status(201).json(database);
       }
     } catch (error) {
@@ -997,6 +1025,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting card:", error);
       res.status(500).json({ message: "Failed to delete card" });
+    }
+  });
+
+  // Anki Study System API Routes
+  // Get Anki deck for a database
+  app.get('/api/anki/deck/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const databaseId = req.params.databaseId;
+      
+      // First verify user owns this database
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
+      let deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+      
+      // If no deck exists, create one automatically
+      if (!deck) {
+        deck = await storage.generateAnkiDeckFromDatabase(databaseId, userId);
+      }
+      
+      res.json(deck);
+    } catch (error) {
+      console.error("Error fetching Anki deck:", error);
+      res.status(500).json({ message: "Failed to fetch Anki deck" });
+    }
+  });
+
+  // Get cards for an Anki deck with optional status filter
+  app.get('/api/anki/cards/:deckId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const deckId = req.params.deckId;
+      const status = req.query.status as string;
+      
+      // TODO: Add deck ownership verification if needed
+      const cards = await storage.getAnkiCards(deckId, status);
+      res.json(cards);
+    } catch (error) {
+      console.error("Error fetching Anki cards:", error);
+      res.status(500).json({ message: "Failed to fetch Anki cards" });
+    }
+  });
+
+  // Get cards due for review
+  app.get('/api/anki/deck/:deckId/due', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const deckId = req.params.deckId;
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      const dueCards = await storage.getAnkiCardsDue(deckId, limit);
+      res.json(dueCards);
+    } catch (error) {
+      console.error("Error fetching due cards:", error);
+      res.status(500).json({ message: "Failed to fetch due cards" });
+    }
+  });
+
+  // Review an Anki card (submit rating)
+  app.post('/api/anki/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = ankiReviewSchema.parse(req.body);
+      const updatedCard = await storage.reviewAnkiCard(validatedData);
+      
+      if (!updatedCard) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      
+      res.json(updatedCard);
+    } catch (error) {
+      console.error("Error reviewing Anki card:", error);
+      res.status(500).json({ message: "Failed to review Anki card" });
+    }
+  });
+
+  // Regenerate Anki deck from database (useful for updates)
+  app.post('/api/anki/regenerate/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const databaseId = req.params.databaseId;
+      
+      // First verify user owns this database
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
+      const deck = await storage.generateAnkiDeckFromDatabase(databaseId, userId);
+      res.json(deck);
+    } catch (error) {
+      console.error("Error regenerating Anki deck:", error);
+      res.status(500).json({ message: "Failed to regenerate Anki deck" });
     }
   });
 

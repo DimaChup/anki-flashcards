@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Study System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Root Variables (Dark Theme) --- */
+        :root {
+            --bg-primary: #1a1d21;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #31363f;
+            --text-primary: #e8eaed;
+            --text-secondary: #bdc1c6;
+            --text-heading: #ffffff;
+            --border-color: #4a5058;
+            --focus-ring: rgba(74, 144, 226, 0.4);
+            --transition-speed-fast: 0.15s;
+            --transition-speed-normal: 0.25s;
+            --transition-timing: ease-in-out;
+            --card-bg: var(--bg-secondary);
+            --card-border: var(--border-color);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            --answer-divider: var(--border-color);
+            --grade-again-bg: #cb4b4b;
+            --grade-again-hover: #e06c6c;
+            --grade-hard-bg: #d99e2b;
+            --grade-hard-hover: #e6b35a;
+            --grade-good-bg: #4b9b4b;
+            --grade-good-hover: #6aaa6a;
+            --grade-easy-bg: #4b81cb;
+            --grade-easy-hover: #6c9fde;
+            --error-bg: #5f1d24;
+            --error-border: #9e3842;
+            --error-text: #fecdd3;
+
+            /* --- POS Highlight Colors --- */
+            --hl-verb-hue: 340; --hl-verb-sat: 80%; --hl-verb-light: 80%;
+            --hl-noun-hue: 205; --hl-noun-sat: 80%; --hl-noun-light: 75%;
+            --hl-adj-hue: 145;  --hl-adj-sat: 65%; --hl-adj-light: 75%;
+            --hl-aux-hue: 35;   --hl-aux-sat: 90%; --hl-aux-light: 65%;
+            --hl-other-hue: 45; --hl-other-sat: 90%; --hl-other-light: 75%;
+        }
+
+        /* --- General Body & Font --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Upload & Session Setup Containers --- */
+        #upload-container, #session-setup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 40px;
+            background-color: var(--bg-secondary);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            max-width: 500px;
+        }
+        #upload-container h1, #session-setup-container h2 {
+            margin: 0;
+            color: var(--text-heading);
+        }
+        #upload-container p, #session-setup-container p {
+            margin: 0;
+            color: var(--text-secondary);
+        }
+        #file-input {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        #start-session-button {
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: var(--grade-good-bg);
+            color: white;
+            transition: background-color var(--transition-speed-normal);
+            margin-top: 10px;
+        }
+        #start-session-button:hover {
+            background-color: var(--grade-good-hover);
+        }
+        .setup-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #new-words-limit {
+            width: 80px;
+            padding: 8px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+        .error-message {
+            color: var(--error-text);
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--error-bg);
+            border: 1px solid var(--error-border);
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* --- Toggle Switch (for Setup screen) --- */
+        .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.95em; user-select: none; }
+        .toggle-label input[type="checkbox"] { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: var(--card-border); border-radius: 10px; transition: background-color var(--transition-speed-normal) var(--transition-timing); flex-shrink: 0; }
+        .toggle-switch::before { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background-color: white; top: 2px; left: 2px; transition: transform var(--transition-speed-normal) var(--transition-timing); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch { background-color: var(--grade-easy-bg); }
+        .toggle-label input[type="checkbox"]:checked + .toggle-switch::before { transform: translateX(20px); }
+
+        /* --- Main App Container --- */
+        #app-container {
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-tertiary);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        #session-stats {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        #session-stats span { margin-left: 15px; }
+        #session-stats .stat-new { color: #4b81cb; }
+        #session-stats .stat-learning { color: #d99e2b; }
+        #session-stats .stat-review { color: #4b9b4b; }
+        #download-deck-button {
+             padding: 6px 12px; font-size: 0.8em; font-weight: bold; border: none;
+             border-radius: 6px; cursor: pointer; background-color: var(--grade-easy-bg);
+             color: white; transition: background-color var(--transition-speed-normal);
+        }
+        #download-deck-button:hover { background-color: var(--grade-easy-hover); }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            flex-grow: 1; display: flex; justify-content: center;
+            align-items: center; padding: 20px; position: relative;
+        }
+
+        /* --- Loading / Finished State --- */
+        #session-message { text-align: center; padding: 40px; }
+        #session-message h2 { margin-top: 0; color: var(--text-heading); }
+        #session-message p { color: var(--text-secondary); max-width: 400px; }
+
+        /* --- Flashcard --- */
+        #flashcard {
+            background-color: var(--card-bg); border-radius: 12px; width: 100%;
+            height: 100%; display: flex; flex-direction: column; border: 1px solid var(--card-border);
+        }
+        .card-content {
+            flex-grow: 1; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; padding: 20px; text-align: center;
+        }
+        .card-front h1 { font-size: 3.5em; margin: 0; color: var(--text-heading); }
+        .card-front p.context { font-size: 1.1em; color: var(--text-secondary); margin-top: 15px; font-style: italic; }
+        .card-back { display: none; }
+        .card-back .front-content {
+             padding-bottom: 20px; margin-bottom: 20px;
+             border-bottom: 2px solid var(--answer-divider); width: 100%;
+        }
+        .card-back .front-content h1 { font-size: 2em; margin: 0; }
+        .card-back .back-details { font-size: 1.1em; line-height: 1.8; }
+        .card-back .back-details strong { color: var(--text-secondary); }
+        
+        /* --- POS Color Classes --- */
+        .pos-color-pink { color: hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light)); }
+        .pos-color-blue { color: hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light)); }
+        .pos-color-green { color: hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light)); }
+        .pos-color-orange { color: hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light)); }
+        .pos-color-yellow { color: hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light)); }
+
+
+        /* --- Footer / Controls --- */
+        .app-footer { flex-shrink: 0; padding: 15px; border-top: 1px solid var(--border-color); }
+        #answer-controls, #grading-controls { display: flex; justify-content: center; gap: 15px; }
+        .control-button {
+            flex-grow: 1; padding: 15px 20px; font-size: 1.1em; font-weight: bold;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: background-color var(--transition-speed-fast) var(--transition-timing), transform var(--transition-speed-fast) var(--transition-timing);
+        }
+        .control-button:active { transform: scale(0.98); }
+        #show-answer-button { background-color: #4b81cb; color: white; }
+        #show-answer-button:hover { background-color: #6c9fde; }
+        #grading-controls { display: none; }
+        #grade-again { background-color: var(--grade-again-bg); color: white; }
+        #grade-again:hover { background-color: var(--grade-again-hover); }
+        #grade-hard { background-color: var(--grade-hard-bg); color: white; }
+        #grade-hard:hover { background-color: var(--grade-hard-hover); }
+        #grade-good { background-color: var(--grade-good-bg); color: white; }
+        #grade-good:hover { background-color: var(--grade-good-hover); }
+        #grade-easy { background-color: var(--grade-easy-bg); color: white; }
+        #grade-easy:hover { background-color: var(--grade-easy-hover); }
+
+        /* --- Utility --- */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="upload-container">
+        <h1>Anki-Style Study System</h1>
+        <p>Please select your <strong>combinedData.json</strong> file to begin.</p>
+        <input type="file" id="file-input" accept=".json">
+        <div id="upload-error" class="error-message hidden"></div>
+    </div>
+
+    <div id="session-setup-container" class="hidden">
+        <h2>Session Setup</h2>
+        <p>Your deck is loaded. How many new words would you like to learn today?</p>
+        <div class="setup-control">
+            <label for="new-words-limit">New Words:</label>
+            <input type="number" id="new-words-limit" value="20" min="0">
+        </div>
+        <div class="setup-control">
+             <label class="toggle-label" for="color-assist-toggle">
+                <input type="checkbox" id="color-assist-toggle" checked>
+                <span class="toggle-switch"></span>
+                <span>Enable POS Color Assistance</span>
+            </label>
+        </div>
+        <button id="start-session-button">Start Session</button>
+    </div>
+
+    <div id="app-container" class="hidden">
+        <header class="app-header">
+            <div id="session-stats">Loading stats...</div>
+            <button id="download-deck-button">Save & Download Deck</button>
+        </header>
+        <main class="main-content">
+            <div id="session-message">
+                <h2>Loading Session...</h2>
+                <p>Preparing your study deck.</p>
+            </div>
+            <div id="flashcard" class="hidden">
+                <div class="card-content">
+                    <div class="card-front">
+                        <h1 id="card-front-word"></h1>
+                        <p id="card-front-context" class="context"></p>
+                    </div>
+                    <div class="card-back">
+                        <div class="front-content">
+                            <h1 id="card-back-word"></h1>
+                        </div>
+                        <div id="card-back-details" class="back-details"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="app-footer">
+            <div id="answer-controls">
+                <button id="show-answer-button" class="control-button">Show Answer</button>
+            </div>
+            <div id="grading-controls">
+                <button id="grade-again" class="control-button" data-rating="1">Again</button>
+                <button id="grade-hard" class="control-button" data-rating="2">Hard</button>
+                <button id="grade-good" class="control-button" data-rating="3">Good</button>
+                <button id="grade-easy" class="control-button" data-rating="4">Easy</button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        // FIX: Changed from const to var to prevent potential ReferenceErrors in some environments.
+        var uploadContainer = document.getElementById('upload-container');
+        var fileInput = document.getElementById('file-input');
+        var uploadErrorDiv = document.getElementById('upload-error');
+        var sessionSetupContainer = document.getElementById('session-setup-container');
+        var newWordsLimitInput = document.getElementById('new-words-limit');
+        var colorAssistToggle = document.getElementById('color-assist-toggle');
+        var startSessionButton = document.getElementById('start-session-button');
+        var appContainer = document.getElementById('app-container');
+        var sessionStatsDiv = document.getElementById('session-stats');
+        var downloadDeckButton = document.getElementById('download-deck-button');
+        var sessionMessageDiv = document.getElementById('session-message');
+        var flashcardDiv = document.getElementById('flashcard');
+        var cardFrontDiv = flashcardDiv.querySelector('.card-front');
+        var cardBackDiv = flashcardDiv.querySelector('.card-back');
+        var cardFrontWord = document.getElementById('card-front-word');
+        var cardFrontContext = document.getElementById('card-front-context');
+        var cardBackWord = document.getElementById('card-back-word');
+        var cardBackDetails = document.getElementById('card-back-details');
+        var showAnswerButton = document.getElementById('show-answer-button');
+        var answerControlsDiv = document.getElementById('answer-controls');
+        var gradingControlsDiv = document.getElementById('grading-controls');
+
+        // --- State Variables ---
+        let combinedData = {};
+        let fullStudyDeck = [];
+        let sessionQueue = [];
+        let currentCard = null;
+        let originalFileName = 'combinedData.json';
+        // isColorAssistEnabled is no longer used; checking toggle state directly.
+
+        // --- SRS Constants ---
+        const SRS_DEFAULTS = {
+            EASE_FACTOR: 2.5,
+            INTERVAL_MODIFIERS: { AGAIN: 0, HARD: 1.2, GOOD: 1.0, EASY: 1.3 },
+            EASE_MODIFIERS: { AGAIN: -0.20, HARD: -0.15, GOOD: 0, EASY: 0.15 },
+            LEARNING_STEPS: [1, 10], // in minutes
+            GRADUATING_INTERVAL: 1, // in days
+        };
+
+        const posButtonGroups = [
+            { key: "pink", tags: ["VERB"] },
+            { key: "blue", tags: ["NOUN", "PROPN"] },
+            { key: "green", tags: ["ADJ"] },
+            { key: "orange", tags: ["AUX"] },
+            { key: "yellow", tags: ["ADV", "ADP", "DET", "CONJ", "PRON", "SCONJ", "CCONJ", "NUM", "PART", "INTJ", "SYM", "X"] }
+        ];
+
+        // --- Initialization ---
+        function initializeApp() {
+            console.log("Initializing Flashcard App with Upload.");
+            addEventListeners();
+        }
+        
+        function getSignature(word, pos) {
+            const SIGNATURE_SEPARATOR = '::';
+            const NULL_PLACEHOLDER = '_NONE_';
+            if (!word) return null;
+            const wordLower = word.toLowerCase();
+            const posNorm = (pos && pos.length > 0) ? pos : NULL_PLACEHOLDER;
+            return `${wordLower}${SIGNATURE_SEPARATOR}${posNorm}`;
+        }
+
+        // --- Data Handling ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            originalFileName = file.name;
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.wordDatabase || !data.inputText) {
+                        throw new Error("Invalid file format. Missing 'wordDatabase' or 'inputText'.");
+                    }
+                    combinedData = data;
+
+                    if (combinedData.studyDeck && combinedData.studyDeck.length > 0) {
+                        console.log("Existing study deck found. Loading progress.");
+                        fullStudyDeck = combinedData.studyDeck.map(card => ({
+                            ...card,
+                            srs: {
+                                status: 'new', due: new Date().toISOString(), interval: 0,
+                                ease_factor: SRS_DEFAULTS.EASE_FACTOR, ...card.srs
+                            }
+                        }));
+                    } else {
+                        console.log("No study deck found. Generating new deck from 'first_inst' words.");
+                        fullStudyDeck = generateDeckFromDatabase(combinedData.wordDatabase);
+                    }
+                    
+                    combinedData.studyDeck = fullStudyDeck;
+                    console.log(`Loaded ${fullStudyDeck.length} total cards.`);
+                    uploadErrorDiv.classList.add('hidden');
+                    
+                    uploadContainer.classList.add('hidden');
+                    sessionSetupContainer.classList.remove('hidden');
+                    
+                    const newCardCount = fullStudyDeck.filter(c => c.srs.status === 'new').length;
+                    newWordsLimitInput.value = Math.min(20, newCardCount);
+                    newWordsLimitInput.max = newCardCount;
+
+                } catch (error) {
+                    console.error("Failed to parse JSON:", error);
+                    uploadErrorDiv.textContent = `Error: ${error.message}`;
+                    uploadErrorDiv.classList.remove('hidden');
+                }
+            };
+            
+            reader.onerror = () => {
+                 console.error("Failed to read file.");
+                 uploadErrorDiv.textContent = "Error: Failed to read the selected file.";
+                 uploadErrorDiv.classList.remove('hidden');
+            };
+
+            reader.readAsText(file);
+        }
+
+        function generateDeckFromDatabase(wordDatabase) {
+            const newCards = [];
+            for (const key in wordDatabase) {
+                const dbEntry = wordDatabase[key];
+                if (dbEntry.first_inst === true) {
+                    const newCard = {
+                        signature: getSignature(dbEntry.word, dbEntry.pos),
+                        front: { word: dbEntry.word, key: parseInt(key, 10) },
+                        back: {
+                            pos: dbEntry.pos || null, lemma: dbEntry.lemma || null,
+                            word_translations: dbEntry.possible_translations || [],
+                            lemma_translations: dbEntry.lemma_translations || []
+                        },
+                        srs: {
+                            status: 'new', due: new Date().toISOString(), interval: 0,
+                            ease_factor: SRS_DEFAULTS.EASE_FACTOR
+                        }
+                    };
+                    newCards.push(newCard);
+                }
+            }
+            newCards.sort((a, b) => a.front.key - b.front.key);
+            return newCards;
+        }
+        
+        function handleDownloadDeck() {
+            if (!combinedData) {
+                console.error("No data to download.");
+                return;
+            }
+            combinedData.studyDeck = fullStudyDeck;
+            const dataStr = JSON.stringify(combinedData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.download = originalFileName;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+            console.log("Deck progress saved and download initiated.");
+        }
+
+        // --- Session Management ---
+        function startSession() {
+            const newWordsLimit = parseInt(newWordsLimitInput.value, 10) || 0;
+            // The toggle state is now read directly in the display functions
+            
+            sessionSetupContainer.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+
+            const now = new Date();
+            
+            const dueReviews = fullStudyDeck.filter(c => c.srs.status === 'review' && new Date(c.srs.due) <= now);
+            const dueLearning = fullStudyDeck.filter(c => c.srs.status === 'learning' && new Date(c.srs.due) <= now);
+            
+            const newCards = fullStudyDeck.filter(c => c.srs.status === 'new');
+            const newCardsForSession = newCards.slice(0, newWordsLimit);
+
+            sessionQueue = [...dueReviews, ...dueLearning, ...newCardsForSession];
+            sessionQueue.sort((a, b) => new Date(a.srs.due) - new Date(b.srs.due));
+
+            console.log(`Starting session with ${dueReviews.length} reviews, ${dueLearning.length} learning, and ${newCardsForSession.length} new cards. Color assist: ${isColorAssistEnabled}`);
+            
+            if (sessionQueue.length > 0) {
+                showNextCard();
+            } else {
+                showSessionMessage("All Done!", "You have no cards due for review and no new cards to learn today. Great job!");
+            }
+            updateStats();
+        }
+
+        function showNextCard() {
+            if (sessionQueue.length > 0) {
+                currentCard = sessionQueue.shift();
+                displayCardFront();
+            } else {
+                currentCard = null;
+                showSessionMessage("Session Complete!", "You've finished all your reviews for now. Remember to save and download your progress!");
+            }
+            updateStats();
+        }
+        
+        // --- UI Display Functions ---
+        function getPosColorClass(pos) {
+            if (!pos) return '';
+            const group = posButtonGroups.find(g => g.tags.includes(pos));
+            return group ? `pos-color-${group.key}` : '';
+        }
+
+        function displayCardFront() {
+            flashcardDiv.classList.remove('hidden');
+            sessionMessageDiv.classList.add('hidden');
+            cardFrontDiv.style.display = 'flex';
+            cardBackDiv.style.display = 'none';
+            answerControlsDiv.style.display = 'flex';
+            gradingControlsDiv.style.display = 'none';
+            
+            cardFrontWord.className = ''; // Reset class
+            if (colorAssistToggle.checked) {
+                const colorClass = getPosColorClass(currentCard.back.pos);
+                cardFrontWord.className = colorClass;
+            }
+            cardFrontWord.textContent = `${currentCard.front.word} (${currentCard.front.key})`;
+            cardFrontContext.textContent = '';
+        }
+
+        function showAnswer() {
+            cardBackWord.className = ''; // Reset class
+            if (colorAssistToggle.checked) {
+                const colorClass = getPosColorClass(currentCard.back.pos);
+                cardBackWord.className = colorClass;
+            }
+            cardBackWord.textContent = currentCard.front.word;
+
+            let detailsHTML = `
+                <strong>POS:</strong> ${currentCard.back.pos || 'N/A'}<br>
+                <strong>Lemma:</strong> ${currentCard.back.lemma || 'N/A'}<br>
+                <strong>Translations:</strong> ${(currentCard.back.word_translations || []).join(', ') || 'None'}
+            `;
+            cardBackDetails.innerHTML = detailsHTML;
+            cardFrontDiv.style.display = 'none';
+            cardBackDiv.style.display = 'block';
+            answerControlsDiv.style.display = 'none';
+            gradingControlsDiv.style.display = 'flex';
+        }
+        
+        function updateStats() {
+            const now = new Date();
+            const newCount = fullStudyDeck.filter(c => c.srs.status === 'new').length;
+            const dueLearning = fullStudyDeck.filter(c => c.srs.status === 'learning' && new Date(c.srs.due) <= now).length;
+            const dueReviews = fullStudyDeck.filter(c => c.srs.status === 'review' && new Date(c.srs.due) <= now).length;
+            sessionStatsDiv.innerHTML = `
+                <span class="stat-new">New: ${newCount}</span>
+                <span class="stat-learning">Learning: ${dueLearning}</span>
+                <span class="stat-review">Review: ${dueReviews}</span>
+            `;
+        }
+
+        function showSessionMessage(title, text) {
+            flashcardDiv.classList.add('hidden');
+            sessionMessageDiv.classList.remove('hidden');
+            answerControlsDiv.style.display = 'none';
+            gradingControlsDiv.style.display = 'none';
+            sessionMessageDiv.querySelector('h2').textContent = title;
+            sessionMessageDiv.querySelector('p').textContent = text;
+        }
+
+        // --- SRS Logic ---
+        function processReview(rating) {
+            if (!currentCard) return;
+            const srs = currentCard.srs;
+            let newInterval;
+            const now = new Date();
+            const ratingMap = { '1': 'AGAIN', '2': 'HARD', '3': 'GOOD', '4': 'EASY' };
+            const ratingName = ratingMap[rating];
+
+            srs.ease_factor = Math.max(1.3, srs.ease_factor + SRS_DEFAULTS.EASE_MODIFIERS[ratingName]);
+
+            if (ratingName === 'AGAIN') {
+                srs.status = 'learning';
+                newInterval = SRS_DEFAULTS.LEARNING_STEPS[0] * 60 * 1000;
+            } else {
+                if (srs.status === 'new' || srs.status === 'learning') {
+                    srs.status = 'review';
+                    newInterval = SRS_DEFAULTS.GRADUATING_INTERVAL * 24 * 60 * 60 * 1000;
+                } else {
+                    newInterval = srs.interval * srs.ease_factor * SRS_DEFAULTS.INTERVAL_MODIFIERS[ratingName] * 24 * 60 * 60 * 1000;
+                }
+            }
+
+            srs.interval = newInterval / (24 * 60 * 60 * 1000);
+            srs.due = new Date(now.getTime() + newInterval).toISOString();
+            
+            const cardIndex = fullStudyDeck.findIndex(c => c.signature === currentCard.signature);
+            if (cardIndex > -1) {
+                fullStudyDeck[cardIndex] = currentCard;
+            }
+            
+            showNextCard();
+        }
+
+        // --- Event Listeners ---
+        function addEventListeners() {
+            fileInput.addEventListener('change', handleFileUpload);
+            startSessionButton.addEventListener('click', startSession);
+            downloadDeckButton.addEventListener('click', handleDownloadDeck);
+            showAnswerButton.addEventListener('click', showAnswer);
+            gradingControlsDiv.addEventListener('click', (e) => {
+                const button = e.target.closest('.control-button');
+                if (button && button.dataset.rating) {
+                    processReview(button.dataset.rating);
+                }
+            });
+        }
+
+        // --- Start the application ---
+        initializeApp();
+    });
+    </script>
+</body>
+</html>

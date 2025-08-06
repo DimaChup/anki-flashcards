@@ -12,13 +12,20 @@ import {
   type InsertProcessingConfig,
   type ProcessingJob,
   type InsertProcessingJob,
+  type AnkiStudyDeck,
+  type InsertAnkiStudyDeck,
+  type AnkiFlashcard,
+  type InsertAnkiFlashcard,
+  type AnkiReview,
   linguisticDatabases,
   promptTemplates,
   processingConfigs,
-  processingJobs
+  processingJobs,
+  ankiStudyDecks,
+  ankiFlashcards
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -66,6 +73,17 @@ export interface IStorage {
   createProcessingJob(job: InsertProcessingJob): Promise<ProcessingJob>;
   updateProcessingJob(id: string, job: Partial<InsertProcessingJob>): Promise<ProcessingJob | undefined>;
   deleteProcessingJob(id: string): Promise<boolean>;
+
+  // Anki Study System operations
+  getAnkiDeckByDatabase(databaseId: string, userId?: string): Promise<AnkiStudyDeck | undefined>;
+  createAnkiDeck(deck: InsertAnkiStudyDeck): Promise<AnkiStudyDeck>;
+  updateAnkiDeck(deckId: string, updates: Partial<InsertAnkiStudyDeck>): Promise<AnkiStudyDeck | undefined>;
+  getAnkiCards(deckId: string, status?: string): Promise<AnkiFlashcard[]>;
+  getAnkiCardsDue(deckId: string, limit?: number): Promise<AnkiFlashcard[]>;
+  createAnkiCard(card: InsertAnkiFlashcard): Promise<AnkiFlashcard>;
+  updateAnkiCard(cardId: string, updates: Partial<InsertAnkiFlashcard>): Promise<AnkiFlashcard | undefined>;
+  reviewAnkiCard(review: AnkiReview): Promise<AnkiFlashcard | undefined>;
+  generateAnkiDeckFromDatabase(databaseId: string, userId: string): Promise<AnkiStudyDeck>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -306,6 +324,167 @@ export class DatabaseStorage implements IStorage {
   async deleteProcessingJob(id: string): Promise<boolean> {
     const result = await db.delete(processingJobs).where(eq(processingJobs.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Anki Study System implementation
+  async getAnkiDeckByDatabase(databaseId: string, userId?: string): Promise<AnkiStudyDeck | undefined> {
+    const conditions = userId 
+      ? and(eq(ankiStudyDecks.databaseId, databaseId), eq(ankiStudyDecks.userId, userId))
+      : eq(ankiStudyDecks.databaseId, databaseId);
+    
+    const [deck] = await db.select().from(ankiStudyDecks).where(conditions);
+    return deck || undefined;
+  }
+
+  async createAnkiDeck(deck: InsertAnkiStudyDeck): Promise<AnkiStudyDeck> {
+    const [created] = await db.insert(ankiStudyDecks).values(deck).returning();
+    return created;
+  }
+
+  async updateAnkiDeck(deckId: string, updates: Partial<InsertAnkiStudyDeck>): Promise<AnkiStudyDeck | undefined> {
+    const [updated] = await db.update(ankiStudyDecks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ankiStudyDecks.id, deckId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getAnkiCards(deckId: string, status?: string): Promise<AnkiFlashcard[]> {
+    const conditions = status 
+      ? and(eq(ankiFlashcards.deckId, deckId), eq(ankiFlashcards.status, status))
+      : eq(ankiFlashcards.deckId, deckId);
+    
+    return await db.select().from(ankiFlashcards).where(conditions);
+  }
+
+  async getAnkiCardsDue(deckId: string, limit: number = 20): Promise<AnkiFlashcard[]> {
+    const now = new Date();
+    return await db.select().from(ankiFlashcards)
+      .where(and(
+        eq(ankiFlashcards.deckId, deckId),
+        lte(ankiFlashcards.due, now) // Cards due now or in the past
+      ))
+      .limit(limit);
+  }
+
+  async createAnkiCard(card: InsertAnkiFlashcard): Promise<AnkiFlashcard> {
+    const [created] = await db.insert(ankiFlashcards).values(card).returning();
+    return created;
+  }
+
+  async updateAnkiCard(cardId: string, updates: Partial<InsertAnkiFlashcard>): Promise<AnkiFlashcard | undefined> {
+    const [updated] = await db.update(ankiFlashcards)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(ankiFlashcards.id, cardId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async reviewAnkiCard(review: AnkiReview): Promise<AnkiFlashcard | undefined> {
+    const card = await db.select().from(ankiFlashcards).where(eq(ankiFlashcards.id, review.cardId)).limit(1);
+    if (!card[0]) return undefined;
+
+    const currentCard = card[0];
+    
+    // Anki algorithm based on the original script
+    const SRS_DEFAULTS = {
+      EASE_FACTOR: 2.5,
+      INTERVAL_MODIFIERS: { 1: 0, 2: 1.2, 3: 1.0, 4: 1.3 }, // Again, Hard, Good, Easy
+      EASE_MODIFIERS: { 1: -0.20, 2: -0.15, 3: 0, 4: 0.15 },
+      LEARNING_STEPS: [1, 10], // in minutes
+      GRADUATING_INTERVAL: 1, // in days
+    };
+
+    const easeModifier = SRS_DEFAULTS.EASE_MODIFIERS[review.rating as keyof typeof SRS_DEFAULTS.EASE_MODIFIERS];
+    const intervalModifier = SRS_DEFAULTS.INTERVAL_MODIFIERS[review.rating as keyof typeof SRS_DEFAULTS.INTERVAL_MODIFIERS];
+    
+    let newEaseFactor = Math.max(1300, currentCard.easeFactor + (easeModifier * 1000));
+    let newInterval: number;
+    let newStatus = currentCard.status;
+    const now = new Date();
+
+    if (review.rating === 1) { // Again
+      newStatus = 'learning';
+      newInterval = SRS_DEFAULTS.LEARNING_STEPS[0] * 60 * 1000; // Convert to milliseconds
+    } else {
+      if (currentCard.status === 'new' || currentCard.status === 'learning') {
+        newStatus = 'review';
+        newInterval = SRS_DEFAULTS.GRADUATING_INTERVAL * 24 * 60 * 60 * 1000;
+      } else {
+        newInterval = currentCard.interval * (newEaseFactor / 1000) * intervalModifier * 24 * 60 * 60 * 1000;
+      }
+    }
+
+    const newDue = new Date(now.getTime() + newInterval);
+
+    return await this.updateAnkiCard(review.cardId, {
+      status: newStatus,
+      easeFactor: newEaseFactor,
+      interval: Math.round(newInterval / (24 * 60 * 60 * 1000)), // Convert back to days
+      due: newDue,
+      repetitions: currentCard.repetitions + 1,
+      lapses: review.rating === 1 ? currentCard.lapses + 1 : currentCard.lapses
+    });
+  }
+
+  async generateAnkiDeckFromDatabase(databaseId: string, userId: string): Promise<AnkiStudyDeck> {
+    // Get the linguistic database
+    const database = await this.getLinguisticDatabase(databaseId, userId);
+    if (!database) throw new Error('Database not found');
+
+    // Check if deck already exists
+    const existingDeck = await this.getAnkiDeckByDatabase(databaseId, userId);
+    if (existingDeck) return existingDeck;
+
+    // Create the deck
+    const deck = await this.createAnkiDeck({
+      userId,
+      databaseId,
+      deckName: `${database.name} - Anki Deck`,
+      totalCards: 0,
+      newCards: 0,
+      learningCards: 0,
+      reviewCards: 0,
+      studySettings: { newCardsPerDay: 20, maxReviews: 100, colorAssist: true }
+    });
+
+    // Generate cards from first instance words
+    const analysisData = database.analysisData as WordEntry[];
+    const firstInstanceWords = analysisData.filter(word => word.firstInstance);
+
+    const cards: InsertAnkiFlashcard[] = firstInstanceWords.map(word => ({
+      userId,
+      deckId: deck.id,
+      databaseId,
+      signature: `${word.word.toLowerCase()}::${word.pos}`,
+      word: word.word,
+      wordKey: word.position,
+      pos: word.pos,
+      lemma: word.lemma,
+      translations: [word.translation],
+      sentence: word.sentence,
+      status: 'new',
+      easeFactor: 2500,
+      interval: 0,
+      due: new Date(),
+      repetitions: 0,
+      lapses: 0
+    }));
+
+    // Insert all cards
+    for (const card of cards) {
+      await this.createAnkiCard(card);
+    }
+
+    // Update deck stats
+    await this.updateAnkiDeck(deck.id, {
+      totalCards: cards.length,
+      newCards: cards.length,
+      learningCards: 0,
+      reviewCards: 0
+    });
+
+    return deck;
   }
 
   private getPosGroup(pos: string): string {

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
+import AnkiFlashcardSection from '@/components/anki-flashcard-section';
 import type { SpacedRepetitionCard } from '@shared/schema';
 
 interface BatchLearningStats {
@@ -216,10 +217,15 @@ export default function Flashcards() {
 
         {selectedDatabase && (
           <Tabs defaultValue="review" className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="review" data-testid="tab-review">Review</TabsTrigger>
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="review" data-testid="tab-review">Batch Study</TabsTrigger>
+              <TabsTrigger value="anki" data-testid="tab-anki">Anki Study</TabsTrigger>
               <TabsTrigger value="stats" data-testid="tab-stats">Statistics</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="anki">
+              <AnkiFlashcardSection databaseId={selectedDatabase} />
+            </TabsContent>
 
             <TabsContent value="review">
               {currentCard ? (

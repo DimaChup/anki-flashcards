@@ -163,6 +163,49 @@ export const spacedRepetitionCards = pgTable("spaced_repetition_cards", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Anki Study Deck - automatically associated with linguistic databases
+export const ankiStudyDecks = pgTable("anki_study_decks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  databaseId: varchar("database_id").notNull().unique(), // One-to-one with linguistic database
+  deckName: text("deck_name").notNull(),
+  totalCards: integer("total_cards").notNull().default(0),
+  newCards: integer("new_cards").notNull().default(0),
+  learningCards: integer("learning_cards").notNull().default(0),
+  reviewCards: integer("review_cards").notNull().default(0),
+  studySettings: jsonb("study_settings").default('{"newCardsPerDay": 20, "maxReviews": 100, "colorAssist": true}'),
+  lastStudied: timestamp("last_studied", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Anki Flashcards - modeled on the original script
+export const ankiFlashcards = pgTable("anki_flashcards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  deckId: varchar("deck_id").notNull(),
+  databaseId: varchar("database_id").notNull(),
+  signature: text("signature").notNull(), // Unique identifier like "word::pos"
+  // Front side of card
+  word: text("word").notNull(),
+  wordKey: integer("word_key").notNull(), // Position in original text
+  // Back side of card  
+  pos: text("pos"),
+  lemma: text("lemma"),
+  translations: jsonb("translations").default('[]'), // Array of translations
+  sentence: text("sentence"), // Context sentence
+  // SRS fields based on the script
+  status: text("status").notNull().default('new'), // new, learning, review
+  easeFactor: integer("ease_factor").notNull().default(2500), // 2.5 * 1000 for precision
+  interval: integer("interval").notNull().default(0), // Days
+  due: timestamp("due", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  repetitions: integer("repetitions").notNull().default(0),
+  lapses: integer("lapses").notNull().default(0),
+  // Metadata
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Review History for Analytics
 export const reviewHistory = pgTable("review_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -221,6 +264,30 @@ export type InsertSpacedRepetitionBatch = z.infer<typeof insertSpacedRepetitionB
 export type SpacedRepetitionCard = typeof spacedRepetitionCards.$inferSelect;
 export type InsertSpacedRepetitionCard = z.infer<typeof insertSpacedRepetitionCardSchema>;
 export type ReviewHistory = typeof reviewHistory.$inferSelect;
+
+// Anki system types
+export const insertAnkiStudyDeckSchema = createInsertSchema(ankiStudyDecks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAnkiFlashcardSchema = createInsertSchema(ankiFlashcards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const ankiReviewSchema = z.object({
+  cardId: z.string(),
+  rating: z.number().min(1).max(4), // 1=Again, 2=Hard, 3=Good, 4=Easy
+});
+
+export type AnkiStudyDeck = typeof ankiStudyDecks.$inferSelect;
+export type InsertAnkiStudyDeck = z.infer<typeof insertAnkiStudyDeckSchema>;
+export type AnkiFlashcard = typeof ankiFlashcards.$inferSelect;
+export type InsertAnkiFlashcard = z.infer<typeof insertAnkiFlashcardSchema>;
+export type AnkiReview = z.infer<typeof ankiReviewSchema>;
 
 // POS highlighting configuration
 export const posConfigSchema = z.object({
