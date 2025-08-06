@@ -30,14 +30,14 @@ interface AnkiCard {
   wordKey: number; // Position in original text
 }
 
-// Helper function to get POS color class
-function getPosColorClass(pos: string): string {
+// Helper function to get POS text color
+function getPosTextColor(pos: string): string {
   const posLower = pos.toLowerCase();
-  if (posLower.includes('verb')) return 'highlight-verb';
-  if (posLower.includes('noun') || posLower.includes('propn')) return 'highlight-noun';
-  if (posLower.includes('adj')) return 'highlight-adj';
-  if (posLower.includes('aux')) return 'highlight-aux';
-  return 'highlight-other';
+  if (posLower.includes('verb')) return 'text-pink-300';
+  if (posLower.includes('noun') || posLower.includes('propn')) return 'text-blue-300';
+  if (posLower.includes('adj')) return 'text-green-300';
+  if (posLower.includes('aux')) return 'text-yellow-300';
+  return 'text-orange-300';
 }
 
 export default function AnkiStudy() {
@@ -429,9 +429,9 @@ export default function AnkiStudy() {
                 
                 {/* Flash Card */}
                 <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
-                  <div className={`text-4xl font-bold mb-4 px-4 py-2 rounded-lg inline-block ${
+                  <div className={`text-4xl font-bold mb-4 ${
                     posAssist 
-                      ? `${getPosColorClass(currentCard.pos)} text-slate-900` 
+                      ? getPosTextColor(currentCard.pos)
                       : 'text-white'
                   }`} data-testid="text-card-word">
                     {currentCard.word}
