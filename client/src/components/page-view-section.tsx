@@ -334,20 +334,29 @@ export default function PageViewSection({
     const pageWords = words.slice(startIndex, startIndex + wordsPerPage);
     const result = [];
     
-    // Simple approach: use word positions to reconstruct text
+    // Calculate starting text position based on previous words
     let textPosition = 0;
+    
+    // Find text position for the first word on this page
+    for (let i = 0; i < startIndex && i < words.length; i++) {
+      const prevWord = words[i];
+      const wordPos = originalText.indexOf(prevWord.word, textPosition);
+      if (wordPos >= 0) {
+        textPosition = wordPos + prevWord.word.length;
+      }
+    }
     
     for (let i = 0; i < pageWords.length; i++) {
       const word = pageWords[i];
       const wordIndex = startIndex + i;
       
-      // Find word in original text
+      // Find word in original text starting from current position
       const wordPosition = originalText.indexOf(word.word, textPosition);
       
-      if (wordPosition > textPosition) {
+      if (wordPosition > textPosition && wordPosition >= 0) {
         // Add any punctuation/whitespace before the word
         const punctuation = originalText.substring(textPosition, wordPosition);
-        if (punctuation.trim()) {
+        if (punctuation.trim() || punctuation.includes('\n')) {
           result.push(
             <span key={`punct-${wordIndex}`} className="punctuation">
               {punctuation}
@@ -360,7 +369,9 @@ export default function PageViewSection({
       result.push(renderWordSpan(word, wordIndex));
       
       // Update position past this word
-      textPosition = wordPosition + word.word.length;
+      if (wordPosition >= 0) {
+        textPosition = wordPosition + word.word.length;
+      }
     }
     
     return result;
