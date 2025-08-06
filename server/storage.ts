@@ -620,6 +620,7 @@ export class DatabaseStorage implements IStorage {
         // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
         const numA = parseInt(a.id.toString(), 10);
         const numB = parseInt(b.id.toString(), 10);
+        console.log(`Sorting: ${a.word} (id: ${a.id}, parsed: ${numA}) vs ${b.word} (id: ${b.id}, parsed: ${numB})`);
         return numA - numB;
       });
     
