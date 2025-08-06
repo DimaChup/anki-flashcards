@@ -88,7 +88,7 @@ export default function AnkiStudy() {
       if (!response.ok) throw new Error('Failed to fetch study queue');
       return response.json();
     },
-    enabled: !!deck?.id && studyStarted, // Only load when studying
+    enabled: !!deck?.id, // Load when deck is available to show correct button text
   });
 
   // Get known words from the database
