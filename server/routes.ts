@@ -58,6 +58,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize database from text (matching original script behavior)
+  app.post("/api/databases/initialize", async (req, res) => {
+    try {
+      const { mode, inputText, filename } = req.body;
+      
+      if (mode !== 'initialize' || !inputText) {
+        return res.status(400).json({ message: "Invalid request. Expected mode: 'initialize' and inputText." });
+      }
+
+      // Create database structure exactly like original script
+      const transformedData = {
+        name: filename || `Database_${Date.now()}`,
+        description: `Initialized from text input on ${new Date().toLocaleDateString()}`,
+        language: "Spanish", // Default to Spanish based on original behavior
+        originalText: inputText, // Store the original input text
+        wordCount: inputText.split(/\s+/).filter(word => word.trim()).length,
+        analysisData: [], // Empty - to be filled by AI processing later
+        knownWords: [], // Empty initially
+        segments: [] // Empty initially
+      };
+
+      const database = await storage.createLinguisticDatabase(transformedData);
+      res.status(201).json(database);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to initialize database" });
+      }
+    }
+  });
+
   // Upload JSON database file
   app.post("/api/databases/upload", upload.single('jsonFile'), async (req: Request & { file?: Express.Multer.File }, res) => {
     try {

@@ -199,21 +199,16 @@ export default function CreateDatabase() {
     showStatus(`Latest job status: ${latestJob.status} (${latestJob.progress}% complete)`, 'success');
   };
 
-  // Initialize File functionality - creates a new database from raw text
+  // Initialize File functionality - matches original script behavior exactly
   const initializeFileMutation = useMutation({
-    mutationFn: async (data: { filename: string; inputText: string; language: string; description?: string }) => {
-      const response = await fetch('/api/databases', {
+    mutationFn: async (data: { filename: string; inputText: string }) => {
+      const response = await fetch('/api/databases/initialize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: data.filename,
-          originalText: data.inputText,
-          language: data.language,
-          description: data.description || `Database initialized from text input`,
-          analysisData: [],
-          knownWords: [],
-          segments: [],
-          wordCount: data.inputText.split(/\s+/).filter(word => word.trim()).length
+          mode: 'initialize',
+          inputText: data.inputText,
+          filename: data.filename
         })
       });
       if (!response.ok) {
@@ -246,9 +241,7 @@ export default function CreateDatabase() {
 
     initializeFileMutation.mutate({
       filename: finalFilename,
-      inputText: initializeText,
-      language: formData.language,
-      description: `Initialized from text input on ${new Date().toLocaleDateString()}`
+      inputText: initializeText
     });
   };
 
