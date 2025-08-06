@@ -1,4 +1,7 @@
 import { 
+  users,
+  type User,
+  type UpsertUser,
   type LinguisticDatabase, 
   type InsertLinguisticDatabase, 
   type WordEntry, 
@@ -19,10 +22,14 @@ import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-  // Linguistic Database CRUD operations
-  getLinguisticDatabase(id: string): Promise<LinguisticDatabase | undefined>;
-  getAllLinguisticDatabases(): Promise<LinguisticDatabase[]>;
-  createLinguisticDatabase(database: InsertLinguisticDatabase): Promise<LinguisticDatabase>;
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Linguistic Database CRUD operations (now user-filtered)
+  getLinguisticDatabase(id: string, userId?: string): Promise<LinguisticDatabase | undefined>;
+  getAllLinguisticDatabases(userId?: string): Promise<LinguisticDatabase[]>;
+  createLinguisticDatabase(database: InsertLinguisticDatabase, userId?: string): Promise<LinguisticDatabase>;
   updateLinguisticDatabase(id: string, database: Partial<InsertLinguisticDatabase>): Promise<LinguisticDatabase | undefined>;
   deleteLinguisticDatabase(id: string): Promise<boolean>;
   
@@ -57,18 +64,48 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getLinguisticDatabase(id: string): Promise<LinguisticDatabase | undefined> {
-    const [database] = await db.select().from(linguisticDatabases).where(eq(linguisticDatabases.id, id));
+  // User operations (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date().toISOString(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getLinguisticDatabase(id: string, userId?: string): Promise<LinguisticDatabase | undefined> {
+    const conditions = userId 
+      ? and(eq(linguisticDatabases.id, id), eq(linguisticDatabases.userId, userId))
+      : eq(linguisticDatabases.id, id);
+    
+    const [database] = await db.select().from(linguisticDatabases).where(conditions);
     return database || undefined;
   }
 
-  async getAllLinguisticDatabases(): Promise<LinguisticDatabase[]> {
-    return await db.select().from(linguisticDatabases).orderBy(desc(linguisticDatabases.createdAt));
+  async getAllLinguisticDatabases(userId?: string): Promise<LinguisticDatabase[]> {
+    const query = userId 
+      ? db.select().from(linguisticDatabases).where(eq(linguisticDatabases.userId, userId))
+      : db.select().from(linguisticDatabases);
+    
+    return await query.orderBy(desc(linguisticDatabases.createdAt));
   }
 
-  async createLinguisticDatabase(insertDatabase: InsertLinguisticDatabase): Promise<LinguisticDatabase> {
+  async createLinguisticDatabase(insertDatabase: InsertLinguisticDatabase, userId?: string): Promise<LinguisticDatabase> {
     const [database] = await db.insert(linguisticDatabases).values({
       ...insertDatabase,
+      userId,
       segments: insertDatabase.segments || []
     }).returning();
     return database;

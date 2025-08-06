@@ -37,6 +37,35 @@ export const segmentSchema = z.object({
 
 export type Segment = z.infer<typeof segmentSchema>;
 
+// Session storage table (required for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: text("expire").notNull(),
+  }
+);
+
+// Users table (required for Replit Auth)
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type User = typeof users.$inferSelect;
+export type UpsertUser = typeof users.$inferInsert;
+
 // User subscription schema for monetization
 export const userSubscriptions = pgTable("user_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

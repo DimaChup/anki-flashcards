@@ -1,6 +1,7 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertLinguisticDatabaseSchema, 
   updateKnownWordsSchema, 
@@ -19,11 +20,26 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
-  // Get all linguistic databases
-  app.get("/api/databases", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const databases = await storage.getAllLinguisticDatabases();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+  
+  // Get all linguistic databases (now user-filtered)
+  app.get("/api/databases", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databases = await storage.getAllLinguisticDatabases(userId);
       res.json(databases);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch databases" });
@@ -31,9 +47,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific linguistic database
-  app.get("/api/databases/:id", async (req, res) => {
+  app.get("/api/databases/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const database = await storage.getLinguisticDatabase(req.params.id);
+      const userId = req.user.claims.sub;
+      const database = await storage.getLinguisticDatabase(req.params.id, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
       }
@@ -44,10 +61,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new linguistic database
-  app.post("/api/databases", async (req, res) => {
+  app.post("/api/databases", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertLinguisticDatabaseSchema.parse(req.body);
-      const database = await storage.createLinguisticDatabase(validatedData);
+      const database = await storage.createLinguisticDatabase(validatedData, userId);
       res.status(201).json(database);
     } catch (error) {
       if (error instanceof Error) {
@@ -59,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize database from text (matching original script behavior)
-  app.post("/api/databases/initialize", async (req, res) => {
+  app.post("/api/databases/initialize", isAuthenticated, async (req: any, res) => {
     try {
       const { mode, inputText, filename } = req.body;
       
@@ -73,13 +91,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Initialized from text input on ${new Date().toLocaleDateString()}`,
         language: "Spanish", // Default to Spanish based on original behavior
         originalText: inputText, // Store the original input text
-        wordCount: inputText.split(/\s+/).filter(word => word.trim()).length,
+        wordCount: inputText.split(/\s+/).filter((word: string) => word.trim()).length,
         analysisData: [], // Empty - to be filled by AI processing later
         knownWords: [], // Empty initially
         segments: [] // Empty initially
       };
 
-      const database = await storage.createLinguisticDatabase(transformedData);
+      const userId = req.user.claims.sub;
+      const database = await storage.createLinguisticDatabase(transformedData, userId);
       res.status(201).json(database);
     } catch (error) {
       if (error instanceof Error) {
@@ -91,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload JSON database file
-  app.post("/api/databases/upload", upload.single('jsonFile'), async (req: Request & { file?: Express.Multer.File }, res) => {
+  app.post("/api/databases/upload", isAuthenticated, upload.single('jsonFile'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -140,7 +159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (transformedData.analysisData as WordEntry[]).push(transformedWord);
         });
 
-        const database = await storage.createLinguisticDatabase(transformedData);
+        const userId = req.user.claims.sub;
+        const database = await storage.createLinguisticDatabase(transformedData, userId);
         res.status(201).json(database);
       } else {
         // Try our original schema format
@@ -161,7 +181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           segments: jsonData.segments || []
         });
 
-        const database = await storage.createLinguisticDatabase(validatedData);
+        const userId = req.user.claims.sub;
+        const database = await storage.createLinguisticDatabase(validatedData, userId);
         res.status(201).json(database);
       }
     } catch (error) {
@@ -176,12 +197,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update known words for a database
-  app.put("/api/databases/:id/known-words", async (req, res) => {
+  app.put("/api/databases/:id/known-words", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = updateKnownWordsSchema.parse({
         databaseId: req.params.id,
         knownWords: req.body.knownWords,
       });
+
+      // First verify user owns this database
+      const existingDatabase = await storage.getLinguisticDatabase(validatedData.databaseId, userId);
+      if (!existingDatabase) {
+        return res.status(404).json({ message: "Database not found" });
+      }
 
       const database = await storage.updateKnownWords(validatedData.databaseId, validatedData.knownWords);
       if (!database) {
@@ -199,8 +227,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get words with pagination and filtering
-  app.get("/api/databases/:id/words", async (req, res) => {
+  app.get("/api/databases/:id/words", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      
+      // First verify user owns this database
+      const database = await storage.getLinguisticDatabase(req.params.id, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 50;
       const posFilter = req.query.posFilter ? (req.query.posFilter as string).split(',') : undefined;
@@ -215,9 +251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all analysis data for page view (no pagination)
-  app.get("/api/databases/:id/analysis-data", async (req, res) => {
+  app.get("/api/databases/:id/analysis-data", isAuthenticated, async (req: any, res) => {
     try {
-      const database = await storage.getLinguisticDatabase(req.params.id);
+      const userId = req.user.claims.sub;
+      const database = await storage.getLinguisticDatabase(req.params.id, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
       }
@@ -303,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete database
-  app.delete("/api/databases/:id", async (req, res) => {
+  app.delete("/api/databases/:id", isAuthenticated, async (req: any, res) => {
     try {
       const success = await storage.deleteLinguisticDatabase(req.params.id);
       if (!success) {

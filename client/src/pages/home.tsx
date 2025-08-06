@@ -116,6 +116,13 @@ export default function Home() {
               >
                 View Pricing
               </button>
+              <button
+                onClick={() => window.location.href = '/api/logout'}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                data-testid="logout-button"
+              >
+                Logout
+              </button>
             </div>
           </header>
 
