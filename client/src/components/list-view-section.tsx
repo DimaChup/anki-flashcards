@@ -360,6 +360,45 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
 
   // Render list view - exact copy from original HTML (shows batches in rows)
   const renderListView = () => {
+    // If no analysis data available but we have original text, show a message
+    if ((!uniqueWords || uniqueWords.length === 0) && database?.originalText) {
+      return (
+        <div className="no-items" style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          backgroundColor: 'var(--muted)',
+          borderRadius: '8px',
+          border: '2px dashed var(--border)',
+          margin: '20px 0'
+        }}>
+          <div style={{
+            fontSize: '1.1em',
+            fontWeight: '500',
+            marginBottom: '15px',
+            color: 'var(--foreground)'
+          }}>
+            📊 Database Not Yet Processed
+          </div>
+          <div style={{
+            color: 'var(--muted-foreground)',
+            marginBottom: '20px',
+            lineHeight: '1.5'
+          }}>
+            This database contains <strong>{database.wordCount}</strong> words of original text but hasn't been processed by AI yet.
+            <br />
+            Use the Control Panel to start AI processing for word analysis and interactive features.
+          </div>
+          <div style={{
+            fontSize: '0.9em',
+            color: 'var(--muted-foreground)',
+            fontStyle: 'italic'
+          }}>
+            💡 Switch to Page View to see the original text, or go to Control Panel → Select this database → Process Unprocessed Batches
+          </div>
+        </div>
+      );
+    }
+
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
     const batches = createBatches(posFilteredWords);
@@ -400,6 +439,36 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
 
   // Render POS-based grid view (organized by POS columns)
   const renderPOSGridBatches = () => {
+    // If no analysis data available but we have original text, show a message
+    if ((!uniqueWords || uniqueWords.length === 0) && database?.originalText) {
+      return (
+        <div className="text-center text-muted-foreground py-8" style={{
+          padding: '40px 20px',
+          backgroundColor: 'var(--muted)',
+          borderRadius: '8px',
+          border: '2px dashed var(--border)',
+          margin: '20px 0'
+        }}>
+          <div style={{
+            fontSize: '1.1em',
+            fontWeight: '500',
+            marginBottom: '15px',
+            color: 'var(--foreground)'
+          }}>
+            📊 Database Not Yet Processed
+          </div>
+          <div style={{
+            marginBottom: '20px',
+            lineHeight: '1.5'
+          }}>
+            This database contains <strong>{database.wordCount}</strong> words but needs AI processing for POS analysis.
+            <br />
+            Use the Control Panel to start processing this database.
+          </div>
+        </div>
+      );
+    }
+
     const filteredWords = getFilteredWords();
     const posFilteredWords = filterByPosColumns(filteredWords);
     const batches = createBatches(posFilteredWords);

@@ -560,6 +560,45 @@ export default function PageViewSection({
 
   // Render page content (main text display - always in text flow)
   const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
+    // If no analysis data available but we have original text, show it
+    if ((!words || words.length === 0) && selectedDatabase?.originalText) {
+      return (
+        <div className="text-display-content">
+          <div className="unprocessed-text" style={{
+            padding: '20px',
+            backgroundColor: 'var(--muted)',
+            borderRadius: '8px',
+            border: '2px dashed var(--border)',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              fontSize: '0.9em',
+              color: 'var(--muted-foreground)',
+              marginBottom: '15px',
+              fontWeight: '500'
+            }}>
+              📝 Original Text (Not yet processed by AI)
+            </div>
+            <div style={{
+              whiteSpace: 'pre-wrap',
+              lineHeight: '1.6',
+              fontFamily: 'system-ui, -apple-system, sans-serif'
+            }}>
+              {selectedDatabase.originalText}
+            </div>
+            <div style={{
+              fontSize: '0.8em',
+              color: 'var(--muted-foreground)',
+              marginTop: '15px',
+              fontStyle: 'italic'
+            }}>
+              💡 Use the Control Panel to process this text with AI for word analysis, POS tagging, and interactive features.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="text-display-content">
         {reconstructTextWithPunctuation(words, startIndex)}
