@@ -142,7 +142,7 @@ export default function AnkiStudy() {
 
   // Current study session state
   const [sessionCards, setSessionCards] = React.useState<AnkiCard[]>([]);
-  const [sessionCycleCards, setSessionCycleCards] = React.useState<Set<string>>(new Set());
+  const [sessionCycleCards, setSessionCycleCards] = React.useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
   // Generate Anki deck mutation
@@ -179,17 +179,13 @@ export default function AnkiStudy() {
       // Session cycling logic: Hard cards cycle back, Easy cards graduate
       if (rating === 2) { // Hard - add to cycle list
         if (currentCard) {
-          setSessionCycleCards(prev => new Set([...prev, currentCard.id]));
+          setSessionCycleCards(prev => [...prev.filter(id => id !== currentCard.id), currentCard.id]);
         }
       } else if (rating === 4 && currentCard) { // Easy - check if already marked easy
-        const previousEasyCount = currentCard.sessionEasyCount || 0;
+        const previousEasyCount = (currentCard as any).sessionEasyCount || 0;
         if (previousEasyCount >= 1) {
           // Second Easy - remove from cycle list
-          setSessionCycleCards(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(currentCard.id);
-            return newSet;
-          });
+          setSessionCycleCards(prev => prev.filter(id => id !== currentCard.id));
         }
       }
       
@@ -217,14 +213,14 @@ export default function AnkiStudy() {
       setCurrentIndex(0);
       setCurrentCard(filteredStudyQueue[0]);
       setShowAnswer(false);
-      setSessionCycleCards(new Set()); // Reset cycle tracking
+      setSessionCycleCards([]); // Reset cycle tracking
     }
   }, [studyStarted, filteredStudyQueue, currentCard]);
 
   // Handle next card logic with session cycling
   const handleNextCard = () => {
     let nextIndex = currentIndex + 1;
-    let nextCard = null;
+    let nextCard: AnkiCard | null = null;
 
     // First check if we have more cards in the current session
     if (nextIndex < sessionCards.length) {
@@ -232,7 +228,7 @@ export default function AnkiStudy() {
       setCurrentIndex(nextIndex);
     } else {
       // Check if we have cards that need to cycle back (marked Hard)
-      const cardsToReview = sessionCards.filter(card => sessionCycleCards.has(card.id));
+      const cardsToReview = sessionCards.filter(card => sessionCycleCards.includes(card.id));
       
       if (cardsToReview.length > 0) {
         // Cycle back to first hard card
@@ -244,7 +240,7 @@ export default function AnkiStudy() {
         setCurrentCard(null);
         setCurrentIndex(0);
         setSessionCards([]);
-        setSessionCycleCards(new Set());
+        setSessionCycleCards([]);
         
         const totalReviewed = sessionCards.length;
         toast({ 
@@ -430,7 +426,7 @@ export default function AnkiStudy() {
                           </Button>
                           <span className="text-slate-400 text-sm">
                             of {filteredViewCards.length} available
-                            {hideKnownWords && databaseData?.knownWords && (
+                            {hideKnownWords && databaseData?.knownWords && Array.isArray(databaseData.knownWords) && (
                               <span className="ml-1 text-orange-400">
                                 ({deck.totalCards - filteredViewCards.length} known words hidden)
                               </span>
@@ -506,7 +502,7 @@ export default function AnkiStudy() {
               <CardHeader>
                 <CardTitle className="text-white text-2xl">Study Session</CardTitle>
                 <div className="flex justify-between text-sm text-slate-400 mt-2">
-                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
+                  <span>Card {sessionCards.findIndex(c => c.id === currentCard.id) + 1} of {sessionCards.length}</span>
                   <span>Position in text: {currentCard.wordKey}</span>
                 </div>
               </CardHeader>
@@ -637,7 +633,7 @@ export default function AnkiStudy() {
                   </div>
 
                   {/* Filter Toggle */}
-                  {databaseData?.knownWords && databaseData.knownWords.length > 0 && (
+                  {databaseData?.knownWords && Array.isArray(databaseData.knownWords) && databaseData.knownWords.length > 0 && (
                     <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
                       <Filter className="h-4 w-4 text-orange-400" />
                       <span className="text-slate-300 text-sm">Filter Options:</span>
@@ -655,7 +651,7 @@ export default function AnkiStudy() {
                         {hideKnownWords ? 'Show Known Words' : 'Hide Known Words'}
                       </Button>
                       <span className="text-slate-400 text-xs">
-                        {databaseData.knownWords.length} known words in database
+                        {Array.isArray(databaseData?.knownWords) ? databaseData.knownWords.length : 0} known words in database
                       </span>
                     </div>
                   )}
