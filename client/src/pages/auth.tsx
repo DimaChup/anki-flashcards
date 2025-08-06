@@ -29,6 +29,7 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
@@ -56,7 +57,8 @@ export default function AuthPage() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterUser) => {
-      const response = await apiRequest("POST", "/api/register", data);
+      const { confirmPassword, ...registerData } = data;
+      const response = await apiRequest("POST", "/api/register", registerData);
       return response.json();
     },
     onSuccess: () => {
@@ -182,6 +184,24 @@ export default function AuthPage() {
                             type="password"
                             placeholder="Create a password (min 6 characters)"
                             data-testid="input-register-password"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="password"
+                            placeholder="Confirm your password"
+                            data-testid="input-register-confirm-password"
                           />
                         </FormControl>
                         <FormMessage />

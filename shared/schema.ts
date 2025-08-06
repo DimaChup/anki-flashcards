@@ -66,6 +66,10 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const registerUserSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(6).max(128),
+  confirmPassword: z.string().min(6).max(128),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 export const loginUserSchema = z.object({

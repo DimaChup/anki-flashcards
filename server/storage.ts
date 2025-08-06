@@ -86,11 +86,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
+      .values(userData)
       .returning();
     return user;
   }

@@ -154,7 +154,7 @@ export async function setupAuth(app: Express) {
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ error: 'Username already exists' });
+        return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
       }
 
       // Hash password and create user
@@ -170,13 +170,20 @@ export async function setupAuth(app: Express) {
       // Auto-login the user
       req.logIn(userWithoutPassword, (err) => {
         if (err) {
-          return res.status(500).json({ error: 'Auto-login failed' });
+          console.error('Auto-login error:', err);
+          return res.status(500).json({ error: 'Registration successful but auto-login failed. Please log in manually.' });
         }
         return res.json({ user: userWithoutPassword, message: 'Registration successful' });
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: 'Registration failed' });
+      
+      // Handle specific database errors
+      if (error.code === '23505') { // Unique constraint violation
+        return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
+      }
+      
+      res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
   });
 
