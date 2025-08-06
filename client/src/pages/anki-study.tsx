@@ -11,20 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Brain } from 'lucide-react';
 import type { AnkiStudyDeck, AnkiFlashcard } from '@shared/schema';
 
-// POS Color mapping from anki.html
-const posColors = {
-  'VERB': 'text-pink-400',      // Pink for verbs
-  'NOUN': 'text-blue-400',      // Blue for nouns  
-  'ADJ': 'text-green-400',      // Green for adjectives
-  'AUX': 'text-orange-400',     // Orange for auxiliary
-  'PROPN': 'text-purple-400',   // Purple for proper nouns
-  'ADP': 'text-yellow-400',     // Yellow for adpositions
-  'SCONJ': 'text-cyan-400',     // Cyan for subordinating conjunctions
-  'PRON': 'text-indigo-400',    // Indigo for pronouns
-  'DET': 'text-red-400',        // Red for determiners
-  'ADV': 'text-teal-400'        // Teal for adverbs
-};
-
 export default function AnkiStudy() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -46,14 +32,14 @@ export default function AnkiStudy() {
     }
   }, [isAuthenticated, setLocation]);
 
-  // Get user's databases  
-  const { data: databases = [] } = useQuery<any[]>({
+  // Get user's databases
+  const { data: databases = [] } = useQuery({
     queryKey: ['/api/databases'],
     enabled: isAuthenticated,
   });
 
   // Get study cards for selected database
-  const { data: studyData, isLoading: cardsLoading } = useQuery<{cards: any[], totalCards: number, databaseName: string}>({
+  const { data: studyData, isLoading: cardsLoading } = useQuery({
     queryKey: [`/api/anki/study-cards/${selectedDatabase}`],
     enabled: !!selectedDatabase,
   });
@@ -95,7 +81,8 @@ export default function AnkiStudy() {
       setShowAnswer(false);
       
       // Refetch data
-      queryClient.invalidateQueries({ queryKey: [`/api/anki/study-cards/${selectedDatabase}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
+      refetchCards();
     },
     onError: (error) => {
       toast({
@@ -125,7 +112,17 @@ export default function AnkiStudy() {
     setShowAnswer(false);
   };
 
-  // Get POS styling class - not used in simplified version
+  // Get POS styling class
+  const getPosColor = (pos: string) => {
+    switch (pos?.toUpperCase()) {
+      case 'VERB': return 'bg-pink-100 text-pink-800 border-pink-300';
+      case 'NOUN':
+      case 'PROPN': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'ADJ': return 'bg-green-100 text-green-800 border-green-300';
+      case 'AUX': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
 
   if (!isAuthenticated) {
     return null;
@@ -316,7 +313,7 @@ export default function AnkiStudy() {
                     </div>
                     
                     {currentCard.pos && (
-                      <Badge className="bg-slate-700 text-slate-300 text-xs font-medium">
+                      <Badge className={`${enablePosColors ? getPosColor(currentCard.pos) : 'bg-gray-100 text-gray-800 border-gray-300'} text-xs font-medium`}>
                         {currentCard.pos}
                       </Badge>
                     )}
