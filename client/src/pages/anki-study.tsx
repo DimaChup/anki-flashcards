@@ -309,42 +309,42 @@ export default function AnkiStudy() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-2 md:px-4 py-4 md:py-8">
+      <div className="container mx-auto px-1 sm:px-2 md:px-4 py-3 sm:py-4 md:py-8">
         
-        {/* Header - Mobile Responsive */}
-        <div className="mb-4 md:mb-8">
+        {/* Header - iPhone XR Optimized */}
+        <div className="mb-3 sm:mb-4 md:mb-8">
           <Button
             onClick={() => setLocation('/')}
             variant="outline"
-            className="border-slate-600 text-slate-300 hover:bg-slate-700 mb-4 min-h-[44px] text-sm md:text-base"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700 mb-3 sm:mb-4 min-h-[48px] sm:min-h-[44px] text-xs sm:text-sm md:text-base px-3 py-2"
             data-testid="button-back-home"
           >
-            <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" />
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 md:mr-2" />
             <span className="hidden sm:inline">Back to Home</span>
             <span className="sm:hidden">Home</span>
           </Button>
           
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
-            <Brain className="inline h-6 w-6 md:h-8 md:w-8 mr-2 md:mr-3 text-purple-400" />
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-white mb-2">
+            <Brain className="inline h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 mr-1 sm:mr-2 md:mr-3 text-purple-400" />
             <span className="hidden sm:inline">Anki Study System</span>
             <span className="sm:hidden">Anki Study</span>
           </h1>
-          <p className="text-slate-300 text-sm md:text-lg">
+          <p className="text-slate-300 text-xs sm:text-sm md:text-lg">
             <span className="hidden sm:inline">Generate flashcard decks from your linguistic databases and study with spaced repetition</span>
             <span className="sm:hidden">Smart flashcard learning system</span>
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-1 sm:px-0">
           
-          {/* Database Selection */}
+          {/* Database Selection - iPhone XR Optimized */}
           {!selectedDatabase && (
             <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-white text-2xl">Select Database</CardTitle>
-                <p className="text-slate-300">Choose a linguistic database to create your Anki deck from</p>
+              <CardHeader className="px-3 sm:px-6 py-4 sm:py-6">
+                <CardTitle className="text-white text-lg sm:text-2xl">Select Database</CardTitle>
+                <p className="text-slate-300 text-sm sm:text-base">Choose a linguistic database to create your Anki deck from</p>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
                 <Select onValueChange={setSelectedDatabase} data-testid="select-database">
                   <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
                     <SelectValue placeholder="Select a database..." />
@@ -577,13 +577,13 @@ export default function AnkiStudy() {
                         </div>
                       )}
                       
-                      {/* Rating Buttons - Mobile Optimized */}
-                      <div className="grid grid-cols-2 gap-2 md:flex md:gap-3 justify-center mt-4 md:mt-6">
+                      {/* Rating Buttons - iPhone XR Optimized */}
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:flex md:gap-3 justify-center mt-3 sm:mt-4 md:mt-6">
                         <Button
                           onClick={() => handleCardReview(1)}
                           disabled={reviewCardMutation.isPending}
                           variant="destructive"
-                          className="min-h-[50px] text-sm md:text-base"
+                          className="min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-again"
                         >
                           Again
@@ -591,7 +591,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(2)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-yellow-600 hover:bg-yellow-700 min-h-[50px] text-sm md:text-base"
+                          className="bg-yellow-600 hover:bg-yellow-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-hard"
                         >
                           Hard
@@ -599,7 +599,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(3)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 min-h-[50px] text-sm md:text-base"
+                          className="bg-blue-600 hover:bg-blue-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-good"
                         >
                           Good
@@ -607,7 +607,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(4)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700 min-h-[50px] text-sm md:text-base"
+                          className="bg-green-600 hover:bg-green-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-easy"
                         >
                           Easy

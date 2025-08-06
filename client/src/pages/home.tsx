@@ -99,22 +99,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="flex justify-center p-2 md:p-5">
+      <div className="flex justify-center p-1 sm:p-2 md:p-5">
         <div 
-          className="w-full max-w-7xl flex flex-col gap-4 md:gap-6 p-4 md:p-8 rounded-2xl shadow-2xl"
+          className="w-full max-w-7xl flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-8 rounded-xl sm:rounded-2xl shadow-2xl"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
-          {/* Main Header - Mobile Responsive */}
-          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-            <h1 className="flex items-center gap-2 md:gap-3 text-xl md:text-3xl font-bold">
-              <Languages className="w-6 h-6 md:w-8 md:h-8" />
+          {/* Main Header - iPhone XR Optimized */}
+          <header className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between mb-3 sm:mb-4">
+            <h1 className="flex items-center gap-2 md:gap-3 text-lg sm:text-xl md:text-3xl font-bold">
+              <Languages className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8" />
               <span className="hidden sm:inline">My Personal Linguistic Databases</span>
-              <span className="sm:hidden">My Databases</span>
+              <span className="sm:hidden text-base">My Databases</span>
             </h1>
-            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 md:gap-3">
               <button
                 onClick={() => setLocation('/anki-study')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
                 data-testid="anki-study-button"
               >
                 <span className="hidden sm:inline">🧠 Anki Study</span>
@@ -122,7 +122,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setLocation('/pricing')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
                 data-testid="pricing-button"
               >
                 <span className="hidden sm:inline">View Pricing</span>
@@ -131,10 +131,11 @@ export default function Home() {
               <button
                 onClick={logout}
                 disabled={isLoggingOut}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
+                className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
                 data-testid="logout-button"
               >
-                {isLoggingOut ? 'Logging out...' : 'Logout'}
+                <span className="hidden sm:inline">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                <span className="sm:hidden">{isLoggingOut ? 'Out...' : 'Logout'}</span>
               </button>
             </div>
           </header>

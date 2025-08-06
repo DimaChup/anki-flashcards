@@ -589,9 +589,9 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   return (
     <div className="list-view-section">
 
-      {/* Controls Container - Mobile Responsive */}
-      <div className="controls-container bg-muted p-3 md:p-4 rounded-lg mb-4 md:mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-4 lg:gap-6 justify-between items-start">
+      {/* Controls Container - iPhone XR Optimized */}
+      <div className="controls-container bg-muted p-2 sm:p-3 md:p-4 rounded-lg mb-3 sm:mb-4 md:mb-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:flex lg:flex-wrap lg:gap-6 justify-between items-start">
           
           {/* Filter Toggles */}
           <div className="control-group flex flex-col gap-3">
@@ -676,10 +676,10 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
               onClick={() => setIsGridView(!isGridView)}
               variant="outline"
               size="sm"
-              className="view-toggle-button min-h-[44px] text-sm md:text-base"
+              className="view-toggle-button min-h-[48px] sm:min-h-[44px] text-xs sm:text-sm md:text-base px-3 py-2"
             >
               <span className="hidden sm:inline">{isGridView ? 'Switch to List View' : 'Switch to Grid View'}</span>
-              <span className="sm:hidden">{isGridView ? 'List View' : 'Grid View'}</span>
+              <span className="sm:hidden">{isGridView ? 'List' : 'Grid'}</span>
             </Button>
           </div>
 
