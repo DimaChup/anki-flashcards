@@ -10,12 +10,7 @@ export default function CreateDatabase() {
   const [isCreating, setIsCreating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'success' | 'error' | ''>('');
-  const [formData, setFormData] = useState({
-    filename: '',
-    inputText: '',
-    description: '',
-    language: 'Spanish'
-  });
+
   
   const [initializeText, setInitializeText] = useState('');
   const [initializeFilename, setInitializeFilename] = useState('');
@@ -72,45 +67,7 @@ export default function CreateDatabase() {
 
 
 
-  const handleCreateDatabaseFromForm = async () => {
-    if (!formData.inputText.trim()) {
-      showStatus('Please enter text to create the database.', 'error');
-      return;
-    }
 
-    setIsCreating(true);
-    try {
-      const response = await fetch('/api/databases', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.filename || 'New Database',
-          description: formData.description,
-          language: formData.language,
-          originalText: formData.inputText,
-          wordCount: formData.inputText.split(/\s+/).length,
-          analysisData: [],
-          knownWords: [],
-          segments: []
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        showStatus(`Database "${result.name}" created successfully.`, 'success');
-        setTimeout(() => setLocation('/'), 2000);
-      } else {
-        const error = await response.json();
-        showStatus(error.message || 'Failed to create database', 'error');
-      }
-    } catch (error) {
-      showStatus('An error occurred while creating the database', 'error');
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   // Start AI processing
   const startProcessingMutation = useMutation({
@@ -509,55 +466,7 @@ export default function CreateDatabase() {
               Select an existing database for other actions OR enter text/new name above and click 'Initialize'.
             </small>
             
-            <hr style={{ margin: '20px 0' }} />
-            
-            <h3 style={{ fontSize: '1.1em', color: 'var(--text-heading)', marginBottom: '15px' }}>
-              Or Create Database from JSON File:
-            </h3>
 
-            <div className="control-group">
-              <label htmlFor="init-file-name">Database Name:</label>
-              <input
-                type="text"
-                id="init-file-name"
-                placeholder="e.g., My Spanish Text"
-                value={formData.filename}
-                onChange={(e) => setFormData(prev => ({ ...prev, filename: e.target.value }))}
-                data-testid="input-database-name"
-              />
-            </div>
-
-            <div className="control-group">
-              <label htmlFor="init-file-desc">Description (optional):</label>
-              <input
-                type="text"
-                id="init-file-desc"
-                placeholder="Brief description of this text"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                data-testid="input-description"
-              />
-            </div>
-
-            <div className="control-group">
-              <label htmlFor="json-input-text">Input Text:</label>
-              <textarea
-                id="json-input-text"
-                placeholder="Paste the full text here to create database..."
-                rows={6}
-                value={formData.inputText}
-                onChange={(e) => setFormData(prev => ({ ...prev, inputText: e.target.value }))}
-                data-testid="textarea-json-input-text"
-              />
-              <button
-                id="btn-create-database"
-                onClick={handleCreateDatabaseFromForm}
-                disabled={isCreating || !formData.inputText.trim()}
-                data-testid="button-create-database"
-              >
-                {isCreating ? 'Creating...' : 'Create Database'}
-              </button>
-            </div>
             
 
           </div>
