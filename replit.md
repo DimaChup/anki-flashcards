@@ -58,7 +58,7 @@ Preferred communication style: Simple, everyday language.
   - Real-time job status monitoring and progress tracking
   - Python-based processing scripts with asynchronous execution
 - **Export Capabilities**: CSV generation for external data analysis
-- **Default Sample Database**: Permanent "Call Me Ishmael" Spanish database with 20,000+ words
+- **Automatic Sample Database**: Every new user gets "Call Me Ishmael (Spanish Sample)" database with 70,000+ words automatically created upon registration
 
 ## External Dependencies
 
