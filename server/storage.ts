@@ -127,7 +127,8 @@ export class DatabaseStorage implements IStorage {
     const [database] = await db.insert(linguisticDatabases).values({
       ...insertDatabase,
       userId,
-      segments: insertDatabase.segments || []
+      segments: insertDatabase.segments || [],
+      idioms: insertDatabase.idioms || []
     }).returning();
     return database;
   }
