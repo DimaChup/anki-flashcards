@@ -681,14 +681,14 @@ export default function AnkiStudy() {
                   <div className="text-center py-8">
                     <div className="text-slate-300">Loading cards...</div>
                   </div>
-                ) : viewCards.length === 0 ? (
+                ) : filteredViewCards.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-slate-400">No cards found in this deck</div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="text-sm text-slate-400 mb-4">
-                      Showing {viewCards.length} cards in text order
+                      Showing {filteredViewCards.length} cards in text order
                     </div>
                     
                     {/* Table for larger screens */}
@@ -706,7 +706,7 @@ export default function AnkiStudy() {
                             </tr>
                           </thead>
                           <tbody>
-                            {viewCards.map((card, index) => (
+                            {filteredViewCards.map((card, index) => (
                               <tr 
                                 key={card.id} 
                                 className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors"
@@ -745,7 +745,7 @@ export default function AnkiStudy() {
                     
                     {/* Cards for mobile screens */}
                     <div className="md:hidden space-y-4">
-                      {viewCards.map((card, index) => (
+                      {filteredViewCards.map((card, index) => (
                         <div 
                           key={card.id} 
                           className="bg-slate-700/50 p-4 rounded-lg border border-slate-600"
