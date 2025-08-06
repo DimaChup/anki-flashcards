@@ -1278,6 +1278,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all study cards for a database (to regenerate deck)
+  app.delete('/api/anki-study/cards/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { databaseId } = req.params;
+      
+      const deleted = await storage.deleteAllStudyCards(userId, databaseId);
+      
+      res.json({
+        message: `Deleted ${deleted} study cards`,
+        deleted
+      });
+    } catch (error) {
+      console.error('Error deleting study cards:', error);
+      res.status(500).json({ message: 'Failed to delete study cards' });
+    }
+  });
+
   // Process a study card review with Anki algorithm (1=Again, 2=Hard, 3=Good, 4=Easy)
   app.post('/api/anki-study/cards/:cardId/review', isAuthenticated, async (req: any, res) => {
     try {
