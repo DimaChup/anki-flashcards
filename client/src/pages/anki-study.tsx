@@ -175,6 +175,31 @@ export default function AnkiStudyPage() {
     },
   });
 
+  // Delete deck mutation
+  const deleteDeckMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) throw new Error('No database selected');
+      
+      const deleteResponse = await apiRequest('DELETE', `/api/anki-study/cards/${databaseId}`);
+      return await deleteResponse.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Deck Deleted!',
+        description: `Deleted ${data.deleted} study cards. You can now regenerate the deck.`,
+      });
+      // Refresh the session to show no cards
+      refetchSession();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Initialize study stats when session loads
   useEffect(() => {
     if (session) {

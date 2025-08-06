@@ -99,7 +99,9 @@ export interface IStorage {
   // Get cards due for today's study session (reviews + new cards according to limits)
   getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]>;
   // Initialize new study cards from database words
-  initializeStudyCards(userId: string, databaseId: string, wordKeys: string[]): Promise<AnkiStudyCard[]>;
+  initializeStudyCards(userId: string, databaseId: string, wordKeys?: string[]): Promise<AnkiStudyCard[]>;
+  // Delete all study cards for a user/database pair
+  deleteAllStudyCards(userId: string, databaseId: string): Promise<number>;
   // Process review with real Anki algorithm
   processStudyCardReview(cardId: string, rating: 1 | 2 | 3 | 4): Promise<AnkiStudyCard | undefined>;
 }
@@ -668,6 +670,18 @@ export class DatabaseStorage implements IStorage {
 
     const inserted = await db.insert(ankiStudyCards).values(newCards).returning();
     return inserted;
+  }
+
+  // Delete all study cards for a user/database pair
+  async deleteAllStudyCards(userId: string, databaseId: string): Promise<number> {
+    const deleted = await db.delete(ankiStudyCards)
+      .where(and(
+        eq(ankiStudyCards.userId, userId),
+        eq(ankiStudyCards.databaseId, databaseId)
+      ))
+      .returning();
+    
+    return deleted.length;
   }
 
   // Process review with real Anki algorithm - exactly matching anki.html
