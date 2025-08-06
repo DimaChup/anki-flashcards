@@ -260,7 +260,7 @@ export default function PageViewSection({
   }, []);
 
   // Render words with highlighting and click functionality
-  const renderWordSpan = (word: WordEntry, index: number) => {
+  const renderWordSpan = (word: WordEntry, absoluteIndex: number) => {
     const isHighlighted = highlightedPOS.has(word.pos);
     const signature = `${word.word}::${word.pos}`;
     const isKnown = knownSignaturesSet.has(signature);
@@ -269,10 +269,11 @@ export default function PageViewSection({
     let className = "word-span";
     let style: React.CSSProperties = {};
     
-    // Segment highlighting - takes priority like original
+    // Segment highlighting - takes priority like original (use word.position which is the absolute index)
     if (segmentMode && selectedDatabase?.segments) {
+      const wordPosition = word.position || absoluteIndex; // Use word.position if available, fallback to index
       const wordSegment = selectedDatabase.segments.find(segment => 
-        index >= segment.startWordKey && index <= segment.endWordKey
+        wordPosition >= segment.startWordKey && wordPosition <= segment.endWordKey
       );
       
       if (wordSegment) {
@@ -316,18 +317,31 @@ export default function PageViewSection({
     
     // Handle segment hover - exactly like original
     const handleSegmentHover = (e: React.MouseEvent, wordIndex: number) => {
-      if (segmentMode && selectedDatabase?.segments) {
+      if (!segmentMode) return;
+      
+      console.log('Segment hover - wordIndex:', wordIndex, 'segments:', selectedDatabase?.segments);
+      
+      if (selectedDatabase?.segments && Array.isArray(selectedDatabase.segments)) {
         const segment = selectedDatabase.segments.find(seg => 
           wordIndex >= seg.startWordKey && wordIndex <= seg.endWordKey
         );
         
+        console.log('Found segment:', segment);
+        
         if (segment) {
           const segmentId = segment.id?.toString() || `${segment.startWordKey}-${segment.endWordKey}`;
           if (currentlyHighlightedSegmentId !== segmentId) {
+            console.log('Setting segment highlight:', segmentId);
             setCurrentlyHighlightedSegmentId(segmentId);
             updateRightPaneWithSegment(segment);
           }
+        } else {
+          // No segment found, clear highlighting
+          setCurrentlyHighlightedSegmentId(null);
+          setSegmentDisplayState({ id: null, keys: [], index: 0 });
         }
+      } else {
+        console.log('No segments data available');
       }
     };
 
@@ -373,12 +387,12 @@ export default function PageViewSection({
         data-pos={word.pos}
         data-signature={signature}
         data-first-instance={word.firstInstance ? 'true' : 'false'}
-        onClick={() => handleWordClick(word, index)}
+        onClick={() => handleWordClick(word, absoluteIndex)}
         onMouseEnter={(e) => {
           if (!segmentMode) {
             handleWordHover(e, word);
           }
-          handleSegmentHover(e, index);
+          handleSegmentHover(e, word.position || absoluteIndex);
         }}
         onMouseLeave={(e) => {
           if (!segmentMode) {
@@ -386,7 +400,7 @@ export default function PageViewSection({
           }
         }}
         onMouseMove={handleMouseMove}
-        onContextMenu={(e) => handleWordRightClick(e, word, index)}
+        onContextMenu={(e) => handleWordRightClick(e, word, absoluteIndex)}
         title={`${word.word} (${word.pos}) - Hover for details, click to toggle known status`}
       >
         {word.word}
@@ -463,11 +477,14 @@ export default function PageViewSection({
 
   // Render segment translations in right pane - exactly like original
   const renderSegmentTranslations = () => {
+    console.log('Rendering segments, state:', segmentDisplayState, 'segments available:', selectedDatabase?.segments?.length || 0);
+    
     if (!segmentDisplayState.id) {
       return (
         <div className="segment-placeholder">
           <i style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
             Hover over text on the left to see segment translations...
+            {selectedDatabase?.segments ? ` (${selectedDatabase.segments.length} segments available)` : ' (No segments in database)'}
           </i>
         </div>
       );

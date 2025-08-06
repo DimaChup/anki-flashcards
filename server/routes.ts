@@ -72,7 +72,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           originalText: jsonData.inputText,
           wordCount: Object.keys(jsonData.wordDatabase).length,
           analysisData: [],
-          knownWords: []
+          knownWords: [],
+          segments: jsonData.segments || []
         };
 
         // Transform each word entry
@@ -117,6 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           wordCount: jsonData.analysisData.length,
           analysisData: jsonData.analysisData,
           knownWords: jsonData.knownWords || [],
+          segments: jsonData.segments || []
         });
 
         const database = await storage.createLinguisticDatabase(validatedData);
