@@ -163,69 +163,6 @@ export const spacedRepetitionCards = pgTable("spaced_repetition_cards", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Anki-style study cards for true long-term spaced repetition
-export const ankiStudyCards = pgTable("anki_study_cards", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
-  databaseId: varchar("database_id").notNull(),
-  wordKey: text("word_key").notNull(), // Key from word database
-  word: text("word").notNull(),
-  pos: text("pos"),
-  lemma: text("lemma"),
-  translations: jsonb("translations").default('[]'), // Array of translations
-  
-  // Core SRS (Spaced Repetition System) fields - exact Anki algorithm
-  state: text("state").notNull().default("new"), // "new", "learning", "review", "relearning" 
-  easeFactor: integer("ease_factor").default(2500), // 2500 = 250% (stored as integer)
-  interval: integer("interval").default(0), // Days between reviews
-  step: integer("step").default(0), // Current learning step index
-  due: timestamp("due", { withTimezone: true }).notNull().defaultNow(),
-  
-  // Learning configuration (per card to allow flexibility)
-  learningSteps: text("learning_steps").default("1,10"), // Minutes: "1,10" = 1min, 10min
-  graduatingInterval: integer("graduating_interval").default(1), // Days after graduation
-  easyInterval: integer("easy_interval").default(4), // Days for easy during learning
-  
-  // Review tracking for algorithm optimization
-  reviews: integer("reviews").default(0), // Total number of reviews
-  lapses: integer("lapses").default(0), // Number of times failed in review
-  lastQuality: integer("last_quality").default(0), // Last button pressed (1-4)
-  
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  userDatabaseIdx: index("anki_cards_user_database_idx").on(table.userId, table.databaseId),
-  dueStateIdx: index("anki_cards_due_state_idx").on(table.due, table.state),
-  wordUniqueIdx: index("anki_cards_word_unique").on(table.userId, table.databaseId, table.wordKey),
-}));
-
-// Daily study session configuration per user per database
-export const ankiStudySettings = pgTable("anki_study_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
-  databaseId: varchar("database_id").notNull(),
-  
-  // Daily limits and configuration
-  newCardsPerDay: integer("new_cards_per_day").default(20),
-  reviewLimit: integer("review_limit").default(200),
-  
-  // Learning phase settings (global for this user/database pair)
-  learningSteps: text("learning_steps").default("1,10"), // Minutes
-  graduatingInterval: integer("graduating_interval").default(1), // Days
-  easyInterval: integer("easy_interval").default(4), // Days for easy button during learning
-  
-  // Advanced SRS settings
-  startingEase: integer("starting_ease").default(2500), // 250% for new cards
-  easyBonus: integer("easy_bonus").default(130), // 130% multiplier for easy reviews
-  intervalModifier: integer("interval_modifier").default(100), // 100% = normal intervals
-  maxInterval: integer("max_interval").default(36500), // Max days (100 years)
-  
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  userDatabaseUnique: index("anki_settings_user_database_unique").on(table.userId, table.databaseId),
-}));
-
 // Anki Study Deck - automatically associated with linguistic databases
 export const ankiStudyDecks = pgTable("anki_study_decks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -352,35 +289,6 @@ export type AnkiFlashcard = typeof ankiFlashcards.$inferSelect;
 export type InsertAnkiFlashcard = z.infer<typeof insertAnkiFlashcardSchema>;
 export type AnkiReview = z.infer<typeof ankiReviewSchema>;
 
-// New Anki Study Card types from proper schema
-export type AnkiStudyCard = typeof ankiStudyCards.$inferSelect;
-export type InsertAnkiStudyCard = typeof ankiStudyCards.$inferInsert;
-export type AnkiStudySettings = typeof ankiStudySettings.$inferSelect;
-export type InsertAnkiStudySettings = typeof ankiStudySettings.$inferInsert;
-
-export type StudyCard = {
-  id: string;
-  word: string;
-  pos: string;
-  lemma: string;
-  translations: string[];
-  frequency?: number;
-  firstInstance?: boolean;
-  contextualInfo?: {
-    gender?: string;
-    number?: string;
-    tense?: string;
-    mood?: string;
-    person?: string;
-  };
-  position?: number;
-  sentence?: string;
-  examples?: Array<{
-    sentence: string;
-    translation?: string;
-  }>;
-};
-
 // POS highlighting configuration
 export const posConfigSchema = z.object({
   verb: z.boolean().default(true),
@@ -391,11 +299,6 @@ export const posConfigSchema = z.object({
 });
 
 export type POSConfig = z.infer<typeof posConfigSchema>;
-export type AnkiStudyDeck = typeof ankiStudyDecks.$inferSelect;
-export type InsertAnkiStudyDeck = z.infer<typeof insertAnkiStudyDeckSchema>;
-export type AnkiFlashcard = typeof ankiFlashcards.$inferSelect;
-export type InsertAnkiFlashcard = z.infer<typeof insertAnkiFlashcardSchema>;
-export type AnkiReview = z.infer<typeof ankiReviewSchema>;
 
 // Export request schema
 export const exportRequestSchema = z.object({
