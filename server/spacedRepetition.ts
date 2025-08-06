@@ -1,61 +1,194 @@
-// Anki-like Spaced Repetition Algorithm Implementation
+// Batch-based Spaced Repetition Algorithm Implementation
 import { db } from "./db";
-import { spacedRepetitionCards, reviewHistory } from "@shared/schema";
+import { spacedRepetitionCards, spacedRepetitionBatches, reviewHistory } from "@shared/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
-import type { SpacedRepetitionCard, InsertSpacedRepetitionCard } from "@shared/schema";
+import type { 
+  SpacedRepetitionCard, 
+  SpacedRepetitionBatch,
+  InsertSpacedRepetitionCard, 
+  InsertSpacedRepetitionBatch 
+} from "@shared/schema";
 
 export class SpacedRepetitionService {
-  // Create a new flashcard from a word
-  static async createCard(
+  // Create batches from first instances in a database
+  static async createBatchesFromFirstInstances(
     userId: string,
     databaseId: string,
-    wordId: string,
-    word: string,
-    translation: string
-  ): Promise<SpacedRepetitionCard> {
-    const newCard: InsertSpacedRepetitionCard = {
-      userId,
-      databaseId,
-      wordId,
-      word,
-      translation,
-      easeFactor: 2500, // Starting ease factor (2.5 * 1000)
-      interval: 1, // 1 day initial interval
-      repetitions: 0,
-      quality: 0,
-      nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-    };
-
-    const [card] = await db.insert(spacedRepetitionCards).values(newCard).returning();
-    return card;
+    batchSize: number = 20
+  ): Promise<SpacedRepetitionBatch[]> {
+    // Get database to access analysis data
+    const databases = await db.select().from(spacedRepetitionCards).where(eq(spacedRepetitionCards.userId, userId));
+    // This needs to be replaced with proper database fetch - using storage service would be better
+    
+    // For now, we'll create a method that external services can call with the analysis data
+    throw new Error("Use createBatchesFromAnalysisData instead");
   }
 
-  // Get cards due for review for a user
-  static async getDueCards(userId: string, databaseId?: string): Promise<SpacedRepetitionCard[]> {
+  // Create batches from analysis data (to be called by external service with data)
+  static async createBatchesFromAnalysisData(
+    userId: string,
+    databaseId: string,
+    analysisData: any[],
+    batchSize: number = 20
+  ): Promise<SpacedRepetitionBatch[]> {
+    // Filter to first instances only and sort by position
+    const firstInstances = analysisData
+      .filter(word => word.firstInstance && word.translation && word.translation.trim())
+      .sort((a, b) => a.position - b.position);
+
+    const batches: SpacedRepetitionBatch[] = [];
+    const totalBatches = Math.ceil(firstInstances.length / batchSize);
+
+    // Create batches
+    for (let i = 0; i < totalBatches; i++) {
+      const batchWords = firstInstances.slice(i * batchSize, (i + 1) * batchSize);
+      
+      const batchData: InsertSpacedRepetitionBatch = {
+        userId,
+        databaseId,
+        name: `Batch ${i + 1} (Words ${i * batchSize + 1}-${i * batchSize + batchWords.length})`,
+        batchNumber: i + 1,
+        totalWords: batchWords.length,
+        wordsLearned: 0,
+        isActive: i === 0 ? 'true' : 'false', // First batch is active
+        isCompleted: 'false',
+      };
+
+      const [batch] = await db.insert(spacedRepetitionBatches).values(batchData).returning();
+      batches.push(batch);
+
+      // Create cards for this batch
+      for (const word of batchWords) {
+        const cardData: InsertSpacedRepetitionCard = {
+          userId,
+          databaseId,
+          batchId: batch.id,
+          wordId: word.id,
+          word: word.word,
+          translation: word.translation,
+          easeFactor: 2500,
+          interval: 1,
+          repetitions: 0,
+          quality: 0,
+          nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        };
+
+        await db.insert(spacedRepetitionCards).values(cardData);
+      }
+    }
+
+    return batches;
+  }
+
+  // Get all batches for a database
+  static async getBatchesForDatabase(userId: string, databaseId: string): Promise<SpacedRepetitionBatch[]> {
+    return await db
+      .select()
+      .from(spacedRepetitionBatches)
+      .where(
+        and(
+          eq(spacedRepetitionBatches.userId, userId),
+          eq(spacedRepetitionBatches.databaseId, databaseId)
+        )
+      )
+      .orderBy(spacedRepetitionBatches.batchNumber);
+  }
+
+  // Get current active batch
+  static async getActiveBatch(userId: string, databaseId: string): Promise<SpacedRepetitionBatch | null> {
+    const [batch] = await db
+      .select()
+      .from(spacedRepetitionBatches)
+      .where(
+        and(
+          eq(spacedRepetitionBatches.userId, userId),
+          eq(spacedRepetitionBatches.databaseId, databaseId),
+          eq(spacedRepetitionBatches.isActive, 'true')
+        )
+      );
+    
+    return batch || null;
+  }
+
+  // Activate next batch when current is completed
+  static async activateNextBatch(userId: string, databaseId: string): Promise<SpacedRepetitionBatch | null> {
+    const currentBatch = await this.getActiveBatch(userId, databaseId);
+    if (!currentBatch) return null;
+
+    // Mark current batch as completed and inactive
+    await db
+      .update(spacedRepetitionBatches)
+      .set({ 
+        isActive: 'false', 
+        isCompleted: 'true',
+        updatedAt: new Date()
+      })
+      .where(eq(spacedRepetitionBatches.id, currentBatch.id));
+
+    // Find and activate next batch
+    const [nextBatch] = await db
+      .select()
+      .from(spacedRepetitionBatches)
+      .where(
+        and(
+          eq(spacedRepetitionBatches.userId, userId),
+          eq(spacedRepetitionBatches.databaseId, databaseId),
+          eq(spacedRepetitionBatches.batchNumber, currentBatch.batchNumber + 1)
+        )
+      );
+
+    if (nextBatch) {
+      await db
+        .update(spacedRepetitionBatches)
+        .set({ 
+          isActive: 'true',
+          updatedAt: new Date()
+        })
+        .where(eq(spacedRepetitionBatches.id, nextBatch.id));
+      
+      return nextBatch;
+    }
+
+    return null;
+  }
+
+  // Get cards due for review (from active batch only)
+  static async getDueCardsFromActiveBatch(userId: string, databaseId: string): Promise<SpacedRepetitionCard[]> {
+    const activeBatch = await this.getActiveBatch(userId, databaseId);
+    if (!activeBatch) return [];
+
     const now = new Date();
     
-    let query = db
+    return await db
       .select()
       .from(spacedRepetitionCards)
       .where(
         and(
           eq(spacedRepetitionCards.userId, userId),
+          eq(spacedRepetitionCards.databaseId, databaseId),
+          eq(spacedRepetitionCards.batchId, activeBatch.id),
           lte(spacedRepetitionCards.nextReviewDate, now)
         )
       )
       .orderBy(spacedRepetitionCards.nextReviewDate);
+  }
 
-    if (databaseId) {
-      query = query.where(
+  // Get all cards from active batch (for learning new words)
+  static async getCardsFromActiveBatch(userId: string, databaseId: string): Promise<SpacedRepetitionCard[]> {
+    const activeBatch = await this.getActiveBatch(userId, databaseId);
+    if (!activeBatch) return [];
+    
+    return await db
+      .select()
+      .from(spacedRepetitionCards)
+      .where(
         and(
           eq(spacedRepetitionCards.userId, userId),
           eq(spacedRepetitionCards.databaseId, databaseId),
-          lte(spacedRepetitionCards.nextReviewDate, now)
+          eq(spacedRepetitionCards.batchId, activeBatch.id)
         )
-      );
-    }
-
-    return await query;
+      )
+      .orderBy(spacedRepetitionCards.nextReviewDate);
   }
 
   // Core Anki algorithm: Update card based on review quality
@@ -160,55 +293,82 @@ export class SpacedRepetitionService {
     };
   }
 
-  // Get learning statistics for a user
-  static async getLearningStats(userId: string, databaseId?: string) {
-    let cardQuery = db
-      .select()
-      .from(spacedRepetitionCards)
-      .where(eq(spacedRepetitionCards.userId, userId));
-
-    if (databaseId) {
-      cardQuery = cardQuery.where(
-        and(
-          eq(spacedRepetitionCards.userId, userId),
-          eq(spacedRepetitionCards.databaseId, databaseId)
-        )
-      );
+  // Get learning statistics for a database (batch-focused)
+  static async getBatchLearningStats(userId: string, databaseId: string) {
+    const batches = await this.getBatchesForDatabase(userId, databaseId);
+    const activeBatch = await this.getActiveBatch(userId, databaseId);
+    
+    if (!activeBatch) {
+      return {
+        totalBatches: batches.length,
+        completedBatches: batches.filter(b => b.isCompleted === 'true').length,
+        currentBatch: null,
+        totalCards: 0,
+        dueCards: 0,
+        newCards: 0,
+        learningCards: 0,
+        matureCards: 0,
+        reviewsToday: 0,
+        batchProgress: 0,
+      };
     }
 
-    const allCards = await cardQuery;
+    // Get cards from active batch
+    const activeBatchCards = await this.getCardsFromActiveBatch(userId, databaseId);
     const now = new Date();
 
-    const dueCards = allCards.filter(card => card.nextReviewDate <= now);
-    const newCards = allCards.filter(card => card.repetitions === 0);
-    const learningCards = allCards.filter(card => card.repetitions > 0 && card.repetitions < 3);
-    const matureCards = allCards.filter(card => card.repetitions >= 3);
+    const dueCards = activeBatchCards.filter(card => card.nextReviewDate <= now);
+    const newCards = activeBatchCards.filter(card => card.repetitions === 0);
+    const learningCards = activeBatchCards.filter(card => card.repetitions > 0 && card.repetitions < 3);
+    const matureCards = activeBatchCards.filter(card => card.repetitions >= 3);
 
     // Get recent review history
-    let historyQuery = db
+    const recentHistory = await db
       .select()
       .from(reviewHistory)
       .where(eq(reviewHistory.userId, userId))
       .orderBy(desc(reviewHistory.reviewDate))
       .limit(100);
 
-    const recentHistory = await historyQuery;
+    // Update batch progress
+    const wordsLearned = matureCards.length;
+    if (wordsLearned !== activeBatch.wordsLearned) {
+      await db
+        .update(spacedRepetitionBatches)
+        .set({ 
+          wordsLearned,
+          updatedAt: new Date()
+        })
+        .where(eq(spacedRepetitionBatches.id, activeBatch.id));
+    }
 
+    // Check if batch is completed (all words are mature)
+    const batchCompleted = activeBatchCards.length > 0 && matureCards.length === activeBatchCards.length;
+    
     return {
-      totalCards: allCards.length,
+      totalBatches: batches.length,
+      completedBatches: batches.filter(b => b.isCompleted === 'true').length,
+      currentBatch: {
+        ...activeBatch,
+        wordsLearned,
+        progress: activeBatch.totalWords > 0 ? (wordsLearned / activeBatch.totalWords) * 100 : 0,
+        isReadyForNext: batchCompleted
+      },
+      totalCards: activeBatchCards.length,
       dueCards: dueCards.length,
       newCards: newCards.length,
       learningCards: learningCards.length,
       matureCards: matureCards.length,
-      averageEaseFactor: allCards.length > 0 
-        ? Math.round(allCards.reduce((sum, card) => sum + card.easeFactor, 0) / allCards.length) 
-        : 2500,
       reviewsToday: recentHistory.filter(review => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return review.reviewDate >= today;
       }).length,
-      recentHistory: recentHistory.slice(0, 10),
+      batchProgress: activeBatch.totalWords > 0 ? (wordsLearned / activeBatch.totalWords) * 100 : 0,
+      allBatches: batches.map(batch => ({
+        ...batch,
+        progress: batch.totalWords > 0 ? (batch.wordsLearned / batch.totalWords) * 100 : 0
+      }))
     };
   }
 

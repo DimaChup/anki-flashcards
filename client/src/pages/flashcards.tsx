@@ -21,20 +21,41 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import type { SpacedRepetitionCard } from '@shared/schema';
 
-interface LearningStats {
+interface BatchLearningStats {
+  totalBatches: number;
+  completedBatches: number;
+  currentBatch: {
+    id: string;
+    name: string;
+    batchNumber: number;
+    totalWords: number;
+    wordsLearned: number;
+    progress: number;
+    isReadyForNext: boolean;
+  } | null;
   totalCards: number;
   dueCards: number;
   newCards: number;
   learningCards: number;
   matureCards: number;
-  averageEaseFactor: number;
   reviewsToday: number;
-  recentHistory: Array<{
-    quality: number;
-    reviewDate: string;
-    previousInterval: number;
-    newInterval: number;
+  batchProgress: number;
+  allBatches: Array<{
+    id: string;
+    name: string;
+    batchNumber: number;
+    totalWords: number;
+    wordsLearned: number;
+    progress: number;
+    isActive: boolean;
+    isCompleted: boolean;
   }>;
+}
+
+interface ActiveBatchData {
+  activeBatch: any;
+  dueCards: SpacedRepetitionCard[];
+  allCards: SpacedRepetitionCard[];
 }
 
 export default function Flashcards() {
@@ -59,21 +80,23 @@ export default function Flashcards() {
     enabled: isAuthenticated,
   });
 
-  // Get learning statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<LearningStats>({
-    queryKey: ['/api/spaced-repetition/stats', selectedDatabase],
-    enabled: isAuthenticated,
-  });
-
-  // Get due cards
-  const { 
-    data: dueCards = [], 
-    isLoading: cardsLoading, 
-    refetch: refetchCards 
-  } = useQuery<SpacedRepetitionCard[]>({
-    queryKey: ['/api/spaced-repetition/due', selectedDatabase],
+  // Get batch learning statistics
+  const { data: stats, isLoading: statsLoading } = useQuery<BatchLearningStats>({
+    queryKey: ['/api/spaced-repetition/batch-stats', selectedDatabase],
     enabled: isAuthenticated && !!selectedDatabase,
   });
+
+  // Get active batch and cards
+  const { 
+    data: activeBatchData, 
+    isLoading: cardsLoading, 
+    refetch: refetchCards 
+  } = useQuery<ActiveBatchData>({
+    queryKey: ['/api/spaced-repetition/active-batch', selectedDatabase],
+    enabled: isAuthenticated && !!selectedDatabase,
+  });
+
+  const dueCards = activeBatchData?.dueCards || [];
 
   // Review card mutation
   const reviewMutation = useMutation({
@@ -81,21 +104,34 @@ export default function Flashcards() {
       return apiRequest('POST', '/api/spaced-repetition/review', { cardId, quality });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/due'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
       setShowAnswer(false);
       setCurrentCard(null);
     },
   });
 
-  // Create cards mutation
-  const createCardsMutation = useMutation({
-    mutationFn: async ({ databaseId, words }: { databaseId: string; words: any[] }) => {
-      return apiRequest('POST', '/api/spaced-repetition/create-cards', { databaseId, words });
+  // Create batches mutation
+  const createBatchesMutation = useMutation({
+    mutationFn: async ({ databaseId, batchSize }: { databaseId: string; batchSize: number }) => {
+      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/stats'] });
-      refetchCards();
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+    },
+  });
+
+  // Activate next batch mutation
+  const activateNextBatchMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      return apiRequest('POST', `/api/spaced-repetition/activate-next/${databaseId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      setCurrentCard(null);
+      setShowAnswer(false);
     },
   });
 
@@ -114,25 +150,16 @@ export default function Flashcards() {
     }
   };
 
-  // Create flashcards from database words
-  const createFlashcards = async () => {
+  // Create batches from first instances
+  const createBatches = async (batchSize: number = 20) => {
     if (!selectedDatabase) return;
-    
-    const db = databases.find((d: any) => d.id === selectedDatabase);
-    if (!db) return;
+    createBatchesMutation.mutate({ databaseId: selectedDatabase, batchSize });
+  };
 
-    // Extract words with translations from analysis data
-    const words = db.analysisData
-      .filter((word: any) => word.translation && word.translation.trim())
-      .map((word: any) => ({
-        id: word.id,
-        word: word.word,
-        translation: word.translation
-      }));
-
-    if (words.length > 0) {
-      createCardsMutation.mutate({ databaseId: selectedDatabase, words });
-    }
+  // Activate next batch
+  const activateNextBatch = () => {
+    if (!selectedDatabase) return;
+    activateNextBatchMutation.mutate(selectedDatabase);
   };
 
   if (!isAuthenticated) {

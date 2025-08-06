@@ -10,6 +10,7 @@ import {
   insertProcessingConfigSchema,
   insertProcessingJobSchema,
   reviewCardSchema,
+  createBatchSchema,
   type WordEntry 
 } from "@shared/schema";
 import { SpacedRepetitionService } from "./spacedRepetition";
@@ -778,37 +779,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // === SPACED REPETITION API ROUTES ===
+  // === BATCH-BASED SPACED REPETITION API ROUTES ===
   
-  // Get cards due for review
-  app.get('/api/spaced-repetition/due', isAuthenticated, async (req: any, res) => {
+  // Create batches from first instances
+  app.post('/api/spaced-repetition/create-batches', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const databaseId = req.query.databaseId as string;
+      const validatedData = createBatchSchema.parse(req.body);
       
-      const dueCards = await SpacedRepetitionService.getDueCards(userId, databaseId);
-      res.json(dueCards);
+      // Get the database analysis data
+      const database = await storage.getLinguisticDatabase(validatedData.databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+
+      const batches = await SpacedRepetitionService.createBatchesFromAnalysisData(
+        userId,
+        validatedData.databaseId,
+        database.analysisData as any[],
+        validatedData.batchSize
+      );
+      
+      res.status(201).json(batches);
     } catch (error) {
-      console.error("Error fetching due cards:", error);
-      res.status(500).json({ message: "Failed to fetch due cards" });
+      console.error("Error creating batches:", error);
+      res.status(500).json({ message: "Failed to create batches" });
     }
   });
 
-  // Create cards from words in a database
-  app.post('/api/spaced-repetition/create-cards', isAuthenticated, async (req: any, res) => {
+  // Get all batches for a database
+  app.get('/api/spaced-repetition/batches/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { databaseId, words } = req.body;
+      const databaseId = req.params.databaseId;
       
-      if (!databaseId || !words || !Array.isArray(words)) {
-        return res.status(400).json({ message: "databaseId and words array required" });
-      }
-
-      const cards = await SpacedRepetitionService.createCardsFromWords(userId, databaseId, words);
-      res.status(201).json(cards);
+      const batches = await SpacedRepetitionService.getBatchesForDatabase(userId, databaseId);
+      res.json(batches);
     } catch (error) {
-      console.error("Error creating cards:", error);
-      res.status(500).json({ message: "Failed to create cards" });
+      console.error("Error fetching batches:", error);
+      res.status(500).json({ message: "Failed to fetch batches" });
+    }
+  });
+
+  // Get active batch and due cards
+  app.get('/api/spaced-repetition/active-batch/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.params.databaseId;
+      
+      const activeBatch = await SpacedRepetitionService.getActiveBatch(userId, databaseId);
+      const dueCards = await SpacedRepetitionService.getDueCardsFromActiveBatch(userId, databaseId);
+      const allCards = await SpacedRepetitionService.getCardsFromActiveBatch(userId, databaseId);
+      
+      res.json({
+        activeBatch,
+        dueCards,
+        allCards
+      });
+    } catch (error) {
+      console.error("Error fetching active batch:", error);
+      res.status(500).json({ message: "Failed to fetch active batch" });
+    }
+  });
+
+  // Activate next batch
+  app.post('/api/spaced-repetition/activate-next/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.params.databaseId;
+      
+      const nextBatch = await SpacedRepetitionService.activateNextBatch(userId, databaseId);
+      res.json(nextBatch);
+    } catch (error) {
+      console.error("Error activating next batch:", error);
+      res.status(500).json({ message: "Failed to activate next batch" });
     }
   });
 
@@ -829,17 +873,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get learning statistics
-  app.get('/api/spaced-repetition/stats', isAuthenticated, async (req: any, res) => {
+  // Get batch learning statistics
+  app.get('/api/spaced-repetition/batch-stats/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const databaseId = req.query.databaseId as string;
+      const databaseId = req.params.databaseId;
       
-      const stats = await SpacedRepetitionService.getLearningStats(userId, databaseId);
+      const stats = await SpacedRepetitionService.getBatchLearningStats(userId, databaseId);
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching learning stats:", error);
-      res.status(500).json({ message: "Failed to fetch learning stats" });
+      console.error("Error fetching batch learning stats:", error);
+      res.status(500).json({ message: "Failed to fetch batch learning stats" });
     }
   });
 
