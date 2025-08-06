@@ -547,37 +547,13 @@ export class DatabaseStorage implements IStorage {
   async getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]> {
     const now = new Date();
     
-    // Get or create study settings
-    let settings = await this.getAnkiStudySettings(userId, databaseId);
+    // Get study settings (don't create automatically)
+    const settings = await this.getAnkiStudySettings(userId, databaseId);
     if (!settings) {
-      settings = await this.createAnkiStudySettings({
-        userId,
-        databaseId,
-        // deckName not part of settings schema
-        newCardsPerDay: 20,
-        reviewLimit: 200,
-        easyBonus: 0.3,
-        intervalModifier: 1.0,
-        maxInterval: 36500,
-        graduatingInterval: 1,
-        easyInterval: 4,
-        startingEase: 2500,
-        learningSteps: "1,10"
-      });
+      return []; // No settings = no deck created yet
     }
 
-    // Check if any cards exist, if not auto-initialize from database
-    const existingCards = await db.select().from(ankiStudyCards)
-      .where(and(
-        eq(ankiStudyCards.userId, userId),
-        eq(ankiStudyCards.databaseId, databaseId)
-      ))
-      .limit(1);
-      
-    if (existingCards.length === 0) {
-      // Auto-initialize cards from database words (first_inst=true, excluding known words)
-      await this.initializeStudyCards(userId, databaseId);
-    }
+    // Don't auto-initialize - only create cards when explicitly requested
 
     // Filter out cards for words that are now in knownWords
     const database = await this.getLinguisticDatabase(databaseId, userId);
@@ -687,6 +663,28 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return deleted.length;
+  }
+
+  // Delete entire Anki deck (cards + settings) for a database
+  async deleteAnkiDeck(userId: string, databaseId: string): Promise<{ deletedCards: number; deletedSettings: boolean }> {
+    // Delete all cards for this database
+    const deletedCards = await db.delete(ankiStudyCards)
+      .where(and(
+        eq(ankiStudyCards.userId, userId),
+        eq(ankiStudyCards.databaseId, databaseId)
+      ));
+
+    // Delete settings for this database  
+    const deletedSettings = await db.delete(ankiStudySettings)
+      .where(and(
+        eq(ankiStudySettings.userId, userId),
+        eq(ankiStudySettings.databaseId, databaseId)
+      ));
+
+    return {
+      deletedCards: deletedCards.rowCount || 0,
+      deletedSettings: deletedSettings.rowCount > 0
+    };
   }
 
   // Process review with real Anki algorithm - exactly matching anki.html

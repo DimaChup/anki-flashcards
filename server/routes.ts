@@ -1264,6 +1264,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Database ID is required' });
       }
       
+      // Create or get study settings first
+      let settings = await storage.getAnkiStudySettings(userId, databaseId);
+      if (!settings) {
+        settings = await storage.createAnkiStudySettings({
+          userId,
+          databaseId,
+          newCardsPerDay: 20,
+          reviewLimit: 200,
+          easyBonus: 0.3,
+          intervalModifier: 1.0,
+          maxInterval: 36500,
+          graduatingInterval: 1,
+          easyInterval: 4,
+          startingEase: 2500,
+          learningSteps: "1,10"
+        });
+      }
+      
       // Initialize cards (if no wordKeys provided, it will use all eligible words from database)
       const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
       
@@ -1275,6 +1293,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error initializing study cards:', error);
       res.status(500).json({ message: 'Failed to initialize study cards' });
+    }
+  });
+
+  // Delete entire Anki deck (cards + settings)
+  app.delete('/api/anki-study/deck/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { databaseId } = req.params;
+      const userId = req.user.id;
+      
+      const result = await storage.deleteAnkiDeck(userId, databaseId);
+      
+      res.json({
+        message: `Deleted Anki deck: ${result.deletedCards} cards and ${result.deletedSettings ? 'settings' : 'no settings'}`,
+        deletedCards: result.deletedCards,
+        deletedSettings: result.deletedSettings
+      });
+    } catch (error) {
+      console.error('Error deleting Anki deck:', error);
+      res.status(500).json({ message: 'Failed to delete Anki deck' });
     }
   });
 
