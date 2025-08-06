@@ -468,52 +468,28 @@ export class DatabaseStorage implements IStorage {
       studySettings: { newCardsPerDay: 20, maxReviews: 100, colorAssist: true }
     });
 
-    // Generate cards from first instance words in EXACT database order
+    // Generate cards from first instance words
     const analysisData = database.analysisData as WordEntry[];
-    const knownWords = new Set(database.knownWords || [] as string[]);
-    
-    console.log("ANKI CREATION: Total words in database:", analysisData.length);
-    
-    // Create a map of position -> word for precise ordering
-    const positionMap = new Map<number, WordEntry>();
-    
-    analysisData.forEach((word) => {
-      console.log(`ANKI CREATION: Word "${word.word}" has id="${word.id}", position=${word.position}, firstInstance=${word.firstInstance}`);
-      
-      if (word.firstInstance && !knownWords.has(word.word)) {
-        positionMap.set(word.position, word);
-      }
-    });
-    
-    // Sort by position keys (1, 2, 3, 5, etc.) and create cards
-    const sortedPositions = Array.from(positionMap.keys()).sort((a, b) => a - b);
-    console.log("ANKI CREATION: First 20 sorted positions:", sortedPositions.slice(0, 20));
-    
-    const cards: InsertAnkiFlashcard[] = sortedPositions.map((position, index) => {
-      const word = positionMap.get(position)!;
-      console.log(`ANKI CREATION: Creating card ${index + 1} for position ${position}: "${word.word}"`);
-      
-      return {
-        userId,
-        deckId: deck.id,
-        databaseId,
-        signature: `${word.word.toLowerCase()}::${word.pos}`,
-        word: word.word,
-        wordKey: position, // Use the actual database position number
-        pos: word.pos,
-        lemma: word.lemma,
-        translations: [word.translation],
-        sentence: word.sentence,
-        status: 'new',
-        easeFactor: 2500,
-        interval: 0,
-        due: new Date(),
-        repetitions: 0,
-        lapses: 0
-      };
-    });
+    const firstInstanceWords = analysisData.filter(word => word.firstInstance);
 
-    console.log(`ANKI CREATION: Creating ${cards.length} cards in database position order`);
+    const cards: InsertAnkiFlashcard[] = firstInstanceWords.map(word => ({
+      userId,
+      deckId: deck.id,
+      databaseId,
+      signature: `${word.word.toLowerCase()}::${word.pos}`,
+      word: word.word,
+      wordKey: word.position,
+      pos: word.pos,
+      lemma: word.lemma,
+      translations: [word.translation],
+      sentence: word.sentence,
+      status: 'new',
+      easeFactor: 2500,
+      interval: 0,
+      due: new Date(),
+      repetitions: 0,
+      lapses: 0
+    }));
 
     // Insert all cards
     for (const card of cards) {
@@ -606,7 +582,6 @@ export class DatabaseStorage implements IStorage {
           eq(ankiStudyCards.databaseId, databaseId),
           eq(ankiStudyCards.state, 'new')
         ))
-        .orderBy(ankiStudyCards.wordKey) // Sort by wordKey (position) for correct database order
         .limit(newCardsNeeded);
       
       // Filter out known words from new cards
@@ -631,7 +606,12 @@ export class DatabaseStorage implements IStorage {
     const eligibleWords = analysisData
       .filter(entry => entry.firstInstance === true)  // Only first instances
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
-      .sort((a, b) => a.position - b.position); // Sort by database position
+      .sort((a, b) => {
+        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
+        const numA = parseInt(a.id.toString(), 10);
+        const numB = parseInt(b.id.toString(), 10);
+        return numA - numB;
+      });
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
