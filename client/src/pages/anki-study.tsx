@@ -300,23 +300,52 @@ export default function AnkiStudyPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
-              No Cards to Study
+              Create Your Anki Deck
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <p className="text-gray-600">
-              You don't have any cards due for review today. You can:
+              Create a personalized Anki deck from your database words with first-instance filtering.
             </p>
-            <div className="space-y-2">
+            
+            {/* Study Settings Display */}
+            {settings && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-800">Study Settings</h3>
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{settings.newCardsPerDay}</div>
+                    <div className="text-sm text-gray-600">New Cards/Day</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{settings.reviewLimit}</div>
+                    <div className="text-sm text-gray-600">Review Limit/Day</div>
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800 mb-1">
+                    <strong>Deck includes:</strong> First-instance words only, excluding known words
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Cards appear in order of appearance in your original text (1, 2, 3, etc.)
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-3">
               <Button 
                 onClick={() => initializeCardsMutation.mutate()}
                 disabled={initializeCardsMutation.isPending}
                 className="w-full bg-purple-600 hover:bg-purple-700"
+                size="lg"
               >
                 <Target className="w-4 h-4 mr-2" />
                 {initializeCardsMutation.isPending ? 'Creating Anki Deck...' : 'Create Anki Deck from Database'}
               </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
+              
+              <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
                 <Home className="w-4 h-4 mr-2" />
                 Go back to Home
               </Button>
