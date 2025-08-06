@@ -716,9 +716,23 @@ export default function PageViewSection({
             {/* Concise part */}
             <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'var(--tooltip-text)', maxWidth: '350px' }}>
               <div className="tooltip-line">
-                <strong>{tooltipData.word}</strong> ({tooltipData.pos})
+                <strong style={{ 
+                  color: tooltipData.pos === 'VERB' ? `hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light))` :
+                         tooltipData.pos === 'NOUN' || tooltipData.pos === 'PROPN' ? `hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light))` :
+                         tooltipData.pos === 'ADJ' ? `hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light))` :
+                         tooltipData.pos === 'AUX' ? `hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light))` :
+                         `hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light))`
+                }}>{tooltipData.word}</strong> ({tooltipData.pos})
               </div>
-              <div className="tooltip-line tooltip-best-translation" style={{ fontSize: '1.8em', lineHeight: '1.1' }}>
+              <div className="tooltip-line tooltip-best-translation" style={{ 
+                fontSize: '1.8em', 
+                lineHeight: '1.1',
+                color: tooltipData.pos === 'VERB' ? `hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light))` :
+                       tooltipData.pos === 'NOUN' || tooltipData.pos === 'PROPN' ? `hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light))` :
+                       tooltipData.pos === 'ADJ' ? `hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light))` :
+                       tooltipData.pos === 'AUX' ? `hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light))` :
+                       `hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light))`
+              }}>
                 {tooltipData.translation || 'No translation'}
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '6px 0' }} />
