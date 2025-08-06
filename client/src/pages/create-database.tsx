@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 export default function CreateDatabase() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
+
   const [isCreating, setIsCreating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'success' | 'error' | ''>('');
@@ -70,41 +70,7 @@ export default function CreateDatabase() {
     }, 5000);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (!file.name.endsWith('.json')) {
-      showStatus('Please select a JSON file.', 'error');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('jsonFile', file);
-
-      const response = await fetch('/api/databases/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        showStatus(`Database "${result.name}" uploaded successfully.`, 'success');
-        setTimeout(() => setLocation('/'), 2000);
-      } else {
-        const error = await response.json();
-        showStatus(error.message || 'Failed to upload database', 'error');
-      }
-    } catch (error) {
-      showStatus('An error occurred while uploading the file', 'error');
-    } finally {
-      setIsUploading(false);
-      // Reset file input
-      if (e.target) e.target.value = '';
-    }
-  };
 
   const handleCreateDatabaseFromForm = async () => {
     if (!formData.inputText.trim()) {
@@ -485,19 +451,24 @@ export default function CreateDatabase() {
               borderBottom: '1px solid var(--border-color)',
               paddingBottom: '5px'
             }}>
-              Start Here: Upload JSON File OR Initialize New Database
+              Start Here: Select Existing File OR Initialize New Database
             </h2>
             
             <div className="control-group">
-              <label htmlFor="file-upload">Upload JSON File:</label>
-              <input
-                type="file"
-                id="file-upload"
-                accept=".json"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-                data-testid="input-file"
-              />
+              <label htmlFor="file-selector">Select Existing File:</label>
+              <select 
+                id="file-selector"
+                value={selectedDatabase}
+                onChange={(e) => setSelectedDatabase(e.target.value)}
+                data-testid="select-existing-file"
+              >
+                <option value="">Choose an existing database...</option>
+                {databases?.map((db: any) => (
+                  <option key={db.id} value={db.id}>
+                    {db.name} ({db.language} • {db.wordCount?.toLocaleString() || 0} words)
+                  </option>
+                ))}
+              </select>
             </div>
             
             <hr style={{ margin: '10px 0' }} />
@@ -835,10 +806,9 @@ export default function CreateDatabase() {
               Output / Log
             </h2>
             <pre id="output-area">
-              {isUploading && 'Uploading file...'}
               {isCreating && 'Creating database...'}
               {startProcessingMutation.isPending && 'Starting AI processing...'}
-              {!isUploading && !isCreating && !startProcessingMutation.isPending && (
+              {!isCreating && !startProcessingMutation.isPending && (
                 <>
                   Ready for database creation and AI processing.
                   {'\n\n'}
@@ -873,7 +843,7 @@ export default function CreateDatabase() {
                     </>
                   )}
                   
-                  Upload a JSON file or initialize with text above, then select a database for AI processing.
+                  Select an existing database or initialize with text above, then use AI processing controls.
                 </>
               )}
             </pre>
