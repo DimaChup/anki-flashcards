@@ -131,41 +131,64 @@ export default function AnkiStudy() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4">
+      <div className="w-full max-w-4xl mx-auto">
         
-        {/* Database Selection */}
-        {!selectedDatabase && (
-          <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-            <CardHeader className="text-center pb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Flashcard Study System</h1>
-              <p className="text-slate-300">Select a database to begin your Anki-style study session</p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Choose Database
-                </label>
-                <Select onValueChange={setSelectedDatabase}>
-                  <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
-                    <SelectValue placeholder="Select a database..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
-                    {databases.map((db: any) => (
-                      <SelectItem key={db.id} value={db.id} className="text-white hover:bg-slate-600">
-                        {db.name} ({db.language}) - {db.wordCount} words
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Header with Back Button */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl">
+              <Brain className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Anki Study System</h1>
+              <p className="text-slate-300">Master your vocabulary with spaced repetition</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setLocation('/')}
+            variant="outline"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
+            ← Back to Home
+          </Button>
+        </div>
 
-        {/* Session Setup */}
-        {selectedDatabase && !sessionStarted && (
-          <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="w-full max-w-2xl">
+        
+            {/* Database Selection */}
+            {!selectedDatabase && (
+              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+                <CardHeader className="text-center pb-8">
+                  <h1 className="text-3xl font-bold text-white mb-2">Flashcard Study System</h1>
+                  <p className="text-slate-300">Select a database to begin your Anki-style study session</p>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Choose Database
+                    </label>
+                    <Select onValueChange={setSelectedDatabase}>
+                      <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
+                        <SelectValue placeholder="Select a database..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-700 border-slate-600">
+                        {databases.map((db: any) => (
+                          <SelectItem key={db.id} value={db.id} className="text-white hover:bg-slate-600">
+                            {db.name} ({db.language}) - {db.wordCount} words
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Session Setup */}
+            {selectedDatabase && !sessionStarted && (
+              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto">
             <CardHeader className="text-center">
               <h2 className="text-2xl font-bold text-white">Study Session Setup</h2>
               <p className="text-slate-300">Configure your study session</p>
@@ -227,9 +250,13 @@ export default function AnkiStudy() {
 
               <div className="flex gap-4 pt-4">
                 <Button
-                  onClick={startSession}
+                  onClick={() => {
+                    console.log('Start session clicked!', { deck, deckLoading });
+                    startSession();
+                  }}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg"
                   disabled={deckLoading || !deck}
+                  data-testid="start-session-btn"
                 >
                   Start Study Session
                 </Button>
@@ -241,43 +268,43 @@ export default function AnkiStudy() {
                   Change Database
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Study Session */}
-        {sessionStarted && (
-          <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
-            {dueCards.length === 0 ? (
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="text-6xl mb-4">🎉</div>
-                <h3 className="text-2xl font-bold text-white mb-2">Session Complete!</h3>
-                <p className="text-slate-300 mb-6 text-center">
-                  You've reviewed all due cards. Come back later for more practice.
-                </p>
-                <Button
-                  onClick={resetSession}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Start New Session
-                </Button>
               </CardContent>
-            ) : currentCard ? (
-              <>
-                <CardHeader className="text-center border-b border-slate-700 pb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <Badge variant="outline" className="border-slate-600 text-slate-300">
-                      {dueCards.findIndex(card => card.id === currentCard.id) + 1} / {dueCards.length}
-                    </Badge>
+              </Card>
+            )}
+
+            {/* Study Session */}
+            {sessionStarted && (
+              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
+                {dueCards.length === 0 ? (
+                  <CardContent className="flex flex-col items-center justify-center py-16">
+                    <div className="text-6xl mb-4">🎉</div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Session Complete!</h3>
+                    <p className="text-slate-300 mb-6 text-center">
+                      You've reviewed all due cards. Come back later for more practice.
+                    </p>
                     <Button
                       onClick={resetSession}
-                      variant="ghost"
-                      className="text-slate-400 hover:text-white hover:bg-slate-700"
-                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      End Session
+                      Start New Session
                     </Button>
-                  </div>
+                  </CardContent>
+                ) : currentCard ? (
+                  <>
+                    <CardHeader className="text-center border-b border-slate-700 pb-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <Badge variant="outline" className="border-slate-600 text-slate-300">
+                          {dueCards.findIndex(card => card.id === currentCard.id) + 1} / {dueCards.length}
+                        </Badge>
+                        <Button
+                          onClick={resetSession}
+                          variant="ghost"
+                          className="text-slate-400 hover:text-white hover:bg-slate-700"
+                          size="sm"
+                        >
+                          End Session
+                        </Button>
+                      </div>
                   
                   {/* Question */}
                   <div className="space-y-4">
@@ -368,16 +395,18 @@ export default function AnkiStudy() {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </>
-            ) : (
-              <CardContent className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                <span className="ml-4 text-white">Loading cards...</span>
-              </CardContent>
+                    </CardContent>
+                  </>
+                ) : (
+                  <CardContent className="flex items-center justify-center py-16">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                    <span className="ml-4 text-white">Loading cards...</span>
+                  </CardContent>
+                )}
+              </Card>
             )}
-          </Card>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
