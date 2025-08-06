@@ -9,18 +9,32 @@ import { storage } from "./storage";
 
 // Validate required environment variables for authentication
 function validateEnvironmentVariables() {
-  const requiredVars = [
-    'REPLIT_DOMAINS',
-    'REPL_ID', 
-    'SESSION_SECRET'
-  ];
+  const missingVars = [];
   
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  // SESSION_SECRET must be manually set by user
+  if (!process.env.SESSION_SECRET) {
+    missingVars.push('SESSION_SECRET');
+  }
+  
+  // REPLIT_DOMAINS and REPL_ID should be auto-provided by Replit
+  // but may not be available during build time
+  if (!process.env.REPLIT_DOMAINS) {
+    missingVars.push('REPLIT_DOMAINS (should be auto-provided by Replit)');
+  }
+  
+  if (!process.env.REPL_ID) {
+    missingVars.push('REPL_ID (should be auto-provided by Replit)');
+  }
   
   if (missingVars.length > 0) {
-    const errorMessage = `Missing required environment variables for authentication: ${missingVars.join(', ')}.\n` +
-      `Please add these variables to your deployment secrets:\n` +
-      missingVars.map(varName => `- ${varName}`).join('\n');
+    console.error('Missing environment variables for authentication:', missingVars);
+    
+    const errorMessage = `Missing required environment variables for authentication: ${missingVars.join(', ')}.\n\n` +
+      `DEPLOYMENT SETUP INSTRUCTIONS:\n` +
+      `1. Add SESSION_SECRET to your deployment secrets (generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")\n` +
+      `2. REPLIT_DOMAINS and REPL_ID should be automatically provided by Replit\n` +
+      `3. If auto-provided variables are missing, check your deployment configuration\n\n` +
+      `For detailed setup instructions, see: DEPLOYMENT_SETUP.md`;
     throw new Error(errorMessage);
   }
 }
