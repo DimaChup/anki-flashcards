@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock, Trash2, Play } from 'lucide-react';
+import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -72,7 +72,6 @@ export default function AnkiStudyPage() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [studyStats, setStudyStats] = useState({ reviewed: 0, total: 0 });
   const [settingsTab, setSettingsTab] = useState('daily');
-  const [studyMode, setStudyMode] = useState(false);
 
   // Get study settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -147,34 +146,6 @@ export default function AnkiStudyPage() {
     },
   });
 
-  // Delete deck mutation
-  const deleteDeckMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('DELETE', `/api/anki-study/deck/${databaseId}`, {});
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: 'Deck Deleted',
-        description: `Removed ${data.deletedCards} cards from your Anki deck`,
-      });
-      
-      // Reset state and refetch data
-      setStudyMode(false);
-      setSessionComplete(false);
-      setCurrentCardIndex(0);
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Delete Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
   // Initialize cards mutation
   const initializeCardsMutation = useMutation({
     mutationFn: async () => {
@@ -193,12 +164,36 @@ export default function AnkiStudyPage() {
         description: `${data.message}`,
       });
       // Refresh the session to show the new cards
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
+      refetchSession();
     },
     onError: (error: Error) => {
       toast({
         title: 'Initialization Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete deck mutation
+  const deleteDeckMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) throw new Error('No database selected');
+      
+      const deleteResponse = await apiRequest('DELETE', `/api/anki-study/cards/${databaseId}`);
+      return await deleteResponse.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Deck Deleted!',
+        description: `Deleted ${data.deleted} study cards. You can now regenerate the deck.`,
+      });
+      // Refresh the session to show no cards
+      refetchSession();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
         description: error.message,
         variant: 'destructive',
       });
