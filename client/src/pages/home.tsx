@@ -7,6 +7,7 @@ import ListViewSection from "@/components/list-view-section";
 import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Languages } from "lucide-react";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { logout, isLoggingOut } = useAuth();
 
   const { data: databases, isLoading: isDatabasesLoading } = useQuery<LinguisticDatabase[]>({
     queryKey: ["/api/databases"],
@@ -124,11 +126,12 @@ export default function Home() {
                 View Pricing
               </button>
               <button
-                onClick={() => window.location.href = '/api/logout'}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                onClick={logout}
+                disabled={isLoggingOut}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
                 data-testid="logout-button"
               >
-                Logout
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
               </button>
             </div>
           </header>

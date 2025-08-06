@@ -188,12 +188,21 @@ export async function setupAuth(app: Express) {
   });
 
   // Logout route
-  app.post("/api/logout", (req, res) => {
+  app.get("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
+        console.error('Logout error:', err);
         return res.status(500).json({ error: 'Logout failed' });
       }
-      res.json({ message: 'Logout successful' });
+      // Destroy the session completely
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+        }
+        // Clear the session cookie
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+      });
     });
   });
 }
