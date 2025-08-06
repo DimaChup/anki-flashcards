@@ -11,6 +11,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Brain } from 'lucide-react';
 import type { AnkiStudyDeck, AnkiFlashcard } from '@shared/schema';
 
+// POS Color mapping from anki.html
+const posColors = {
+  'VERB': 'text-pink-400',      // Pink for verbs
+  'NOUN': 'text-blue-400',      // Blue for nouns  
+  'ADJ': 'text-green-400',      // Green for adjectives
+  'AUX': 'text-orange-400',     // Orange for auxiliary
+  'PROPN': 'text-purple-400',   // Purple for proper nouns
+  'ADP': 'text-yellow-400',     // Yellow for adpositions
+  'SCONJ': 'text-cyan-400',     // Cyan for subordinating conjunctions
+  'PRON': 'text-indigo-400',    // Indigo for pronouns
+  'DET': 'text-red-400',        // Red for determiners
+  'ADV': 'text-teal-400'        // Teal for adverbs
+};
+
 export default function AnkiStudy() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
