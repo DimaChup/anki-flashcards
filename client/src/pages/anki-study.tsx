@@ -46,14 +46,14 @@ export default function AnkiStudy() {
     }
   }, [isAuthenticated, setLocation]);
 
-  // Get user's databases
-  const { data: databases = [] } = useQuery({
+  // Get user's databases  
+  const { data: databases = [] } = useQuery<any[]>({
     queryKey: ['/api/databases'],
     enabled: isAuthenticated,
   });
 
   // Get study cards for selected database
-  const { data: studyData, isLoading: cardsLoading } = useQuery({
+  const { data: studyData, isLoading: cardsLoading } = useQuery<{cards: any[], totalCards: number, databaseName: string}>({
     queryKey: [`/api/anki/study-cards/${selectedDatabase}`],
     enabled: !!selectedDatabase,
   });
@@ -95,8 +95,7 @@ export default function AnkiStudy() {
       setShowAnswer(false);
       
       // Refetch data
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
-      refetchCards();
+      queryClient.invalidateQueries({ queryKey: [`/api/anki/study-cards/${selectedDatabase}`] });
     },
     onError: (error) => {
       toast({
@@ -126,17 +125,7 @@ export default function AnkiStudy() {
     setShowAnswer(false);
   };
 
-  // Get POS styling class
-  const getPosColor = (pos: string) => {
-    switch (pos?.toUpperCase()) {
-      case 'VERB': return 'bg-pink-100 text-pink-800 border-pink-300';
-      case 'NOUN':
-      case 'PROPN': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'ADJ': return 'bg-green-100 text-green-800 border-green-300';
-      case 'AUX': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
+  // Get POS styling class - not used in simplified version
 
   if (!isAuthenticated) {
     return null;
@@ -327,7 +316,7 @@ export default function AnkiStudy() {
                     </div>
                     
                     {currentCard.pos && (
-                      <Badge className={`${enablePosColors ? getPosColor(currentCard.pos) : 'bg-gray-100 text-gray-800 border-gray-300'} text-xs font-medium`}>
+                      <Badge className="bg-slate-700 text-slate-300 text-xs font-medium">
                         {currentCard.pos}
                       </Badge>
                     )}
