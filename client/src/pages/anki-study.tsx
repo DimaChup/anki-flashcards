@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock } from 'lucide-react';
+import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock, Trash2, Play } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,8 @@ export default function AnkiStudyPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  const [isInitializing, setIsInitializing] = useState(false);
+  
   // Extract database ID from URL params
   const databaseId = location.split('/anki-study/')[1];
   
@@ -70,6 +72,7 @@ export default function AnkiStudyPage() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [studyStats, setStudyStats] = useState({ reviewed: 0, total: 0 });
   const [settingsTab, setSettingsTab] = useState('daily');
+  const [studyMode, setStudyMode] = useState(false);
 
   // Get study settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -138,6 +141,64 @@ export default function AnkiStudyPage() {
     onError: (error: Error) => {
       toast({
         title: 'Settings Update Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete deck mutation
+  const deleteDeckMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('DELETE', `/api/anki-study/deck/${databaseId}`, {});
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Deck Deleted',
+        description: `Removed ${data.deletedCards} cards from your Anki deck`,
+      });
+      
+      // Reset state and refetch data
+      setStudyMode(false);
+      setSessionComplete(false);
+      setCurrentCardIndex(0);
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Initialize cards mutation
+  const initializeCardsMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) throw new Error('No database selected');
+      
+      // Initialize all eligible words from database (first_inst=true, excluding known words)
+      const initResponse = await apiRequest('POST', '/api/anki-study/cards/initialize', {
+        databaseId
+        // No wordKeys means it will use all eligible words
+      });
+      return await initResponse.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Anki Deck Created!',
+        description: `${data.message}`,
+      });
+      // Refresh the session to show the new cards
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Initialization Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -244,17 +305,127 @@ export default function AnkiStudyPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
-              No Cards to Study
+              Create Your Anki Deck
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <p className="text-gray-600">
-              You don't have any cards due for review today. You can:
+              Create a personalized Anki deck from your database words with first-instance filtering.
             </p>
-            <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
+            
+            {/* Study Settings Display */}
+            {settings && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-800">Study Settings</h3>
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{settings.newCardsPerDay}</div>
+                    <div className="text-sm text-gray-600">New Cards/Day</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{settings.reviewLimit}</div>
+                    <div className="text-sm text-gray-600">Review Limit/Day</div>
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800 mb-1">
+                    <strong>Deck includes:</strong> First-instance words only, excluding known words
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Cards appear in order of appearance in your original text (1, 2, 3, etc.)
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              <Button 
+                onClick={() => initializeCardsMutation.mutate()}
+                disabled={initializeCardsMutation.isPending}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                size="lg"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                {initializeCardsMutation.isPending ? 'Creating Anki Deck...' : 'Create Anki Deck from Database'}
+              </Button>
+              
+              <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
                 <Home className="w-4 h-4 mr-2" />
-                Go back and initialize new study cards
+                Go back to Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show deck status and study options when deck exists but not in study mode
+  const hasDeck = session?.cards && session.cards.length > 0;
+  
+  if (hasDeck && !studyMode) {
+    return (
+      <div className="container mx-auto p-6 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-600" />
+              Anki Deck Ready
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-3xl font-bold text-green-600 mb-2">{session.cards.length}</div>
+              <div className="text-sm text-green-800 font-medium">Cards Ready for Study</div>
+              <div className="text-xs text-green-600 mt-1">
+                Sorted by appearance order • First instances only • Known words excluded
+              </div>
+            </div>
+
+            {/* Deck breakdown */}
+            <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-blue-600">{session.breakdown?.new || 0}</div>
+                <div className="text-xs text-gray-600">New</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-orange-600">{session.breakdown?.learning || 0}</div>
+                <div className="text-xs text-gray-600">Learning</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-green-600">{session.breakdown?.review || 0}</div>
+                <div className="text-xs text-gray-600">Review</div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={() => setStudyMode(true)}
+                className="w-full bg-green-600 hover:bg-green-700"
+                size="lg"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Begin Study Session
+              </Button>
+              
+              <Button 
+                variant="destructive"
+                onClick={() => {
+                  if (confirm('Are you sure you want to delete this Anki deck? All progress will be lost.')) {
+                    deleteDeckMutation.mutate();
+                  }
+                }}
+                disabled={deleteDeckMutation.isPending}
+                className="w-full"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleteDeckMutation.isPending ? 'Deleting Deck...' : 'Delete Deck'}
+              </Button>
+              
+              <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
+                <Home className="w-4 h-4 mr-2" />
+                Go back to Home
               </Button>
             </div>
           </CardContent>

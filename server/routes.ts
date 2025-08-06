@@ -1174,7 +1174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/settings/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       let settings = await storage.getAnkiStudySettings(userId, databaseId);
       
@@ -1201,7 +1201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/anki-study/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const settings = { ...req.body, userId };
       
       const created = await storage.createAnkiStudySettings(settings);
@@ -1232,7 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/cards/:databaseId/today', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const cards = await storage.getTodaysStudyCards(userId, databaseId);
       
@@ -1257,22 +1257,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize new study cards from selected database words
   app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { databaseId, wordKeys } = req.body;
       
-      if (!Array.isArray(wordKeys) || wordKeys.length === 0) {
-        return res.status(400).json({ message: 'wordKeys must be a non-empty array' });
+      if (!databaseId) {
+        return res.status(400).json({ message: 'Database ID is required' });
       }
       
+      // Create or get study settings first
+      let settings = await storage.getAnkiStudySettings(userId, databaseId);
+      if (!settings) {
+        settings = await storage.createAnkiStudySettings({
+          userId,
+          databaseId,
+          newCardsPerDay: 20,
+          reviewLimit: 200,
+          easyBonus: 0.3,
+          intervalModifier: 1.0,
+          maxInterval: 36500,
+          graduatingInterval: 1,
+          easyInterval: 4,
+          startingEase: 2500,
+          learningSteps: "1,10"
+        });
+      }
+      
+      // Initialize cards (if no wordKeys provided, it will use all eligible words from database)
       const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
+      
       res.status(201).json({
-        message: `Initialized ${cards.length} study cards`,
+        message: `Initialized ${cards.length} study cards from database words (first instances, excluding known words)`,
         cards: cards.length,
-        initialized: cards
+        details: `Created Anki deck with words in order of appearance, automatically filtering out known words`
       });
     } catch (error) {
       console.error('Error initializing study cards:', error);
       res.status(500).json({ message: 'Failed to initialize study cards' });
+    }
+  });
+
+  // Delete entire Anki deck (cards + settings)
+  app.delete('/api/anki-study/deck/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { databaseId } = req.params;
+      const userId = req.user.id;
+      
+      const result = await storage.deleteAnkiDeck(userId, databaseId);
+      
+      res.json({
+        message: `Deleted Anki deck: ${result.deletedCards} cards and ${result.deletedSettings ? 'settings' : 'no settings'}`,
+        deletedCards: result.deletedCards,
+        deletedSettings: result.deletedSettings
+      });
+    } catch (error) {
+      console.error('Error deleting Anki deck:', error);
+      res.status(500).json({ message: 'Failed to delete Anki deck' });
+    }
+  });
+
+  // Delete all study cards for a database (to regenerate deck)
+  app.delete('/api/anki-study/cards/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { databaseId } = req.params;
+      
+      const deleted = await storage.deleteAllStudyCards(userId, databaseId);
+      
+      res.json({
+        message: `Deleted ${deleted} study cards`,
+        deleted
+      });
+    } catch (error) {
+      console.error('Error deleting study cards:', error);
+      res.status(500).json({ message: 'Failed to delete study cards' });
     }
   });
 
