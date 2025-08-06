@@ -1,10 +1,13 @@
 import { Languages, ArrowRight, Zap, Users, Brain, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLocation } from "wouter";
 
 export default function Landing() {
+  const [, navigate] = useLocation();
+  
   const handleLogin = () => {
-    window.location.href = '/api/login';
+    navigate('/auth');
   };
 
   const features = [

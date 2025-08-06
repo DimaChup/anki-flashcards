@@ -9,6 +9,7 @@ import Pricing from "@/pages/pricing";
 import Landing from "@/pages/landing";
 import DemoUsers from "@/pages/demo-users";
 import Flashcards from "@/pages/flashcards";
+import AuthPage from "@/pages/auth";
 import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
+          <Route path="/auth" component={AuthPage} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/demo" component={DemoUsers} />
           <Route>

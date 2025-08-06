@@ -62,10 +62,6 @@ export function getSession() {
 // Setup Local Strategy for username/password authentication
 function setupLocalStrategy() {
   passport.use(new LocalStrategy(
-    {
-      usernameField: 'username',
-      passwordField: 'password'
-    },
     async (username: string, password: string, done) => {
       try {
         const user = await storage.getUserByUsername(username);
@@ -140,7 +136,20 @@ export async function setupAuth(app: Express) {
   // Register route
   app.post("/api/register", async (req, res) => {
     try {
-      const { username, email, password, firstName, lastName } = req.body;
+      const { username, password } = req.body;
+      
+      // Basic validation
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+      
+      if (username.length < 3 || username.length > 50) {
+        return res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
+      }
+      
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
       
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
@@ -152,10 +161,7 @@ export async function setupAuth(app: Express) {
       const passwordHash = await hashPassword(password);
       const newUser = await storage.createUser({
         username,
-        email,
         passwordHash,
-        firstName,
-        lastName,
       });
 
       // Remove password hash from response

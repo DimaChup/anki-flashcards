@@ -48,19 +48,11 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)]
 );
 
-// Users table for email authentication
+// Users table for simple username/password authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique().notNull(),
+  username: varchar("username").unique().notNull(),
   passwordHash: varchar("password_hash").notNull(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  isVerified: text("is_verified").notNull().default('false'),
-  verificationToken: varchar("verification_token"),
-  verificationTokenExpiry: timestamp("verification_token_expiry", { withTimezone: true }),
-  resetToken: varchar("reset_token"),
-  resetTokenExpiry: timestamp("reset_token_expiry", { withTimezone: true }),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -72,42 +64,19 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 export const registerUserSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
+  username: z.string().min(3).max(50),
+  password: z.string().min(6).max(128),
 });
 
 export const loginUserSchema = z.object({
-  email: z.string().email(),
+  username: z.string(),
   password: z.string(),
-});
-
-export const verifyEmailSchema = z.object({
-  token: z.string(),
-});
-
-export const resendVerificationSchema = z.object({
-  email: z.string().email(),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string(),
-  password: z.string().min(8).max(128),
 });
 
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
-export type VerifyEmail = z.infer<typeof verifyEmailSchema>;
-export type ResendVerification = z.infer<typeof resendVerificationSchema>;
-export type ForgotPassword = z.infer<typeof forgotPasswordSchema>;
-export type ResetPassword = z.infer<typeof resetPasswordSchema>;
 
 // User subscription schema for monetization
 export const userSubscriptions = pgTable("user_subscriptions", {
