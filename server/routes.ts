@@ -842,6 +842,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get cards from a specific batch number
+  app.get('/api/spaced-repetition/batch-cards/:databaseId/:batchNumber', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.params.databaseId;
+      const batchNumber = parseInt(req.params.batchNumber);
+      
+      if (isNaN(batchNumber) || batchNumber < 1) {
+        return res.status(400).json({ message: "Invalid batch number" });
+      }
+      
+      const specificBatch = await SpacedRepetitionService.getBatchByNumber(userId, databaseId, batchNumber);
+      const dueCards = await SpacedRepetitionService.getDueCardsFromBatch(userId, databaseId, batchNumber);
+      const allCards = await SpacedRepetitionService.getCardsFromBatch(userId, databaseId, batchNumber);
+      
+      res.json({
+        activeBatch: specificBatch,
+        dueCards,
+        allCards
+      });
+    } catch (error) {
+      console.error("Error fetching batch cards:", error);
+      res.status(500).json({ message: "Failed to fetch batch cards" });
+    }
+  });
+
   // Activate next batch
   app.post('/api/spaced-repetition/activate-next/:databaseId', isAuthenticated, async (req: any, res) => {
     try {

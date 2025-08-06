@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Target, Clock, TrendingUp, Star, CheckCircle, XCircle, RotateCcw, Zap } from "lucide-react";
+import { Brain, Target, Clock, TrendingUp, Star, CheckCircle, XCircle, RotateCcw, Zap, ChevronDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SpacedRepetitionCard } from '@shared/schema';
@@ -53,6 +54,7 @@ interface FlashcardSectionProps {
 export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectionProps) {
   const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [selectedBatchNumber, setSelectedBatchNumber] = useState<number>(1);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -62,14 +64,19 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
     enabled: !!selectedDatabaseId,
   });
 
-  // Get active batch and cards
+  // Get active batch and cards for selected batch
   const { 
     data: activeBatchData, 
     isLoading: cardsLoading, 
     refetch: refetchCards 
   } = useQuery<ActiveBatchData>({
-    queryKey: ['/api/spaced-repetition/active-batch', selectedDatabaseId],
+    queryKey: ['/api/spaced-repetition/batch-cards', selectedDatabaseId, selectedBatchNumber],
     enabled: !!selectedDatabaseId,
+    queryFn: async () => {
+      const response = await fetch(`/api/spaced-repetition/batch-cards/${selectedDatabaseId}/${selectedBatchNumber}`);
+      if (!response.ok) throw new Error('Failed to fetch batch cards');
+      return response.json();
+    },
   });
 
   const dueCards = activeBatchData?.dueCards || [];
@@ -176,6 +183,35 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Batch Selector */}
+        {stats && stats.totalBatches > 0 && (
+          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <label className="text-sm font-medium">Select Batch to Learn:</label>
+            <Select 
+              value={selectedBatchNumber.toString()} 
+              onValueChange={(value) => {
+                setSelectedBatchNumber(parseInt(value));
+                setCurrentCard(null);
+                setShowAnswer(false);
+              }}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select batch" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: stats.totalBatches }, (_, i) => i + 1).map((batchNum) => (
+                  <SelectItem key={batchNum} value={batchNum.toString()}>
+                    Batch {batchNum} {stats.allBatches?.find(b => b.batchNumber === batchNum)?.isCompleted ? '✓' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">
+              {dueCards.length} cards due in this batch
+            </span>
+          </div>
+        )}
+
         {currentCard ? (
           // Review Session
           <div className="space-y-6">

@@ -191,6 +191,60 @@ export class SpacedRepetitionService {
       .orderBy(spacedRepetitionCards.nextReviewDate);
   }
 
+  // Get batch by number
+  static async getBatchByNumber(userId: string, databaseId: string, batchNumber: number): Promise<SpacedRepetitionBatch | null> {
+    const [batch] = await db
+      .select()
+      .from(spacedRepetitionBatches)
+      .where(
+        and(
+          eq(spacedRepetitionBatches.userId, userId),
+          eq(spacedRepetitionBatches.databaseId, databaseId),
+          eq(spacedRepetitionBatches.batchNumber, batchNumber)
+        )
+      );
+
+    return batch || null;
+  }
+
+  // Get due cards from a specific batch
+  static async getDueCardsFromBatch(userId: string, databaseId: string, batchNumber: number): Promise<SpacedRepetitionCard[]> {
+    const batch = await this.getBatchByNumber(userId, databaseId, batchNumber);
+    if (!batch) return [];
+
+    const now = new Date();
+    return await db
+      .select()
+      .from(spacedRepetitionCards)
+      .where(
+        and(
+          eq(spacedRepetitionCards.userId, userId),
+          eq(spacedRepetitionCards.databaseId, databaseId),
+          eq(spacedRepetitionCards.batchId, batch.id),
+          lte(spacedRepetitionCards.nextReviewDate, now)
+        )
+      )
+      .orderBy(spacedRepetitionCards.nextReviewDate);
+  }
+
+  // Get all cards from a specific batch
+  static async getCardsFromBatch(userId: string, databaseId: string, batchNumber: number): Promise<SpacedRepetitionCard[]> {
+    const batch = await this.getBatchByNumber(userId, databaseId, batchNumber);
+    if (!batch) return [];
+    
+    return await db
+      .select()
+      .from(spacedRepetitionCards)
+      .where(
+        and(
+          eq(spacedRepetitionCards.userId, userId),
+          eq(spacedRepetitionCards.databaseId, databaseId),
+          eq(spacedRepetitionCards.batchId, batch.id)
+        )
+      )
+      .orderBy(spacedRepetitionCards.nextReviewDate);
+  }
+
   // Core Anki algorithm: Update card based on review quality
   static async reviewCard(cardId: string, quality: number): Promise<SpacedRepetitionCard> {
     const [card] = await db
@@ -402,11 +456,13 @@ export class SpacedRepetitionService {
   static async createCardsFromWords(
     userId: string,
     databaseId: string,
+    batchId: string,
     words: Array<{ id: string; word: string; translation: string }>
   ): Promise<SpacedRepetitionCard[]> {
     const cardData: InsertSpacedRepetitionCard[] = words.map(word => ({
       userId,
       databaseId,
+      batchId,
       wordId: word.id,
       word: word.word,
       translation: word.translation,
