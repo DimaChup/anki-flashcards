@@ -58,14 +58,23 @@ export default function AnkiStudy() {
     enabled: isAuthenticated,
   });
 
-  // Get study cards for selected database
-  const { data: studyData, isLoading: cardsLoading } = useQuery({
+  // Get study cards for selected database with proper query invalidation
+  const { data: studyData, isLoading: cardsLoading, refetch } = useQuery({
     queryKey: ['/api/anki/study-cards', selectedDatabase, excludeKnownWords],
-    queryFn: () => 
-      fetch(`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`)
-        .then(res => res.json()),
+    queryFn: () => {
+      console.log('Fetching study cards with excludeKnownWords:', excludeKnownWords);
+      return fetch(`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`)
+        .then(res => res.json());
+    },
     enabled: !!selectedDatabase,
   });
+
+  // Refetch when excludeKnownWords changes
+  useEffect(() => {
+    if (selectedDatabase && !sessionStarted) {
+      refetch();
+    }
+  }, [excludeKnownWords, selectedDatabase, sessionStarted, refetch]);
 
   const studyCards: StudyCard[] = studyData?.cards || [];
   const currentCard = studyCards[currentCardIndex];

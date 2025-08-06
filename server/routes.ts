@@ -1035,7 +1035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const databaseId = req.params.databaseId;
       const excludeKnownWords = req.query.excludeKnownWords !== 'false'; // Default to true
       
-      console.log('Anki study cards request:', { databaseId, excludeKnownWords, query: req.query });
+      console.log('Anki study cards request:', { databaseId, excludeKnownWords, queryParam: req.query.excludeKnownWords, query: req.query });
       
       // Get user's database
       const database = await storage.getLinguisticDatabase(databaseId, userId);
@@ -1043,9 +1043,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Database not found" });
       }
       
-      // Get known words list - knownWords is an array of strings
+      // Get known words list - knownWords format is "word::POS" or just "word"
       const knownWords = database.knownWords || [];
-      const knownWordsSet = new Set(knownWords.map((word: string) => word.toLowerCase()));
+      const knownWordsSet = new Set(
+        knownWords.map((entry: string) => {
+          // Handle both "word::POS" and "word" formats
+          const word = entry.includes('::') ? entry.split('::')[0] : entry;
+          return word.toLowerCase();
+        })
+      );
       
       console.log('Known words:', { count: knownWords.length, words: knownWords.slice(0, 5) });
       
