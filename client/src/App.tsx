@@ -10,7 +10,6 @@ import Landing from "@/pages/landing";
 import DemoUsers from "@/pages/demo-users";
 import Flashcards from "@/pages/flashcards";
 import AnkiStudy from "@/pages/anki-study";
-import AnkiDeckManager from "@/pages/anki-deck-manager";
 // Note: AnkiStudyPage is the same component as AnkiStudy, used for parameterized route
 const AnkiStudyPage = AnkiStudy;
 import SimpleFlashcards from "@/pages/simple-flashcards";
@@ -47,7 +46,6 @@ function Router() {
           <Route path="/flashcards" component={SimpleFlashcards} />
           <Route path="/anki-study" component={AnkiStudy} />
           <Route path="/anki-study/:databaseId" component={AnkiStudyPage} />
-          <Route path="/database/:id/anki" component={AnkiDeckManager} />
           <Route path="/pricing" component={Pricing} />
           <Route>
             <div className="min-h-screen flex items-center justify-center">

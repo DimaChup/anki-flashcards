@@ -1254,20 +1254,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get deck words in chronological order
-  app.get("/api/anki-study/deck-words/:databaseId", isAuthenticated, async (req: any, res) => {
-    try {
-      const { databaseId } = req.params;
-      const userId = req.user.id;
-      
-      const deckWords = await storage.getDeckWordsInOrder(databaseId, userId);
-      res.json(deckWords);
-    } catch (error) {
-      console.error("Error fetching deck words:", error);
-      res.status(500).json({ message: "Failed to fetch deck words" });
-    }
-  });
-
   // Initialize new study cards from selected database words
   app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
     try {

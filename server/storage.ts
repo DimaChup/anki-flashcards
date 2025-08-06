@@ -568,20 +568,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get cards due for today's study session (reviews + new cards according to limits)
-  // Get deck words in chronological order for sidebar display
-  async getDeckWordsInOrder(databaseId: string, userId: string): Promise<WordEntry[]> {
-    const database = await this.getLinguisticDatabase(databaseId, userId);
-    if (!database) return [];
-
-    const analysisData = database.analysisData as WordEntry[];
-    const knownWords = new Set(database.knownWords || [] as string[]);
-    
-    // Return first instance words that would be in the deck, sorted by position
-    return analysisData
-      .filter(word => word.firstInstance && !knownWords.has(word.word))
-      .sort((a, b) => a.position - b.position);
-  }
-
   async getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]> {
     const now = new Date();
     
