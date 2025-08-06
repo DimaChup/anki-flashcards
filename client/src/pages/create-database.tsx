@@ -20,6 +20,7 @@ export default function CreateDatabase() {
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
   const [batchSize, setBatchSize] = useState<number>(30);
   const [concurrency, setConcurrency] = useState<number>(5);
+  const [userApiKey, setUserApiKey] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   
   const queryClient = useQueryClient();
@@ -101,7 +102,8 @@ export default function CreateDatabase() {
     setIsProcessing(true);
     startProcessingMutation.mutate({
       databaseId: selectedDatabase,
-      promptTemplateId: selectedPromptTemplate || undefined
+      promptTemplateId: selectedPromptTemplate || undefined,
+      userApiKey: userApiKey || undefined
     });
     setIsProcessing(false);
   };
@@ -540,6 +542,22 @@ export default function CreateDatabase() {
                 onChange={(e) => setConcurrency(parseInt(e.target.value) || 5)}
                 data-testid="input-concurrency"
               />
+            </div>
+            
+            <div className="control-group">
+              <label htmlFor="api-key">Gemini API Key (Optional):</label>
+              <input 
+                type="password" 
+                id="api-key" 
+                placeholder="AIza... (leave empty to use server default)"
+                value={userApiKey}
+                onChange={(e) => setUserApiKey(e.target.value)}
+                style={{ fontFamily: 'monospace', fontSize: '0.9em' }}
+                data-testid="input-api-key"
+              />
+              <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '5px' }}>
+                If provided, this will override the server's default API key
+              </small>
             </div>
           </div>
 

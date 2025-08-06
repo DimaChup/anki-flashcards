@@ -631,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start AI processing job
   app.post("/api/start-processing", async (req, res) => {
     try {
-      const { databaseId, configId, promptTemplateId } = req.body;
+      const { databaseId, configId, promptTemplateId, userApiKey } = req.body;
 
       if (!databaseId) {
         return res.status(400).json({ message: "Database ID is required" });
@@ -684,7 +684,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         model_name: config.modelName,
         batch_size: config.batchSize,
         concurrency: config.concurrency,
-        prompt_template: promptTemplate.template
+        prompt_template: promptTemplate.template,
+        api_key: userApiKey || undefined  // Pass user-provided API key if available
       };
 
       // Execute Python processing script asynchronously

@@ -11,10 +11,11 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold # For saf
 
 # --- Configuration ---
 
-# !!! PASTE YOUR GEMINI API KEY HERE !!!
-# It's recommended to use environment variables or a config file for API keys
-# instead of hardcoding them directly in the script.
-LLM_API_KEY = "" # Replace with your actual key
+# API Key Configuration - Multiple Options for Multi-User Setup
+# 1. Environment variable (recommended for deployment)
+# 2. User-provided key in processing config
+# 3. Fallback to empty (will show clear error message)
+LLM_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # --- File Path Setup ---
 # Get the directory where the script itself is located
@@ -632,6 +633,38 @@ async def main():
     
     print("=== LLM Text Processor ===")
     
+    # Check if called from Node.js with config (new web app mode)
+    if len(sys.argv) >= 3:
+        job_id = sys.argv[1]
+        config_json = sys.argv[2]
+        config = json.loads(config_json)
+        
+        print(f"Starting processing job {job_id} with web app configuration")
+        
+        # Extract configuration from control panel
+        api_key = config.get('api_key') or LLM_API_KEY or os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            exit_with_error("No API key provided. Please set GEMINI_API_KEY environment variable or provide API key in processing config.")
+        
+        model_name = config.get('model_name', DEFAULT_GEMINI_MODEL_NAME)
+        prompt_template = config.get('prompt_template', '')
+        
+        # Initialize components for web app mode
+        initialize_gemini_client(api_key, model_name)
+        
+        # Use prompt template from config instead of file
+        global loaded_prompt_template
+        loaded_prompt_template = prompt_template
+        print(f"Using prompt template from control panel")
+        
+        # TODO: Implement web app database processing logic here
+        print(f"Processing database_id: {config.get('database_id')}")
+        print(f"Batch size: {config.get('batch_size', 30)}")
+        print(f"Concurrency: {config.get('concurrency', 5)}")
+        
+        return True
+    
+    # Original command-line mode
     # Parse arguments
     args = parse_arguments()
     
