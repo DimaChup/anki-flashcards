@@ -174,6 +174,11 @@ export default function AnkiStudy() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate ALL relevant caches to show updated card statuses
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/deck', selectedDatabase] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', selectedDatabase] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue'] });
+      
       toast({ 
         title: "Deck Reset!", 
         description: "All cards reset to new status - progress cleared" 
