@@ -640,6 +640,7 @@ export class DatabaseStorage implements IStorage {
       databaseId,
       wordKey: wordEntry.id.toString(),
       word: wordEntry.word,
+      lemma: wordEntry.lemma, // Add lemma field
       definition: wordEntry.translation || wordEntry.lemma,
       context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
       pos: wordEntry.pos, // Add POS field
