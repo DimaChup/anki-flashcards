@@ -193,7 +193,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sentence: wordData.sentence || `Context for word: ${wordData.word}`
           };
           
-          console.log(`UPLOAD DEBUG: Processing word "${wordData.word}" with database key "${id}", position: ${parseInt(id)}`);
           (transformedData.analysisData as WordEntry[]).push(transformedWord);
         });
 
