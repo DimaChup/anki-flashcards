@@ -644,7 +644,7 @@ export class DatabaseStorage implements IStorage {
       definition: wordEntry.translation || wordEntry.lemma,
       context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
       pos: wordEntry.pos,
-      translations: JSON.stringify([wordEntry.translation || wordEntry.lemma]), // Add translations field
+      translations: [wordEntry.translation || wordEntry.lemma], // JSON array
       state: 'new' as const,
       easeFactor: 2500,
       interval: 0,
@@ -652,7 +652,10 @@ export class DatabaseStorage implements IStorage {
       due: now,
       reviews: 0,
       lapses: 0,
-      lastQuality: null
+      lastQuality: 0, // Default to 0 instead of null
+      learningSteps: "1,10",
+      graduatingInterval: 1,
+      easyInterval: 4
     })) as InsertAnkiStudyCard[];
 
     if (newCards.length === 0) return [];
