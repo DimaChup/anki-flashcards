@@ -259,12 +259,15 @@ export default function CreateDatabase() {
         method: 'DELETE'
       });
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Database not found - it may have already been deleted');
+        }
         const error = await response.json();
         throw new Error(error.message || 'Failed to delete database');
       }
-      return response.json();
+      return databaseId; // Return the ID instead of trying to parse empty response
     },
-    onSuccess: (result, databaseId) => {
+    onSuccess: (databaseId) => {
       queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
       if (selectedDatabase === databaseId) {
         setSelectedDatabase(''); // Clear selection if deleted database was selected
@@ -277,6 +280,11 @@ export default function CreateDatabase() {
   });
 
   const handleDeleteDatabase = (databaseId: string, databaseName: string) => {
+    // Prevent multiple deletions by checking if mutation is already pending
+    if (deleteDatabaseMutation.isPending) {
+      return;
+    }
+    
     if (window.confirm(`Are you sure you want to delete the database "${databaseName}"?\n\nThis action cannot be undone.`)) {
       deleteDatabaseMutation.mutate(databaseId);
     }
@@ -649,6 +657,7 @@ export default function CreateDatabase() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          e.preventDefault();
                           handleDeleteDatabase(db.id, db.name);
                         }}
                         style={{
@@ -666,6 +675,7 @@ export default function CreateDatabase() {
                         onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                         data-testid={`delete-database-${db.id}`}
                         title={`Delete database: ${db.name}`}
+                        disabled={deleteDatabaseMutation.isPending}
                       >
                         🗑️ Delete
                       </button>

@@ -151,9 +151,10 @@ export default function DatabaseSection({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       onDeleteDatabase(database.id, database.name);
                     }}
-                    className={`ml-2 p-1 h-auto ${
+                    className={`ml-2 p-1 h-auto transition-colors ${
                       selectedDatabaseId === database.id
                         ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/80'
                         : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
