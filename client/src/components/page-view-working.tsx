@@ -110,43 +110,34 @@ export default function PageViewSection({
 
   return (
     <div className="page-view-section">
-      <div className="controls p-4 border-b border-gray-200 bg-white">
+      <div className="controls">
         <button 
           onClick={() => setSegmentMode(!segmentMode)}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-            segmentMode 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
+          className={segmentMode ? 'active' : ''}
         >
           Segment Mode
         </button>
       </div>
       
-      <div className="content flex">
-        <div className="text-content flex-1 p-4">
-          <div className="text-reconstruction">
-            {analysisData.slice(0, 100).map((word, index) => (
-              <span key={index}>
-                {renderWordSpan(word, index)}
-                {index < 99 && ' '}
-              </span>
-            ))}
-          </div>
+      <div className="content">
+        <div className="text-content">
+          {analysisData.slice(0, 100).map((word, index) => (
+            <span key={index}>
+              {renderWordSpan(word, index)}
+              {index < 99 && ' '}
+            </span>
+          ))}
         </div>
         
         {segmentMode && (
-          <div className="right-pane w-1/3 p-4 border-l border-gray-300 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-4">Segment Translation</h3>
+          <div className="right-pane">
+            <h3>Segment Translation</h3>
             {segmentDisplayState.id && segmentDisplayState.keys.length > 0 && (
               <div>
-                <button 
-                  onClick={cycleSegmentTranslation}
-                  className="mb-3 px-3 py-1 bg-blue-500 text-white rounded text-sm"
-                >
+                <button onClick={cycleSegmentTranslation}>
                   Cycle Translation ({segmentDisplayState.index + 1}/{segmentDisplayState.keys.length})
                 </button>
-                <div className="segment-translation p-3 bg-white border rounded">
+                <div className="segment-translation">
                   {selectedDatabase?.segments?.find(s => 
                     (s.id?.toString() || `${s.startWordKey}-${s.endWordKey}`) === segmentDisplayState.id
                   )?.translations?.[segmentDisplayState.keys[segmentDisplayState.index]]}

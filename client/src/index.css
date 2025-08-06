@@ -84,6 +84,38 @@
   --radius: 0.5rem;
 }
 
+/* Segment highlighting styles */
+.segment-word-highlight {
+  background-color: hsl(45, 100%, 85%) !important;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.word-span {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.word-span:hover {
+  background-color: hsl(210, 20%, 95%);
+}
+
+.page-view-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+}
+
+.text-reconstruction {
+  line-height: 1.6;
+  font-size: 16px;
+}
+
 @layer base {
   * {
     @apply border-border;
