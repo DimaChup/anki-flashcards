@@ -50,9 +50,10 @@ interface ActiveBatchData {
 interface FlashcardSectionProps {
   selectedDatabaseId: string;
   batchSize: number;
+  batchByUnknown: boolean;
 }
 
-export default function FlashcardSection({ selectedDatabaseId, batchSize }: FlashcardSectionProps) {
+export default function FlashcardSection({ selectedDatabaseId, batchSize, batchByUnknown }: FlashcardSectionProps) {
   const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedBatchNumber, setSelectedBatchNumber] = useState<number>(1);
@@ -98,8 +99,8 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize }: Flas
 
   // Create batches mutation
   const createBatchesMutation = useMutation({
-    mutationFn: async ({ databaseId, batchSize }: { databaseId: string; batchSize: number }) => {
-      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize });
+    mutationFn: async ({ databaseId, batchSize, batchByUnknown }: { databaseId: string; batchSize: number; batchByUnknown: boolean }) => {
+      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize, batchByUnknown });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
@@ -143,10 +144,10 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize }: Flas
     }
   };
 
-  // Create batches from first instances using the current batch size
+  // Create batches from first instances using the current batch size and method
   const createBatches = () => {
     if (!selectedDatabaseId) return;
-    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize });
+    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize, batchByUnknown });
   };
 
   // Activate next batch

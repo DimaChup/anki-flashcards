@@ -24,29 +24,62 @@ export class SpacedRepetitionService {
     throw new Error("Use createBatchesFromAnalysisData instead");
   }
 
-  // Create batches from analysis data (to be called by external service with data)
+  // Create batches from analysis data using the same logic as First Instances list
   static async createBatchesFromAnalysisData(
     userId: string,
     databaseId: string,
     analysisData: any[],
-    batchSize: number = 20
+    batchSize: number = 20,
+    batchByUnknown: boolean = true
   ): Promise<SpacedRepetitionBatch[]> {
     // Filter to first instances only and sort by position
     const firstInstances = analysisData
       .filter(word => word.firstInstance && word.translation && word.translation.trim())
       .sort((a, b) => a.position - b.position);
 
-    const batches: SpacedRepetitionBatch[] = [];
-    const totalBatches = Math.ceil(firstInstances.length / batchSize);
+    // Create batches using the same logic as First Instances list
+    const wordBatches: any[][] = [];
+    
+    if (batchByUnknown) {
+      // Batch by unknown words count (same logic as list view)
+      let currentBatch: any[] = [];
+      let unknownCount = 0;
+      
+      for (const word of firstInstances) {
+        const isUnknown = true; // All first instances are considered unknown for learning
+        currentBatch.push(word);
+        
+        if (isUnknown) {
+          unknownCount++;
+        }
+        
+        if (unknownCount >= batchSize) {
+          wordBatches.push([...currentBatch]);
+          currentBatch = [];
+          unknownCount = 0;
+        }
+      }
+      
+      if (currentBatch.length > 0) {
+        wordBatches.push(currentBatch);
+      }
+    } else {
+      // Simple batching by count
+      for (let i = 0; i < firstInstances.length; i += batchSize) {
+        wordBatches.push(firstInstances.slice(i, i + batchSize));
+      }
+    }
 
-    // Create batches
-    for (let i = 0; i < totalBatches; i++) {
-      const batchWords = firstInstances.slice(i * batchSize, (i + 1) * batchSize);
+    const batches: SpacedRepetitionBatch[] = [];
+
+    // Create database batches from word batches
+    for (let i = 0; i < wordBatches.length; i++) {
+      const batchWords = wordBatches[i];
       
       const batchData: InsertSpacedRepetitionBatch = {
         userId,
         databaseId,
-        name: `Batch ${i + 1} (Words ${i * batchSize + 1}-${i * batchSize + batchWords.length})`,
+        name: `Batch ${i + 1} (${batchWords.length} words)`,
         batchNumber: i + 1,
         totalWords: batchWords.length,
         wordsLearned: 0,

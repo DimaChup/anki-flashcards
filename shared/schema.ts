@@ -184,6 +184,7 @@ export const createBatchSchema = z.object({
   databaseId: z.string(),
   batchSize: z.number().min(5).max(100).default(20), // Words per batch
   startFromBatch: z.number().min(1).default(1), // Which batch to start from
+  batchByUnknown: z.boolean().default(true), // Whether to batch by unknown words or simple count
 });
 
 export type SpacedRepetitionBatch = typeof spacedRepetitionBatches.$inferSelect;
