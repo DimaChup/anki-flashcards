@@ -1,33 +1,20 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 
 // Validate required environment variables for authentication
 function validateEnvironmentVariables() {
-  const replitVars = ['REPLIT_DOMAINS', 'REPL_ID'];
-  const googleVars = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
-  const commonVars = ['SESSION_SECRET'];
+  const requiredVars = ['SESSION_SECRET'];
   
-  const missingCommon = commonVars.filter(varName => !process.env[varName]);
-  const hasReplitVars = replitVars.every(varName => process.env[varName]);
-  const hasGoogleVars = googleVars.every(varName => process.env[varName]);
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
   
-  if (missingCommon.length > 0) {
-    const errorMessage = `Missing required environment variables: ${missingCommon.join(', ')}.\n` +
+  if (missingVars.length > 0) {
+    const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}.\n` +
       `Please add these variables to your deployment secrets.`;
-    throw new Error(errorMessage);
-  }
-  
-  if (!hasReplitVars && !hasGoogleVars) {
-    const errorMessage = `At least one authentication method must be configured:\n` +
-      `For Replit Auth: REPLIT_DOMAINS, REPL_ID\n` +
-      `For Google Auth: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET`;
     throw new Error(errorMessage);
   }
 }
@@ -35,18 +22,16 @@ function validateEnvironmentVariables() {
 // Validate environment variables on module load
 validateEnvironmentVariables();
 
-const getOidcConfig = memoize(
-  async () => {
-    if (!process.env.REPL_ID) {
-      throw new Error("REPL_ID environment variable is required for OIDC configuration");
-    }
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID
-    );
-  },
-  { maxAge: 3600 * 1000 }
-);
+// Hash password utility
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Verify password utility
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return await bcrypt.compare(password, hashedPassword);
+}
 
 export function getSession() {
   if (!process.env.SESSION_SECRET) {
@@ -74,24 +59,35 @@ export function getSession() {
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
-
-async function upsertUser(claims: any) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+// Setup Local Strategy for username/password authentication
+function setupLocalStrategy() {
+  passport.use(new LocalStrategy(
+    {
+      usernameField: 'username',
+      passwordField: 'password'
+    },
+    async (username: string, password: string, done) => {
+      try {
+        const user = await storage.getUserByUsername(username);
+        
+        if (!user) {
+          return done(null, false, { message: 'Invalid username or password' });
+        }
+        
+        const isValidPassword = await verifyPassword(password, user.passwordHash);
+        
+        if (!isValidPassword) {
+          return done(null, false, { message: 'Invalid username or password' });
+        }
+        
+        // Return user without password hash
+        const { passwordHash, ...userWithoutPassword } = user;
+        return done(null, userWithoutPassword);
+      } catch (error) {
+        return done(error);
+      }
+    }
+  ));
 }
 
 export async function setupAuth(app: Express) {
@@ -100,93 +96,98 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const config = await getOidcConfig();
+  // Setup local strategy
+  setupLocalStrategy();
 
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  if (!process.env.REPLIT_DOMAINS) {
-    throw new Error("REPLIT_DOMAINS environment variable is required for authentication setup");
-  }
-
-  for (const domain of process.env.REPLIT_DOMAINS.split(",")) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-
-  app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+  // Serialize user for sessions
+  passport.serializeUser((user: any, cb) => {
+    cb(null, user.id);
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
-  });
-
-  app.get("/api/logout", (req, res) => {
-    if (!process.env.REPL_ID) {
-      return res.status(500).json({ error: "REPL_ID environment variable is required for logout" });
+  passport.deserializeUser(async (id: string, cb) => {
+    try {
+      const user = await storage.getUser(id);
+      if (user) {
+        const { passwordHash, ...userWithoutPassword } = user;
+        cb(null, userWithoutPassword);
+      } else {
+        cb(null, false);
+      }
+    } catch (error) {
+      cb(error);
     }
-    
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+  });
+
+  // Login route
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ error: 'Authentication error' });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info?.message || 'Authentication failed' });
+      }
+      
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Login error' });
+        }
+        return res.json({ user, message: 'Login successful' });
+      });
+    })(req, res, next);
+  });
+
+  // Register route
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { username, email, password, firstName, lastName } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+
+      // Hash password and create user
+      const passwordHash = await hashPassword(password);
+      const newUser = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+      });
+
+      // Remove password hash from response
+      const { passwordHash: _, ...userWithoutPassword } = newUser;
+      
+      // Auto-login the user
+      req.logIn(userWithoutPassword, (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Auto-login failed' });
+        }
+        return res.json({ user: userWithoutPassword, message: 'Registration successful' });
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Registration failed' });
+    }
+  });
+
+  // Logout route
+  app.post("/api/logout", (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ message: 'Logout successful' });
     });
   });
 }
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (req.isAuthenticated()) {
     return next();
   }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  return res.status(401).json({ message: "Unauthorized" });
 };
