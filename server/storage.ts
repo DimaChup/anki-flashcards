@@ -629,9 +629,9 @@ export class DatabaseStorage implements IStorage {
     console.log(`Sample entry:`, analysisData[0]);
     console.log(`Known words count: ${knownWords.size}`);
     
-    // Get all words that have first_inst=true and are not in knownWords
-    const firstInstWords = analysisData.filter(entry => (entry as any).first_inst === true);
-    console.log(`Words with first_inst=true: ${firstInstWords.length}`);
+    // Get all words that have firstInstance=true (correct property name!)
+    const firstInstWords = analysisData.filter(entry => entry.firstInstance === true);
+    console.log(`Words with firstInstance=true: ${firstInstWords.length}`);
     
     const eligibleWords = firstInstWords
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
