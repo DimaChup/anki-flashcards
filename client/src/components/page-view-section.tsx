@@ -812,8 +812,21 @@ export default function PageViewSection({
         </div>
       </div>
 
-      {/* Text Display Area */}
-      <div className="output-section">
+      {/* Text Display Area - Scrollable Half Page */}
+      <div 
+        className="output-section"
+        style={{
+          height: '50vh',
+          maxHeight: '400px',
+          minHeight: '300px',
+          overflowY: 'auto',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '24px',
+          backgroundColor: 'var(--card)'
+        }}
+      >
         <div
           ref={dualPageContainerRef}
           className={`dual-page-container ${isDualPageView ? 'dual-view' : 'single-view'}`}
