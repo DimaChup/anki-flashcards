@@ -1019,92 +1019,186 @@ export default function PageViewSection({
 
 
 
-        {/* Pagination Controls */}
-        <div className="pagination-controls flex justify-between items-center mt-4 p-3 bg-muted rounded-lg">
-          <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage <= 1}
-            className="px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            &lt; Previous
-          </button>
-          
-          <div className="pagination-center flex items-center gap-2">
-            <span className="text-sm">Page {currentPage} of {totalPages}</span>
-            <input
-              type="number"
-              min="1"
-              max={totalPages}
-              value={currentPage}
-              onChange={(e) => {
-                const page = parseInt(e.target.value);
-                if (page >= 1 && page <= totalPages) {
-                  setCurrentPage(page);
-                }
-              }}
-              className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
-              placeholder="Page"
-            />
-          </div>
-          
-          <div className="pagination-right flex items-center gap-4">
-            {!segmentMode && (
-              <label className="toggle-label flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDualPageView}
-                  onChange={(e) => setIsDualPageView(e.target.checked)}
-                  className="sr-only"
-                />
-                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${isDualPageView ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </div>
-                <span className="text-sm">View: Dual/Single</span>
-              </label>
-            )}
-            {segmentMode && (
-              <span className="text-sm text-muted-foreground">
-                Segment Mode: Dual view (translations shown in right pane)
-              </span>
-            )}
-            
-            <div className="setting-control flex items-center gap-2">
-              <label className="text-sm">Words/Page:</label>
-              <div className="flex items-center">
+        {/* Mobile-Optimized Pagination Controls */}
+        <div className="pagination-controls mt-4 p-2 sm:p-3 bg-muted rounded-lg">
+          {/* Mobile Layout - Stack Controls */}
+          <div className="block sm:hidden space-y-3">
+            {/* Top Row - Navigation */}
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage <= 1}
+                className="px-4 py-2.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] text-sm font-semibold"
+              >
+                &lt; Prev
+              </button>
+              
+              <div className="flex items-center gap-2 px-3 py-2 bg-background rounded">
+                <span className="text-sm font-medium">{currentPage} / {totalPages}</span>
                 <input
                   type="number"
-                  min="5"
-                  max="500"
-                  step="10"
-                  value={wordsPerPage}
-                  onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 100)}
-                  className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                  min="1"
+                  max={totalPages}
+                  value={currentPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= totalPages) {
+                      setCurrentPage(page);
+                    }
+                  }}
+                  className="w-16 px-2 py-1.5 text-center border border-border rounded text-sm bg-background"
+                  placeholder="Page"
                 />
-                <div className="flex flex-col ml-1">
-                  <button
-                    onClick={() => setWordsPerPage(Math.min(500, wordsPerPage + 10))}
-                    className="px-1 py-0 text-xs border border-border hover:bg-muted"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    onClick={() => setWordsPerPage(Math.max(5, wordsPerPage - 10))}
-                    className="px-1 py-0 text-xs border border-border hover:bg-muted"
-                  >
-                    ▼
-                  </button>
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-4 py-2.5 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] text-sm font-semibold"
+              >
+                Next &gt;
+              </button>
+            </div>
+            
+            {/* Bottom Row - Toggles & Settings */}
+            <div className="flex flex-col gap-3">
+              {!segmentMode && (
+                <label className="toggle-label flex items-center justify-center gap-3 cursor-pointer p-2 bg-background rounded">
+                  <span className="text-sm font-medium">View:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Single</span>
+                    <div className="toggle-switch w-12 h-6 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                      <div className={`toggle-slider w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${isDualPageView ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Dual</span>
+                    <input
+                      type="checkbox"
+                      checked={isDualPageView}
+                      onChange={(e) => setIsDualPageView(e.target.checked)}
+                      className="sr-only"
+                    />
+                  </div>
+                </label>
+              )}
+              
+              <div className="flex items-center justify-center gap-3 p-2 bg-background rounded">
+                <label className="text-sm font-medium">Words/Page:</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="5"
+                    max="500"
+                    step="10"
+                    value={wordsPerPage}
+                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 100)}
+                    className="w-16 px-2 py-1.5 text-center border border-border rounded text-sm bg-background text-foreground"
+                  />
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => setWordsPerPage(Math.min(500, wordsPerPage + 10))}
+                      className="px-2 py-1 text-xs border border-border hover:bg-muted min-h-[24px]"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => setWordsPerPage(Math.max(5, wordsPerPage - 10))}
+                      className="px-2 py-1 text-xs border border-border hover:bg-muted min-h-[24px]"
+                    >
+                      ▼
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <button
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage >= totalPages}
-            className="px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next &gt;
-          </button>
+          {/* Desktop Layout - Original Horizontal */}
+          <div className="hidden sm:flex justify-between items-center">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage <= 1}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            >
+              &lt; Previous
+            </button>
+            
+            <div className="pagination-center flex items-center gap-2">
+              <span className="text-sm">Page {currentPage} of {totalPages}</span>
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={currentPage}
+                onChange={(e) => {
+                  const page = parseInt(e.target.value);
+                  if (page >= 1 && page <= totalPages) {
+                    setCurrentPage(page);
+                  }
+                }}
+                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                placeholder="Page"
+              />
+            </div>
+            
+            <div className="pagination-right flex items-center gap-4">
+              {!segmentMode && (
+                <label className="toggle-label flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isDualPageView}
+                    onChange={(e) => setIsDualPageView(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                    <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${isDualPageView ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-sm">View: Dual/Single</span>
+                </label>
+              )}
+              {segmentMode && (
+                <span className="text-sm text-muted-foreground">
+                  Segment Mode: Dual view (translations shown in right pane)
+                </span>
+              )}
+              
+              <div className="setting-control flex items-center gap-2">
+                <label className="text-sm">Words/Page:</label>
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min="5"
+                    max="500"
+                    step="10"
+                    value={wordsPerPage}
+                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 100)}
+                    className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                  />
+                  <div className="flex flex-col ml-1">
+                    <button
+                      onClick={() => setWordsPerPage(Math.min(500, wordsPerPage + 10))}
+                      className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => setWordsPerPage(Math.max(5, wordsPerPage - 10))}
+                      className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            >
+              Next &gt;
+            </button>
+          </div>
         </div>
       </div>
 
