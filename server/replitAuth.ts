@@ -5,6 +5,8 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
+import fs from 'fs';
+import path from 'path';
 
 // Validate required environment variables for authentication
 function validateEnvironmentVariables() {
@@ -31,6 +33,35 @@ export async function hashPassword(password: string): Promise<string> {
 // Verify password utility
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   return await bcrypt.compare(password, hashedPassword);
+}
+
+// Create sample database for new users
+async function createSampleDatabase(userId: string) {
+  try {
+    const sampleFilePath = path.join(process.cwd(), 'sample-mundo-database.json');
+    
+    if (fs.existsSync(sampleFilePath)) {
+      const sampleData = JSON.parse(fs.readFileSync(sampleFilePath, 'utf8'));
+      
+      // Create the sample database
+      const database = await storage.createLinguisticDatabase({
+        name: "Call Me Ishmael (Spanish Sample)",
+        description: "Sample Spanish text analysis - Call Me Ishmael excerpt with full linguistic analysis",
+        language: "Spanish",
+        inputText: sampleData.inputText,
+        wordDatabase: sampleData.wordDatabase,
+        knownWords: []
+      }, userId);
+      
+      console.log(`Created sample database for user ${userId}: ${database.id}`);
+      return database;
+    } else {
+      console.log('Sample database file not found, skipping sample creation');
+    }
+  } catch (error) {
+    console.error('Error creating sample database:', error);
+    // Don't throw error - this is optional
+  }
 }
 
 export function getSession() {
@@ -163,6 +194,9 @@ export async function setupAuth(app: Express) {
         username,
         passwordHash,
       });
+
+      // Create sample database for the new user
+      await createSampleDatabase(newUser.id);
 
       // Remove password hash from response
       const { passwordHash: _, ...userWithoutPassword } = newUser;
