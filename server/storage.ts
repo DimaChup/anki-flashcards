@@ -583,16 +583,14 @@ export class DatabaseStorage implements IStorage {
       .limit(reviewLimit)
       .orderBy(ankiFlashcards.due);
 
-    // Get new cards up to the limit, ordered by position in text
-    const remainingSlots = Math.max(0, newCardLimit + reviewLimit - reviewCards.length - learningCards.length);
-    const newCards = remainingSlots > 0 ? await db.select().from(ankiFlashcards)
+    // Get new cards up to the NEW CARD LIMIT ONLY, ordered by position in text
+    const newCards = await db.select().from(ankiFlashcards)
       .where(and(
         eq(ankiFlashcards.deckId, deckId),
         eq(ankiFlashcards.status, 'new')
       ))
-      .limit(remainingSlots)
-      .orderBy(ankiFlashcards.wordKey) // Maintain original text order
-      : [];
+      .limit(newCardLimit) // Strict limit on new cards
+      .orderBy(ankiFlashcards.wordKey); // Maintain original text order
 
     // For study queue, maintain text order for new cards (don't shuffle)
     // Reviews come first (due cards), then new cards in text order
