@@ -194,13 +194,17 @@ export const ankiFlashcards = pgTable("anki_flashcards", {
   lemma: text("lemma"),
   translations: jsonb("translations").default('[]'), // Array of translations
   sentence: text("sentence"), // Context sentence
-  // SRS fields based on the script
+  // SRS fields based on Anki SM-2 algorithm
   status: text("status").notNull().default('new'), // new, learning, review
-  easeFactor: integer("ease_factor").notNull().default(2500), // 2.5 * 1000 for precision
+  easeFactor: integer("ease_factor").notNull().default(2500), // 2.5 * 1000 for precision  
   interval: integer("interval").notNull().default(0), // Days
   due: timestamp("due", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
   repetitions: integer("repetitions").notNull().default(0),
   lapses: integer("lapses").notNull().default(0),
+  // Session cycling - for cards marked "hard" during study
+  sessionCycleCount: integer("session_cycle_count").notNull().default(0), // Times card appeared in current session
+  sessionEasyCount: integer("session_easy_count").notNull().default(0), // Times marked "easy" in current session
+  lastQuality: integer("last_quality").default(0), // Last rating: 1=Again, 2=Hard, 3=Good, 4=Easy
   // Metadata
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),

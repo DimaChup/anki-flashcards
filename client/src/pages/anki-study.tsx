@@ -74,10 +74,21 @@ export default function AnkiStudy() {
     enabled: !!selectedDatabase,
   });
 
-  // Get cards for the deck (ordered by wordKey to maintain original text order)
+  // Get cards for deck view (all cards ordered by wordKey)
   const { data: allCards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
     queryKey: ['/api/anki/cards', deck?.id],
-    enabled: !!deck?.id,
+    enabled: !!deck?.id && viewDeck, // Only load when viewing deck
+  });
+
+  // Get study queue for study sessions (proper Anki spaced repetition)
+  const { data: studyQueue = [], isLoading: studyQueueLoading, refetch: refetchStudyQueue } = useQuery<AnkiCard[]>({
+    queryKey: ['/api/anki/study-queue', deck?.id, newCardsLimit, 100], 
+    queryFn: async () => {
+      const response = await fetch(`/api/anki/deck/${deck?.id}/study-queue?newCards=${newCardsLimit}&reviewLimit=100`);
+      if (!response.ok) throw new Error('Failed to fetch study queue');
+      return response.json();
+    },
+    enabled: !!deck?.id && studyStarted, // Only load when studying
   });
 
   // Get known words from the database
@@ -86,45 +97,53 @@ export default function AnkiStudy() {
     enabled: !!selectedDatabase,
   });
 
-  // Filter cards based on known words toggle
-  const filteredCards = React.useMemo(() => {
+
+
+  // Apply known words filter to study queue if enabled
+  const filteredStudyQueue = React.useMemo(() => {
     if (!hideKnownWords || !databaseData?.knownWords || !Array.isArray(databaseData.knownWords)) {
-      return allCards;
+      return studyQueue;
     }
     
     // Extract just the word part from knownWords (format: "word::POS" -> "word")
     const knownWordsSet = new Set(
       databaseData.knownWords
         .map(w => {
-          // Split on "::" and take the first part (the actual word)
           const wordPart = w.split('::')[0];
           return wordPart.toLowerCase();
         })
     );
     
-    const filtered = allCards.filter(card => {
+    return studyQueue.filter(card => {
       const cardWordLower = card.word.toLowerCase();
-      const isKnown = knownWordsSet.has(cardWordLower);
-      return !isKnown;
+      return !knownWordsSet.has(cardWordLower);
     });
-    
-    console.log('Filter Debug:', {
-      hideKnownWords,
-      totalCards: allCards.length,
-      filteredCards: filtered.length,
-      knownWordsCount: databaseData.knownWords.length,
-      sampleKnownWords: databaseData.knownWords.slice(0, 5),
-      sampleKnownWordsExtracted: Array.from(knownWordsSet).slice(0, 5),
-      sampleCardWords: allCards.slice(0, 5).map(c => c.word),
-      wordsFiltered: allCards.filter(card => knownWordsSet.has(card.word.toLowerCase())).slice(0, 3).map(c => c.word)
-    });
-    
-    return filtered;
-  }, [hideKnownWords, databaseData?.knownWords, allCards]);
+  }, [hideKnownWords, databaseData?.knownWords, studyQueue]);
 
-  // Filter cards for study session based on newCardsLimit
-  const studyCards = filteredCards.slice(0, newCardsLimit);
-  const viewCards = viewDeck ? filteredCards : [];
+  // Apply known words filter to view cards if enabled
+  const filteredViewCards = React.useMemo(() => {
+    if (!viewDeck || !hideKnownWords || !databaseData?.knownWords || !Array.isArray(databaseData.knownWords)) {
+      return allCards;
+    }
+    
+    const knownWordsSet = new Set(
+      databaseData.knownWords
+        .map(w => {
+          const wordPart = w.split('::')[0];
+          return wordPart.toLowerCase();
+        })
+    );
+    
+    return allCards.filter(card => {
+      const cardWordLower = card.word.toLowerCase();
+      return !knownWordsSet.has(cardWordLower);
+    });
+  }, [viewDeck, hideKnownWords, databaseData?.knownWords, allCards]);
+
+  // Current study session state
+  const [sessionCards, setSessionCards] = React.useState<AnkiCard[]>([]);
+  const [sessionCycleCards, setSessionCycleCards] = React.useState<Set<string>>(new Set());
+  const [currentIndex, setCurrentIndex] = React.useState(0);
 
   // Generate Anki deck mutation
   const generateDeckMutation = useMutation({
@@ -148,29 +167,38 @@ export default function AnkiStudy() {
     }
   });
 
-  // Review card mutation  
+  // Review card mutation with session cycling logic
   const reviewCardMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
       const response = await apiRequest('POST', '/api/anki/review', { cardId, rating });
       return response.json();
     },
-    onSuccess: () => {
-      // Move to next card
-      const currentIndex = studyCards.findIndex(card => card.id === currentCard?.id);
-      const nextCard = studyCards[currentIndex + 1];
+    onSuccess: (updatedCard, variables) => {
+      const { rating } = variables;
       
-      if (nextCard) {
-        setCurrentCard(nextCard);
-        setShowAnswer(false);
-      } else {
-        // Study session complete
-        setStudyStarted(false);
-        setCurrentCard(null);
-        toast({ title: "Study Session Complete!", description: `Great work! You reviewed ${studyCards.length} cards.` });
+      // Session cycling logic: Hard cards cycle back, Easy cards graduate
+      if (rating === 2) { // Hard - add to cycle list
+        if (currentCard) {
+          setSessionCycleCards(prev => new Set([...prev, currentCard.id]));
+        }
+      } else if (rating === 4 && currentCard) { // Easy - check if already marked easy
+        const previousEasyCount = currentCard.sessionEasyCount || 0;
+        if (previousEasyCount >= 1) {
+          // Second Easy - remove from cycle list
+          setSessionCycleCards(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(currentCard.id);
+            return newSet;
+          });
+        }
       }
       
+      // Move to next card
+      handleNextCard();
+      
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -181,14 +209,68 @@ export default function AnkiStudy() {
     }
   });
 
-  const startStudy = () => {
-    if (filteredCards.length > 0) {
-      const cardsToStudy = filteredCards.slice(0, newCardsLimit);
-      setCurrentCard(cardsToStudy[0]);
-      setStudyStarted(true);
+  // Initialize study session with proper queue management
+  React.useEffect(() => {
+    if (studyStarted && filteredStudyQueue.length > 0 && !currentCard) {
+      // Initialize session with study queue
+      setSessionCards(filteredStudyQueue);
+      setCurrentIndex(0);
+      setCurrentCard(filteredStudyQueue[0]);
       setShowAnswer(false);
-      // Don't hide deck view - user can toggle it during study
+      setSessionCycleCards(new Set()); // Reset cycle tracking
     }
+  }, [studyStarted, filteredStudyQueue, currentCard]);
+
+  // Handle next card logic with session cycling
+  const handleNextCard = () => {
+    let nextIndex = currentIndex + 1;
+    let nextCard = null;
+
+    // First check if we have more cards in the current session
+    if (nextIndex < sessionCards.length) {
+      nextCard = sessionCards[nextIndex];
+      setCurrentIndex(nextIndex);
+    } else {
+      // Check if we have cards that need to cycle back (marked Hard)
+      const cardsToReview = sessionCards.filter(card => sessionCycleCards.has(card.id));
+      
+      if (cardsToReview.length > 0) {
+        // Cycle back to first hard card
+        nextCard = cardsToReview[0];
+        setCurrentIndex(sessionCards.findIndex(card => card.id === nextCard?.id));
+      } else {
+        // Session complete - no more cards to review
+        setStudyStarted(false);
+        setCurrentCard(null);
+        setCurrentIndex(0);
+        setSessionCards([]);
+        setSessionCycleCards(new Set());
+        
+        const totalReviewed = sessionCards.length;
+        toast({ 
+          title: "Study Session Complete!", 
+          description: `Great work! You reviewed ${totalReviewed} cards using Anki's spaced repetition algorithm.` 
+        });
+        return;
+      }
+    }
+
+    setCurrentCard(nextCard);
+    setShowAnswer(false);
+  };
+
+  const startStudy = () => {
+    if (filteredStudyQueue.length === 0) {
+      toast({ 
+        title: "No Cards Available", 
+        description: "No cards are due for review. Try adjusting settings or come back later.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setStudyStarted(true);
+    // currentCard will be set by useEffect when studyStarted becomes true
   };
 
   const handleCardReview = (rating: number) => {
@@ -331,14 +413,14 @@ export default function AnkiStudy() {
                           <input
                             type="number"
                             value={newCardsLimit}
-                            onChange={(e) => setNewCardsLimit(Math.max(1, Math.min(filteredCards.length, parseInt(e.target.value) || 1)))}
+                            onChange={(e) => setNewCardsLimit(Math.max(1, Math.min(filteredViewCards.length, parseInt(e.target.value) || 1)))}
                             className="w-16 h-8 text-center bg-slate-800 border border-slate-600 text-white rounded text-sm"
                             min="1"
-                            max={filteredCards.length}
+                            max={filteredViewCards.length}
                             data-testid="input-cards-limit"
                           />
                           <Button
-                            onClick={() => setNewCardsLimit(Math.min(filteredCards.length, newCardsLimit + 5))}
+                            onClick={() => setNewCardsLimit(Math.min(filteredViewCards.length, newCardsLimit + 5))}
                             variant="outline"
                             size="sm"
                             className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
@@ -347,10 +429,10 @@ export default function AnkiStudy() {
                             +
                           </Button>
                           <span className="text-slate-400 text-sm">
-                            of {filteredCards.length} available
+                            of {filteredViewCards.length} available
                             {hideKnownWords && databaseData?.knownWords && (
                               <span className="ml-1 text-orange-400">
-                                ({deck.totalCards - filteredCards.length} known words hidden)
+                                ({deck.totalCards - filteredViewCards.length} known words hidden)
                               </span>
                             )}
                           </span>
@@ -382,12 +464,15 @@ export default function AnkiStudy() {
                     <div className="flex gap-4">
                       <Button
                         onClick={startStudy}
-                        disabled={filteredCards.length === 0 || cardsLoading}
+                        disabled={studyQueueLoading || (!studyStarted && filteredStudyQueue.length === 0)}
                         className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                         data-testid="button-start-study"
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        Start Study Session ({Math.min(newCardsLimit, filteredCards.length)} cards)
+                        {studyQueueLoading 
+                          ? 'Loading study queue...' 
+                          : `Start Study Session (${filteredStudyQueue.length} cards due)`
+                        }
                       </Button>
                     </div>
                   </div>

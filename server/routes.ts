@@ -1124,7 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get cards due for review
+  // Get cards due for review (legacy endpoint)
   app.get('/api/anki/deck/:deckId/due', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1136,6 +1136,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching due cards:", error);
       res.status(500).json({ message: "Failed to fetch due cards" });
+    }
+  });
+
+  // Get study queue with proper Anki spaced repetition logic
+  app.get('/api/anki/deck/:deckId/study-queue', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const deckId = req.params.deckId;
+      const newCardLimit = parseInt(req.query.newCards as string) || 20;
+      const reviewLimit = parseInt(req.query.reviewLimit as string) || 100;
+      
+      const studyQueue = await storage.getStudyQueue(deckId, newCardLimit, reviewLimit);
+      res.json(studyQueue);
+    } catch (error) {
+      console.error("Error fetching study queue:", error);
+      res.status(500).json({ message: "Failed to fetch study queue" });
+    }
+  });
+
+  // Reset session counters for a new study session
+  app.post('/api/anki/deck/:deckId/reset-session', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const deckId = req.params.deckId;
+      
+      await storage.resetSessionCounts(deckId);
+      res.json({ message: "Session counters reset successfully" });
+    } catch (error) {
+      console.error("Error resetting session:", error);
+      res.status(500).json({ message: "Failed to reset session" });
     }
   });
 
