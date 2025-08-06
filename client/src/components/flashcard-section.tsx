@@ -298,18 +298,18 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
                   {activeBatchData.allCards.map((card, index) => (
                     <div 
                       key={card.id} 
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-xl hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-700 to-gray-800 dark:from-gray-200 dark:to-gray-300 border-2 border-gray-600 dark:border-gray-400 rounded-xl hover:from-gray-600 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-gray-200 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
                       onClick={() => {
                         setCurrentCard(card);
                         setShowAnswer(false);
                       }}
                     >
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-full min-w-8 text-center">{index + 1}</span>
-                        <span className="font-bold text-xl text-gray-900 dark:text-white">{card.word}</span>
+                        <span className="text-sm font-bold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full min-w-8 text-center">{index + 1}</span>
+                        <span className="font-bold text-xl text-white dark:text-gray-900">{card.word}</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full">Practice</div>
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full">Practice</div>
                       </div>
                     </div>
                   ))}
