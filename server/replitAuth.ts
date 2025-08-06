@@ -1,5 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
@@ -9,18 +10,24 @@ import { storage } from "./storage";
 
 // Validate required environment variables for authentication
 function validateEnvironmentVariables() {
-  const requiredVars = [
-    'REPLIT_DOMAINS',
-    'REPL_ID', 
-    'SESSION_SECRET'
-  ];
+  const replitVars = ['REPLIT_DOMAINS', 'REPL_ID'];
+  const googleVars = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
+  const commonVars = ['SESSION_SECRET'];
   
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  const missingCommon = commonVars.filter(varName => !process.env[varName]);
+  const hasReplitVars = replitVars.every(varName => process.env[varName]);
+  const hasGoogleVars = googleVars.every(varName => process.env[varName]);
   
-  if (missingVars.length > 0) {
-    const errorMessage = `Missing required environment variables for authentication: ${missingVars.join(', ')}.\n` +
-      `Please add these variables to your deployment secrets:\n` +
-      missingVars.map(varName => `- ${varName}`).join('\n');
+  if (missingCommon.length > 0) {
+    const errorMessage = `Missing required environment variables: ${missingCommon.join(', ')}.\n` +
+      `Please add these variables to your deployment secrets.`;
+    throw new Error(errorMessage);
+  }
+  
+  if (!hasReplitVars && !hasGoogleVars) {
+    const errorMessage = `At least one authentication method must be configured:\n` +
+      `For Replit Auth: REPLIT_DOMAINS, REPL_ID\n` +
+      `For Google Auth: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET`;
     throw new Error(errorMessage);
   }
 }
