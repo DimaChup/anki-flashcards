@@ -2,7 +2,7 @@
 
 ## Overview
 
-A full-stack linguistic analysis application built with React and Express that allows users to upload, analyze, and explore linguistic data. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. It supports uploading linguistic databases in JSON format and provides both page-view and list-view interfaces for analyzing text data.
+A full-stack linguistic analysis application built with React and Express that allows users to upload, analyze, and explore linguistic data. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. Now enhanced with AI processing capabilities via Google Gemini API integration and a professional control panel for database creation and batch processing.
 
 ## User Preferences
 
@@ -26,13 +26,16 @@ Preferred communication style: Simple, everyday language.
 - **Development**: Vite integration for hot module replacement in development mode
 
 ### Data Storage Architecture
-- **Current Implementation**: Memory-based storage using Maps for rapid prototyping
-- **Schema Design**: Drizzle ORM with PostgreSQL schema definitions prepared for future database migration
-- **Database Provider**: Configured for Neon Database (PostgreSQL) with connection pooling
+- **Current Implementation**: PostgreSQL database with Drizzle ORM for persistent storage
+- **Schema Design**: Comprehensive database schema with linguistic databases, prompt templates, processing configurations, and job tracking
+- **Database Provider**: Neon Database (PostgreSQL) with connection pooling and automatic migrations
 - **Data Models**: 
-  - Linguistic databases with metadata (name, language, description)
+  - Linguistic databases with metadata (name, language, description) and analysis data
   - Word entries with POS tags, translations, frequency data, and contextual information
   - Known words tracking for user learning progress
+  - Prompt templates for AI processing with categorization and default selections
+  - Processing configurations for batch AI processing with model selection and parameters
+  - Processing jobs for tracking AI analysis status and results
 
 ### Component Architecture
 - **Modular Design**: Separate components for database management, page view, and list view
@@ -47,7 +50,13 @@ Preferred communication style: Simple, everyday language.
   - First instance detection for vocabulary learning
   - POS-based filtering and highlighting
   - Pagination for large datasets
+- **AI Processing**: 
+  - Google Gemini API integration for enhanced linguistic analysis
+  - Batch processing with configurable prompt templates
+  - Real-time job status monitoring and progress tracking
+  - Python-based processing scripts with asynchronous execution
 - **Export Capabilities**: CSV generation for external data analysis
+- **Default Sample Database**: Permanent "Call Me Ishmael" Spanish database with 20,000+ words
 
 ## External Dependencies
 

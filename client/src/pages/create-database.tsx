@@ -32,6 +32,19 @@ export default function CreateDatabase() {
     enabled: true
   });
 
+  // Auto-select sample database if available and no database is selected
+  useEffect(() => {
+    if (databases && databases.length > 0 && !selectedDatabase) {
+      const sampleDb = databases.find((db: any) => 
+        db.name.toLowerCase().includes('sample') || 
+        db.name.toLowerCase().includes('ishmael')
+      );
+      if (sampleDb) {
+        setSelectedDatabase(sampleDb.id);
+      }
+    }
+  }, [databases, selectedDatabase]);
+
   // Fetch prompt templates
   const { data: promptTemplates } = useQuery({
     queryKey: ['/api/prompt-templates'],
