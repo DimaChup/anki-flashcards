@@ -676,7 +676,7 @@ export default function PageViewSection({
             {(posButtonGroups[0]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
-                onClick={() => togglePOSHighlight(pos)}
+                onClick={() => togglePOSHighlight([pos])}
                 className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
                   highlightedPOS.has(pos)
                     ? 'bg-blue-600 text-white border-blue-600'
@@ -697,7 +697,7 @@ export default function PageViewSection({
             {(posButtonGroups[1]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
-                onClick={() => togglePOSHighlight(pos)}
+                onClick={() => togglePOSHighlight([pos])}
                 className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
                   highlightedPOS.has(pos)
                     ? 'bg-blue-600 text-white border-blue-600'
@@ -718,7 +718,7 @@ export default function PageViewSection({
             {(posButtonGroups[2]?.tags || []).map((pos: string) => (
               <button
                 key={pos}
-                onClick={() => togglePOSHighlight(pos)}
+                onClick={() => togglePOSHighlight([pos])}
                 className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
                   highlightedPOS.has(pos)
                     ? 'bg-blue-600 text-white border-blue-600'
