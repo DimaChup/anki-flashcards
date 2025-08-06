@@ -37,9 +37,26 @@ export const segmentSchema = z.object({
 
 export type Segment = z.infer<typeof segmentSchema>;
 
-// Database schema for linguistic analysis databases
+// User subscription schema for monetization
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  plan: text("plan").notNull().default('free'), // free, pro, enterprise
+  status: text("status").notNull().default('active'), // active, cancelled, expired
+  wordsPerMonth: integer("words_per_month").notNull().default(1000), // Usage limit
+  wordsUsed: integer("words_used").notNull().default(0), // Current usage
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  currentPeriodStart: text("current_period_start"),
+  currentPeriodEnd: text("current_period_end"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Database schema for linguistic analysis databases (now with user ownership)
 export const linguisticDatabases = pgTable("linguistic_databases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"), // Link to user for multi-tenancy (nullable for existing data)
   name: text("name").notNull(),
   description: text("description"),
   language: text("language").notNull(),
@@ -48,6 +65,7 @@ export const linguisticDatabases = pgTable("linguistic_databases", {
   analysisData: jsonb("analysis_data").notNull(), // Array of WordEntry objects
   knownWords: jsonb("known_words").notNull().default('[]'), // Array of known word strings
   segments: jsonb("segments").default('[]'), // Array of Segment objects
+  isPublic: text("is_public").notNull().default('false'), // Allow sharing for premium users
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -86,13 +104,15 @@ export const exportRequestSchema = z.object({
 
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
 
-// Prompt Templates for AI processing
+// Prompt Templates for AI processing (now with user ownership and premium features)
 export const promptTemplates = pgTable("prompt_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"), // null for system templates, user_id for custom templates
   name: text("name").notNull(),
   description: text("description"),
   template: text("template").notNull(),
   category: text("category").notNull().default('general'),
+  isPremium: text("is_premium").notNull().default('false'), // Premium-only templates
   isDefault: text("is_default").notNull().default('false'),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -150,3 +170,13 @@ export const insertProcessingJobSchema = createInsertSchema(processingJobs).omit
 
 export type ProcessingJob = typeof processingJobs.$inferSelect;
 export type InsertProcessingJob = z.infer<typeof insertProcessingJobSchema>;
+
+// Add missing subscription types
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;

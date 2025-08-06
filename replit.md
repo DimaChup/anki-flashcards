@@ -4,6 +4,8 @@
 
 A full-stack linguistic analysis application built with React and Express that allows users to upload, analyze, and explore linguistic data. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. Now enhanced with AI processing capabilities via Google Gemini API integration and a professional control panel for database creation and batch processing.
 
+**Monetization Ready**: The application is architected as a multi-tenant SaaS platform with subscription tiers (Free, Pro, Enterprise), user management, and usage-based billing capabilities.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -27,15 +29,17 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage Architecture
 - **Current Implementation**: PostgreSQL database with Drizzle ORM for persistent storage
-- **Schema Design**: Comprehensive database schema with linguistic databases, prompt templates, processing configurations, and job tracking
+- **Schema Design**: Comprehensive database schema with linguistic databases, prompt templates, processing configurations, job tracking, and subscription management
 - **Database Provider**: Neon Database (PostgreSQL) with connection pooling and automatic migrations
+- **Multi-Tenant Architecture**: User-isolated data with subscription management and usage tracking
 - **Data Models**: 
-  - Linguistic databases with metadata (name, language, description) and analysis data
-  - Word entries with POS tags, translations, frequency data, and contextual information
-  - Known words tracking for user learning progress
-  - Prompt templates for AI processing with categorization and default selections
-  - Processing configurations for batch AI processing with model selection and parameters
-  - Processing jobs for tracking AI analysis status and results
+  - **User Subscriptions**: Plan management (Free/Pro/Enterprise), usage limits, Stripe integration
+  - **Linguistic databases**: User-owned databases with metadata and analysis data
+  - **Word entries**: POS tags, translations, frequency data, and contextual information
+  - **Known words tracking**: User learning progress per database
+  - **Prompt templates**: System and user-created templates with premium features
+  - **Processing configurations**: Batch AI processing with model selection and parameters
+  - **Processing jobs**: Real-time tracking of AI analysis status and results
 
 ### Component Architecture
 - **Modular Design**: Separate components for database management, page view, and list view

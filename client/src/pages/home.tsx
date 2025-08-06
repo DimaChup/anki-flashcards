@@ -103,11 +103,20 @@ export default function Home() {
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Main Header */}
-          <header className="text-center">
-            <h1 className="flex items-center justify-center gap-3 text-3xl font-bold mb-2">
+          <header className="flex items-center justify-between mb-4">
+            <h1 className="flex items-center gap-3 text-3xl font-bold">
               <Languages className="w-8 h-8" />
               POS Languages Analysis - Combined View
             </h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setLocation('/pricing')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                data-testid="pricing-button"
+              >
+                View Pricing
+              </button>
+            </div>
           </header>
 
           {/* Database Selection Section */}
