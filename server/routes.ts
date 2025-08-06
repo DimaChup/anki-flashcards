@@ -1028,11 +1028,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple Anki Study Session - just get study cards from database
+  // Simple Anki Study Session - get study cards from database with known words filtering
   app.get('/api/anki/study-cards/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const databaseId = req.params.databaseId;
+      const excludeKnownWords = req.query.excludeKnownWords !== 'false'; // Default to true
       
       // Get user's database
       const database = await storage.getLinguisticDatabase(databaseId, userId);
@@ -1044,14 +1045,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const knownWords = database.knownWords || [];
       const knownWordsSet = new Set(knownWords.map((word: string) => word.toLowerCase()));
       
-      // Filter for first instance words that are NOT in known words
+      // Filter for first instance words, optionally excluding known words
       const studyCards = database.analysisData
-        .filter((word: any) => 
-          word.firstInstance === true && 
-          word.translation && 
-          word.translation.trim() &&
-          !knownWordsSet.has(word.word.toLowerCase())
-        )
+        .filter((word: any) => {
+          const isFirstInstance = word.firstInstance === true;
+          const hasTranslation = word.translation && word.translation.trim();
+          const isKnownWord = knownWordsSet.has(word.word.toLowerCase());
+          
+          return isFirstInstance && hasTranslation && (!excludeKnownWords || !isKnownWord);
+        })
         .slice(0, 50) // Limit to 50 cards per session
         .map((word: any) => ({
           id: word.id || word.word,
@@ -1065,7 +1067,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         databaseName: database.name,
         totalCards: studyCards.length,
-        cards: studyCards
+        cards: studyCards,
+        excludeKnownWords,
+        knownWordsCount: knownWords.length
       });
     } catch (error) {
       console.error("Error getting study cards:", error);

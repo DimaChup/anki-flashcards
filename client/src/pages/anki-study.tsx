@@ -29,6 +29,7 @@ export default function AnkiStudy() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [enablePosColors, setEnablePosColors] = useState(true);
+  const [excludeKnownWords, setExcludeKnownWords] = useState(true);
 
   // POS color mapping
   const posColors: Record<string, string> = {
@@ -59,7 +60,7 @@ export default function AnkiStudy() {
 
   // Get study cards for selected database
   const { data: studyData, isLoading: cardsLoading } = useQuery({
-    queryKey: [`/api/anki/study-cards/${selectedDatabase}`],
+    queryKey: [`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`],
     enabled: !!selectedDatabase,
   });
 
@@ -163,6 +164,19 @@ export default function AnkiStudy() {
                   />
                 </div>
 
+                {/* Exclude Known Words Toggle */}
+                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Exclude Known Words</label>
+                    <p className="text-sm text-slate-400">Skip words you've already marked as known</p>
+                  </div>
+                  <Switch
+                    checked={excludeKnownWords}
+                    onCheckedChange={setExcludeKnownWords}
+                    data-testid="exclude-known-toggle"
+                  />
+                </div>
+
                 {/* Study Info */}
                 {selectedDatabase && studyData && (
                   <div className="p-4 bg-slate-700/50 rounded-lg">
@@ -170,6 +184,9 @@ export default function AnkiStudy() {
                     <div className="text-slate-300 space-y-1">
                       <div>Database: <span className="text-white">{studyData.databaseName}</span></div>
                       <div>Available Cards: <span className="text-white">{studyData.totalCards}</span></div>
+                      {studyData.knownWordsCount > 0 && (
+                        <div>Known Words: <span className="text-white">{studyData.knownWordsCount}</span></div>
+                      )}
                     </div>
                   </div>
                 )}
