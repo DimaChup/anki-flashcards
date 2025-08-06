@@ -17,7 +17,7 @@ export default function PageViewSection({
   // State variables matching the original
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [wordsPerPage, setWordsPerPage] = useState(100);
+  const [wordsPerPage, setWordsPerPage] = useState(110);
   const [isDualPageView, setIsDualPageView] = useState(true);
   const [isGridView, setIsGridView] = useState(false);
   const [viewModeBeforeSegments, setViewModeBeforeSegments] = useState(true);
@@ -1112,7 +1112,7 @@ export default function PageViewSection({
                     max="500"
                     step="10"
                     value={wordsPerPage}
-                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 100)}
+                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 110)}
                     className="w-16 px-2 py-1.5 text-center border border-border rounded text-sm bg-background text-foreground"
                   />
                   <div className="flex flex-col">
@@ -1192,7 +1192,7 @@ export default function PageViewSection({
                     max="500"
                     step="10"
                     value={wordsPerPage}
-                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 100)}
+                    onChange={(e) => setWordsPerPage(parseInt(e.target.value) || 110)}
                     className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
                   />
                   <div className="flex flex-col ml-1">
