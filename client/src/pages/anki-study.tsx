@@ -30,6 +30,12 @@ export default function AnkiStudy() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [enablePosColors, setEnablePosColors] = useState(true);
   const [excludeKnownWords, setExcludeKnownWords] = useState(true);
+  const [newWordsPerDay, setNewWordsPerDay] = useState(20);
+  
+  // Anki algorithm state
+  const [cardProgress, setCardProgress] = useState<{[cardId: string]: number}>({});
+  const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
+  const [currentQueue, setCurrentQueue] = useState<StudyCard[]>([]);
 
   // POS color mapping
   const posColors: Record<string, string> = {
@@ -77,10 +83,15 @@ export default function AnkiStudy() {
   }, [excludeKnownWords, selectedDatabase, sessionStarted, refetch]);
 
   const studyCards: StudyCard[] = studyData?.cards || [];
-  const currentCard = studyCards[currentCardIndex];
+  const currentCard = currentQueue[currentCardIndex];
 
   const startSession = () => {
     if (studyCards.length > 0) {
+      // Initialize the study queue with limited new words per day
+      const limitedCards = studyCards.slice(0, newWordsPerDay);
+      setCurrentQueue([...limitedCards]);
+      setCardProgress({});
+      setCompletedCards(new Set());
       setSessionStarted(true);
       setCurrentCardIndex(0);
       setShowAnswer(false);
@@ -93,19 +104,72 @@ export default function AnkiStudy() {
     }
   };
 
-  const nextCard = () => {
-    if (currentCardIndex < studyCards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-      setShowAnswer(false);
+  // Anki algorithm for rating cards
+  const rateCard = (difficulty: 'again' | 'hard' | 'good' | 'easy') => {
+    if (!currentCard) return;
+    
+    const cardId = currentCard.id;
+    const currentProgress = cardProgress[cardId] || 0;
+    
+    let newProgress = currentProgress;
+    let shouldRepeat = true;
+    
+    switch (difficulty) {
+      case 'again':
+        newProgress = 0; // Reset progress
+        break;
+      case 'hard':
+        newProgress = Math.max(0, currentProgress);
+        break;
+      case 'good':
+        newProgress = currentProgress + 1;
+        if (newProgress >= 2) { // Need to get "good" twice to complete
+          shouldRepeat = false;
+          setCompletedCards(prev => new Set([...prev, cardId]));
+        }
+        break;
+      case 'easy':
+        newProgress = 2; // Skip to completed
+        shouldRepeat = false;
+        setCompletedCards(prev => new Set([...prev, cardId]));
+        break;
+    }
+    
+    // Update progress
+    setCardProgress(prev => ({ ...prev, [cardId]: newProgress }));
+    
+    // Move to next card or add current card back to queue if not completed
+    let newQueue = [...currentQueue];
+    let nextIndex = currentCardIndex;
+    
+    if (shouldRepeat && difficulty !== 'easy') {
+      // Add card back to the queue (spaced repetition)
+      const insertPosition = Math.min(currentCardIndex + 3, newQueue.length);
+      newQueue.splice(insertPosition, 0, currentCard);
     } else {
-      // Session complete
+      // Remove completed card from queue
+      newQueue.splice(currentCardIndex, 1);
+      if (currentCardIndex >= newQueue.length) {
+        nextIndex = 0;
+      }
+    }
+    
+    setCurrentQueue(newQueue);
+    
+    // Check if session is complete
+    if (newQueue.length === 0) {
       setSessionStarted(false);
       setCurrentCardIndex(0);
       toast({
         title: "Session Complete!",
-        description: `You've studied ${studyCards.length} cards. Great job!`,
+        description: `You've mastered ${completedCards.size + (shouldRepeat ? 0 : 1)} cards. Great job!`,
       });
+      return;
     }
+    
+    // Move to next card
+    setCurrentCardIndex(nextIndex >= newQueue.length ? 0 : nextIndex);
+    setShowAnswer(false);
   };
 
   const endSession = () => {
@@ -189,6 +253,25 @@ export default function AnkiStudy() {
                   />
                 </div>
 
+                {/* New Words Per Day */}
+                <div className="space-y-2">
+                  <label className="text-slate-300 font-medium">New Words Per Day:</label>
+                  <Select value={newWordsPerDay.toString()} onValueChange={(value) => setNewWordsPerDay(parseInt(value))}>
+                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 words</SelectItem>
+                      <SelectItem value="10">10 words</SelectItem>
+                      <SelectItem value="15">15 words</SelectItem>
+                      <SelectItem value="20">20 words</SelectItem>
+                      <SelectItem value="25">25 words</SelectItem>
+                      <SelectItem value="30">30 words</SelectItem>
+                      <SelectItem value="50">50 words</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Study Info */}
                 {selectedDatabase && studyData && (
                   <div className="p-4 bg-slate-700/50 rounded-lg">
@@ -222,9 +305,19 @@ export default function AnkiStudy() {
               <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
                 <CardHeader className="text-center border-b border-slate-700 pb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <Badge variant="outline" className="border-slate-600 text-slate-300">
-                      {currentCardIndex + 1} / {studyCards.length}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="border-slate-600 text-slate-300">
+                        {currentCardIndex + 1} / {currentQueue.length}
+                      </Badge>
+                      <Badge variant="outline" className="border-green-600 text-green-300">
+                        Completed: {completedCards.size}
+                      </Badge>
+                      {currentCard && cardProgress[currentCard.id] > 0 && (
+                        <Badge variant="outline" className="border-yellow-600 text-yellow-300">
+                          Progress: {cardProgress[currentCard.id]}/2
+                        </Badge>
+                      )}
+                    </div>
                     <Button
                       onClick={endSession}
                       variant="ghost"
@@ -287,20 +380,38 @@ export default function AnkiStudy() {
                         Show Answer
                       </Button>
                     ) : (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <Button
-                          onClick={nextCard}
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-4"
+                          onClick={() => rateCard('again')}
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-sm"
                           data-testid="again-btn"
                         >
                           Again
+                          <div className="text-xs opacity-75">Reset</div>
                         </Button>
                         <Button
-                          onClick={nextCard}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-4"
+                          onClick={() => rateCard('hard')}
+                          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 text-sm"
+                          data-testid="hard-btn"
+                        >
+                          Hard
+                          <div className="text-xs opacity-75">Difficult</div>
+                        </Button>
+                        <Button
+                          onClick={() => rateCard('good')}
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-sm"
                           data-testid="good-btn"
                         >
                           Good
+                          <div className="text-xs opacity-75">2x to complete</div>
+                        </Button>
+                        <Button
+                          onClick={() => rateCard('easy')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-sm"
+                          data-testid="easy-btn"
+                        >
+                          Easy
+                          <div className="text-xs opacity-75">Master</div>
                         </Button>
                       </div>
                     )}
