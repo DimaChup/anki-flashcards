@@ -1028,89 +1028,87 @@ export default function PageViewSection({
             left: tooltipData.x + 10,
             top: tooltipData.y + 10,
             zIndex: 1000,
-            backgroundColor: 'hsl(215, 15%, 19%)', /* Solid bg-tertiary color */
-            border: '1px solid hsl(215, 14%, 29%)', /* Solid border-color */
+            backgroundColor: 'hsl(215, 15%, 19%)', /* bg-tertiary */
+            border: '1px solid hsl(215, 14%, 29%)', /* border-color */
             borderRadius: '6px',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.8)', /* Stronger shadow for contrast */
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
             fontSize: '0.9em',
             maxWidth: '700px',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            display: 'flex'
           }}
         >
           <div id="word-info-tooltip" style={{ display: 'flex' }}>
             {/* Concise part */}
-            <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'hsl(210, 9%, 91%)', maxWidth: '350px' }}>
+            <div className="tooltip-part concise-part" style={{ 
+              padding: '8px 12px', 
+              whiteSpace: 'pre-wrap', 
+              color: 'hsl(210, 9%, 91%)', 
+              maxWidth: '350px' 
+            }}>
               <div className="tooltip-line">
                 <strong style={{ 
-                  color: tooltipData.pos === 'VERB' ? `hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light))` :
-                         tooltipData.pos === 'NOUN' || tooltipData.pos === 'PROPN' ? `hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light))` :
-                         tooltipData.pos === 'ADJ' ? `hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light))` :
-                         tooltipData.pos === 'AUX' ? `hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light))` :
-                         `hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light))`
+                  color: tooltipData.pos === 'VERB' ? 'hsl(340, 80%, 80%)' :
+                         tooltipData.pos === 'NOUN' || tooltipData.pos === 'PROPN' ? 'hsl(205, 80%, 75%)' :
+                         tooltipData.pos === 'ADJ' ? 'hsl(145, 65%, 75%)' :
+                         tooltipData.pos === 'AUX' ? 'hsl(35, 90%, 65%)' :
+                         'hsl(45, 90%, 75%)'
                 }}>{tooltipData.word}</strong> ({tooltipData.pos})
               </div>
               <div className="tooltip-line tooltip-best-translation" style={{ 
                 fontSize: '1.8em', 
                 lineHeight: '1.1',
-                color: tooltipData.pos === 'VERB' ? `hsl(var(--hl-verb-hue), var(--hl-verb-sat), var(--hl-verb-light))` :
-                       tooltipData.pos === 'NOUN' || tooltipData.pos === 'PROPN' ? `hsl(var(--hl-noun-hue), var(--hl-noun-sat), var(--hl-noun-light))` :
-                       tooltipData.pos === 'ADJ' ? `hsl(var(--hl-adj-hue), var(--hl-adj-sat), var(--hl-adj-light))` :
-                       tooltipData.pos === 'AUX' ? `hsl(var(--hl-aux-hue), var(--hl-aux-sat), var(--hl-aux-light))` :
-                       `hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light))`
+                color: 'hsl(210, 9%, 91%)'
               }}>
-                {tooltipData.translation || 'No translation'}
+                {tooltipData.translation}
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid hsl(215, 14%, 29%)', margin: '6px 0' }} />
-              <div className="tooltip-line">
-                <strong>Freq:</strong> {tooltipData.frequency}
-              </div>
-              {tooltipData.position && (
-                <div className="tooltip-line">
-                  <strong>Pos:</strong> {tooltipData.position}
-                </div>
+              <div className="tooltip-line">Frequency: {tooltipData.frequency}</div>
+              {tooltipData.position !== null && (
+                <div className="tooltip-line">Position: {tooltipData.position}</div>
               )}
-              <div className="tooltip-line">
-                <strong>First:</strong> {tooltipData.firstInstance ? 'Yes' : 'No'}
-              </div>
+              <div className="tooltip-line">First Instance: {tooltipData.firstInstance ? 'Yes' : 'No'}</div>
+              {tooltipData.contextualInfo && (
+                <>
+                  {tooltipData.contextualInfo.gender && (
+                    <div className="tooltip-line">Gender: {tooltipData.contextualInfo.gender}</div>
+                  )}
+                  {tooltipData.contextualInfo.number && (
+                    <div className="tooltip-line">Number: {tooltipData.contextualInfo.number}</div>
+                  )}
+                </>
+              )}
             </div>
             
-            {/* Detailed part - conditional display like original */}
-            {tooltipData.contextualInfo && tooltipData.showDetailed && (
-              <div 
-                className="tooltip-part detailed-part" 
-                style={{ 
-                  padding: '8px 12px', 
-                  borderLeft: '1px solid hsl(215, 14%, 29%)', /* Solid separator color */
-                  whiteSpace: 'pre-wrap', 
-                  color: 'hsl(210, 9%, 91%)', /* Solid text color */
-                  maxWidth: '350px' 
-                }}
-              >
+            {/* Detailed part - shown on right-click */}
+            {tooltipData.showDetailed && (
+              <div className="tooltip-part detailed-part" style={{ 
+                padding: '8px 12px', 
+                whiteSpace: 'pre-wrap', 
+                color: 'hsl(210, 9%, 91%)', 
+                maxWidth: '350px',
+                borderLeft: '1px solid hsl(215, 14%, 29%)'
+              }}>
                 <div className="tooltip-line">
-                  <strong>Grammar Details:</strong>
+                  <strong>Detailed Information</strong>
                 </div>
-                {tooltipData.contextualInfo.gender && (
-                  <div className="tooltip-line">Gender: {tooltipData.contextualInfo.gender}</div>
-                )}
-                {tooltipData.contextualInfo.number && (
-                  <div className="tooltip-line">Number: {tooltipData.contextualInfo.number}</div>
-                )}
-                {tooltipData.contextualInfo.tense && (
-                  <div className="tooltip-line">Tense: {tooltipData.contextualInfo.tense}</div>
-                )}
-                {tooltipData.contextualInfo.mood && (
-                  <div className="tooltip-line">Mood: {tooltipData.contextualInfo.mood}</div>
-                )}
-                {tooltipData.contextualInfo.person && (
-                  <div className="tooltip-line">Person: {tooltipData.contextualInfo.person}</div>
+                <div className="tooltip-line">Word: {tooltipData.word}</div>
+                <div className="tooltip-line">POS: {tooltipData.pos}</div>
+                <div className="tooltip-line">Translation: {tooltipData.translation}</div>
+                {tooltipData.contextualInfo && (
+                  <>
+                    {Object.entries(tooltipData.contextualInfo).map(([key, value]) => (
+                      <div key={key} className="tooltip-line">
+                        {key.charAt(0).toUpperCase() + key.slice(1)}: {String(value)}
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
             )}
           </div>
         </div>
       )}
-
-
     </div>
   );
-}
+};
