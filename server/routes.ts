@@ -1032,10 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get Anki deck for a database
   app.get('/api/anki/deck/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
+      const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
       // First verify user owns this database
@@ -1108,10 +1105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get cards for an Anki deck with optional status filter
   app.get('/api/anki/cards/:deckId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
+      const userId = req.user.id;
       const deckId = req.params.deckId;
       const status = req.query.status as string;
       
@@ -1126,10 +1120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get cards due for review
   app.get('/api/anki/deck/:deckId/due', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
+      const userId = req.user.id;
       const deckId = req.params.deckId;
       const limit = parseInt(req.query.limit as string) || 20;
       
