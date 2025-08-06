@@ -476,10 +476,8 @@ export class DatabaseStorage implements IStorage {
       .filter(word => word.firstInstance) // Only first instances
       .filter(word => !knownWords.has(word.word)) // Exclude known words
       .sort((a, b) => {
-        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
-        const numA = parseInt(a.id.toString(), 10);
-        const numB = parseInt(b.id.toString(), 10);
-        return numA - numB;
+        // Sort by the position field which contains the original text position (1, 2, 3, 5, etc.)
+        return a.position - b.position;
       });
 
     const cards: InsertAnkiFlashcard[] = firstInstanceWords.map(word => ({
@@ -617,11 +615,8 @@ export class DatabaseStorage implements IStorage {
       .filter(entry => entry.firstInstance === true)  // Only first instances
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
       .sort((a, b) => {
-        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
-        const numA = parseInt(a.id.toString(), 10);
-        const numB = parseInt(b.id.toString(), 10);
-        console.log(`Sorting: ${a.word} (id: ${a.id}, parsed: ${numA}) vs ${b.word} (id: ${b.id}, parsed: ${numB})`);
-        return numA - numB;
+        // Sort by the position field which contains the original text position (1, 2, 3, 5, etc.)
+        return a.position - b.position;
       });
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
