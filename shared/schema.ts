@@ -85,3 +85,68 @@ export const exportRequestSchema = z.object({
 });
 
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
+
+// Prompt Templates for AI processing
+export const promptTemplates = pgTable("prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  template: text("template").notNull(),
+  category: text("category").notNull().default('general'),
+  isDefault: text("is_default").notNull().default('false'),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertPromptTemplateSchema = createInsertSchema(promptTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PromptTemplate = typeof promptTemplates.$inferSelect;
+export type InsertPromptTemplate = z.infer<typeof insertPromptTemplateSchema>;
+
+// Processing configurations for AI batch processing
+export const processingConfigs = pgTable("processing_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  modelName: text("model_name").notNull().default('gemini-2.0-flash'),
+  batchSize: integer("batch_size").notNull().default(30),
+  concurrency: integer("concurrency").notNull().default(5),
+  promptTemplateId: varchar("prompt_template_id").references(() => promptTemplates.id),
+  isDefault: text("is_default").notNull().default('false'),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertProcessingConfigSchema = createInsertSchema(processingConfigs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ProcessingConfig = typeof processingConfigs.$inferSelect;
+export type InsertProcessingConfig = z.infer<typeof insertProcessingConfigSchema>;
+
+// Processing jobs to track AI processing status
+export const processingJobs = pgTable("processing_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  databaseId: varchar("database_id").references(() => linguisticDatabases.id).notNull(),
+  configId: varchar("config_id").references(() => processingConfigs.id),
+  status: text("status").notNull().default('pending'), // pending, running, completed, failed
+  progress: integer("progress").notNull().default(0),
+  totalBatches: integer("total_batches").notNull().default(0),
+  currentBatch: integer("current_batch").notNull().default(0),
+  errorMessage: text("error_message"),
+  results: jsonb("results").notNull().default('{}'),
+  startedAt: text("started_at"),
+  completedAt: text("completed_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertProcessingJobSchema = createInsertSchema(processingJobs).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export type ProcessingJob = typeof processingJobs.$inferSelect;
+export type InsertProcessingJob = z.infer<typeof insertProcessingJobSchema>;

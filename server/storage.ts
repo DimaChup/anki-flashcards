@@ -1,4 +1,21 @@
-import { type LinguisticDatabase, type InsertLinguisticDatabase, type WordEntry, type UpdateKnownWordsRequest } from "@shared/schema";
+import { 
+  type LinguisticDatabase, 
+  type InsertLinguisticDatabase, 
+  type WordEntry, 
+  type UpdateKnownWordsRequest,
+  type PromptTemplate,
+  type InsertPromptTemplate,
+  type ProcessingConfig,
+  type InsertProcessingConfig,
+  type ProcessingJob,
+  type InsertProcessingJob,
+  linguisticDatabases,
+  promptTemplates,
+  processingConfigs,
+  processingJobs
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -15,66 +32,67 @@ export interface IStorage {
   // Analysis operations
   getWordsByPage(databaseId: string, page: number, pageSize: number, posFilter?: string[], knownWordsFilter?: boolean): Promise<{ words: WordEntry[], totalPages: number, totalWords: number }>;
   getUniqueWords(databaseId: string, firstInstancesOnly?: boolean): Promise<WordEntry[]>;
+
+  // Prompt Templates CRUD operations
+  getPromptTemplate(id: string): Promise<PromptTemplate | undefined>;
+  getAllPromptTemplates(): Promise<PromptTemplate[]>;
+  createPromptTemplate(template: InsertPromptTemplate): Promise<PromptTemplate>;
+  updatePromptTemplate(id: string, template: Partial<InsertPromptTemplate>): Promise<PromptTemplate | undefined>;
+  deletePromptTemplate(id: string): Promise<boolean>;
+
+  // Processing Configs CRUD operations
+  getProcessingConfig(id: string): Promise<ProcessingConfig | undefined>;
+  getAllProcessingConfigs(): Promise<ProcessingConfig[]>;
+  createProcessingConfig(config: InsertProcessingConfig): Promise<ProcessingConfig>;
+  updateProcessingConfig(id: string, config: Partial<InsertProcessingConfig>): Promise<ProcessingConfig | undefined>;
+  deleteProcessingConfig(id: string): Promise<boolean>;
+
+  // Processing Jobs CRUD operations
+  getProcessingJob(id: string): Promise<ProcessingJob | undefined>;
+  getAllProcessingJobs(): Promise<ProcessingJob[]>;
+  getProcessingJobsByDatabase(databaseId: string): Promise<ProcessingJob[]>;
+  createProcessingJob(job: InsertProcessingJob): Promise<ProcessingJob>;
+  updateProcessingJob(id: string, job: Partial<InsertProcessingJob>): Promise<ProcessingJob | undefined>;
+  deleteProcessingJob(id: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private linguisticDatabases: Map<string, LinguisticDatabase>;
-
-  constructor() {
-    this.linguisticDatabases = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getLinguisticDatabase(id: string): Promise<LinguisticDatabase | undefined> {
-    return this.linguisticDatabases.get(id);
+    const [database] = await db.select().from(linguisticDatabases).where(eq(linguisticDatabases.id, id));
+    return database || undefined;
   }
 
   async getAllLinguisticDatabases(): Promise<LinguisticDatabase[]> {
-    return Array.from(this.linguisticDatabases.values());
+    return await db.select().from(linguisticDatabases).orderBy(desc(linguisticDatabases.createdAt));
   }
 
   async createLinguisticDatabase(insertDatabase: InsertLinguisticDatabase): Promise<LinguisticDatabase> {
-    const id = randomUUID();
-    const database: LinguisticDatabase = {
+    const [database] = await db.insert(linguisticDatabases).values({
       ...insertDatabase,
-      id,
-      description: insertDatabase.description || null,
-      wordCount: insertDatabase.wordCount || 0,
-      knownWords: insertDatabase.knownWords || [],
-      createdAt: new Date().toISOString(),
-    };
-    
-    this.linguisticDatabases.set(id, database);
+      segments: insertDatabase.segments || []
+    }).returning();
     return database;
   }
 
   async updateLinguisticDatabase(id: string, updateData: Partial<InsertLinguisticDatabase>): Promise<LinguisticDatabase | undefined> {
-    const existing = this.linguisticDatabases.get(id);
-    if (!existing) return undefined;
-
-    const updated: LinguisticDatabase = {
-      ...existing,
-      ...updateData,
-    };
-    
-    this.linguisticDatabases.set(id, updated);
-    return updated;
+    const [updated] = await db.update(linguisticDatabases)
+      .set(updateData)
+      .where(eq(linguisticDatabases.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async deleteLinguisticDatabase(id: string): Promise<boolean> {
-    return this.linguisticDatabases.delete(id);
+    const result = await db.delete(linguisticDatabases).where(eq(linguisticDatabases.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async updateKnownWords(databaseId: string, knownWords: string[]): Promise<LinguisticDatabase | undefined> {
-    const database = this.linguisticDatabases.get(databaseId);
-    if (!database) return undefined;
-
-    const updated: LinguisticDatabase = {
-      ...database,
-      knownWords: knownWords,
-    };
-    
-    this.linguisticDatabases.set(databaseId, updated);
-    return updated;
+    const [updated] = await db.update(linguisticDatabases)
+      .set({ knownWords })
+      .where(eq(linguisticDatabases.id, databaseId))
+      .returning();
+    return updated || undefined;
   }
 
   async getWordsByPage(
@@ -84,7 +102,7 @@ export class MemStorage implements IStorage {
     posFilter?: string[], 
     knownWordsFilter?: boolean
   ): Promise<{ words: WordEntry[], totalPages: number, totalWords: number }> {
-    const database = this.linguisticDatabases.get(databaseId);
+    const database = await this.getLinguisticDatabase(databaseId);
     if (!database) {
       return { words: [], totalPages: 0, totalWords: 0 };
     }
@@ -120,7 +138,7 @@ export class MemStorage implements IStorage {
   }
 
   async getUniqueWords(databaseId: string, firstInstancesOnly: boolean = false): Promise<WordEntry[]> {
-    const database = this.linguisticDatabases.get(databaseId);
+    const database = await this.getLinguisticDatabase(databaseId);
     if (!database) return [];
 
     const words = database.analysisData as WordEntry[];
@@ -141,6 +159,96 @@ export class MemStorage implements IStorage {
     return Array.from(uniqueWordsMap.values());
   }
 
+  // Prompt Templates
+  async getPromptTemplate(id: string): Promise<PromptTemplate | undefined> {
+    const [template] = await db.select().from(promptTemplates).where(eq(promptTemplates.id, id));
+    return template || undefined;
+  }
+
+  async getAllPromptTemplates(): Promise<PromptTemplate[]> {
+    return await db.select().from(promptTemplates).orderBy(desc(promptTemplates.createdAt));
+  }
+
+  async createPromptTemplate(template: InsertPromptTemplate): Promise<PromptTemplate> {
+    const [created] = await db.insert(promptTemplates).values(template).returning();
+    return created;
+  }
+
+  async updatePromptTemplate(id: string, template: Partial<InsertPromptTemplate>): Promise<PromptTemplate | undefined> {
+    const [updated] = await db.update(promptTemplates)
+      .set(template)
+      .where(eq(promptTemplates.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deletePromptTemplate(id: string): Promise<boolean> {
+    const result = await db.delete(promptTemplates).where(eq(promptTemplates.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Processing Configs
+  async getProcessingConfig(id: string): Promise<ProcessingConfig | undefined> {
+    const [config] = await db.select().from(processingConfigs).where(eq(processingConfigs.id, id));
+    return config || undefined;
+  }
+
+  async getAllProcessingConfigs(): Promise<ProcessingConfig[]> {
+    return await db.select().from(processingConfigs).orderBy(desc(processingConfigs.createdAt));
+  }
+
+  async createProcessingConfig(config: InsertProcessingConfig): Promise<ProcessingConfig> {
+    const [created] = await db.insert(processingConfigs).values(config).returning();
+    return created;
+  }
+
+  async updateProcessingConfig(id: string, config: Partial<InsertProcessingConfig>): Promise<ProcessingConfig | undefined> {
+    const [updated] = await db.update(processingConfigs)
+      .set(config)
+      .where(eq(processingConfigs.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteProcessingConfig(id: string): Promise<boolean> {
+    const result = await db.delete(processingConfigs).where(eq(processingConfigs.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Processing Jobs
+  async getProcessingJob(id: string): Promise<ProcessingJob | undefined> {
+    const [job] = await db.select().from(processingJobs).where(eq(processingJobs.id, id));
+    return job || undefined;
+  }
+
+  async getAllProcessingJobs(): Promise<ProcessingJob[]> {
+    return await db.select().from(processingJobs).orderBy(desc(processingJobs.createdAt));
+  }
+
+  async getProcessingJobsByDatabase(databaseId: string): Promise<ProcessingJob[]> {
+    return await db.select().from(processingJobs)
+      .where(eq(processingJobs.databaseId, databaseId))
+      .orderBy(desc(processingJobs.createdAt));
+  }
+
+  async createProcessingJob(job: InsertProcessingJob): Promise<ProcessingJob> {
+    const [created] = await db.insert(processingJobs).values(job).returning();
+    return created;
+  }
+
+  async updateProcessingJob(id: string, job: Partial<InsertProcessingJob>): Promise<ProcessingJob | undefined> {
+    const [updated] = await db.update(processingJobs)
+      .set(job)
+      .where(eq(processingJobs.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteProcessingJob(id: string): Promise<boolean> {
+    const result = await db.delete(processingJobs).where(eq(processingJobs.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   private getPosGroup(pos: string): string {
     switch (pos.toUpperCase()) {
       case 'VERB':
@@ -158,4 +266,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

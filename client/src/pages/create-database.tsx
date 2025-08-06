@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function CreateDatabase() {
   const [, setLocation] = useLocation();
@@ -14,6 +15,34 @@ export default function CreateDatabase() {
     inputText: '',
     description: '',
     language: 'Spanish'
+  });
+  
+  const [selectedDatabase, setSelectedDatabase] = useState<string>('');
+  const [selectedPromptTemplate, setSelectedPromptTemplate] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
+  const [batchSize, setBatchSize] = useState<number>(30);
+  const [concurrency, setConcurrency] = useState<number>(5);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const queryClient = useQueryClient();
+
+  // Fetch databases for processing
+  const { data: databases } = useQuery({
+    queryKey: ['/api/databases'],
+    enabled: true
+  });
+
+  // Fetch prompt templates
+  const { data: promptTemplates } = useQuery({
+    queryKey: ['/api/prompt-templates'],
+    enabled: true
+  });
+
+  // Fetch processing jobs
+  const { data: processingJobs } = useQuery({
+    queryKey: ['/api/processing-jobs'],
+    enabled: true,
+    refetchInterval: 2000 // Refresh every 2 seconds for real-time updates
   });
 
   const showStatus = (message: string, type: 'success' | 'error') => {
@@ -99,6 +128,59 @@ export default function CreateDatabase() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  // Start AI processing
+  const startProcessingMutation = useMutation({
+    mutationFn: async (data: { databaseId: string; configId?: string; promptTemplateId?: string }) => {
+      const response = await fetch('/api/start-processing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to start processing');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/processing-jobs'] });
+      showStatus('AI processing started successfully!', 'success');
+    },
+    onError: (error: Error) => {
+      showStatus(error.message, 'error');
+    }
+  });
+
+  const handleStartProcessing = () => {
+    if (!selectedDatabase) {
+      showStatus('Please select a database to process', 'error');
+      return;
+    }
+
+    setIsProcessing(true);
+    startProcessingMutation.mutate({
+      databaseId: selectedDatabase,
+      promptTemplateId: selectedPromptTemplate || undefined
+    });
+    setIsProcessing(false);
+  };
+
+  const handleCheckStatus = () => {
+    if (!selectedDatabase) {
+      showStatus('Please select a database to check status', 'error');
+      return;
+    }
+
+    const jobsForDatabase = processingJobs?.filter((job: any) => job.databaseId === selectedDatabase) || [];
+    if (jobsForDatabase.length === 0) {
+      showStatus('No processing jobs found for selected database', 'error');
+      return;
+    }
+
+    const latestJob = jobsForDatabase[0]; // Assuming jobs are sorted by creation date
+    showStatus(`Latest job status: ${latestJob.status} (${latestJob.progress}% complete)`, 'success');
   };
 
   return (
@@ -368,16 +450,48 @@ export default function CreateDatabase() {
             </h2>
             
             <div className="control-group">
+              <label htmlFor="database-selector">Select Database for Processing:</label>
+              <select 
+                id="database-selector"
+                value={selectedDatabase}
+                onChange={(e) => setSelectedDatabase(e.target.value)}
+                data-testid="select-database"
+              >
+                <option value="">Choose a database...</option>
+                {databases?.map((db: any) => (
+                  <option key={db.id} value={db.id}>
+                    {db.name} ({db.language}, {db.wordCount} words)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="control-group">
               <label htmlFor="prompt-selector">Prompt Template:</label>
-              <select id="prompt-selector">
-                <option value="">Loading prompts...</option>
+              <select 
+                id="prompt-selector"
+                value={selectedPromptTemplate}
+                onChange={(e) => setSelectedPromptTemplate(e.target.value)}
+                data-testid="select-prompt-template"
+              >
+                <option value="">Use default template</option>
+                {promptTemplates?.map((template: any) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} - {template.description}
+                  </option>
+                ))}
               </select>
             </div>
             
             <div className="control-group">
               <label htmlFor="model-selector">LLM Model:</label>
-              <select id="model-selector">
-                <option value="gemini-2.0-flash" selected>gemini-2.0-flash (Default)</option>
+              <select 
+                id="model-selector"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                data-testid="select-model"
+              >
+                <option value="gemini-2.0-flash">gemini-2.0-flash (Default)</option>
                 <option value="gemini-1.5-flash">gemini-1.5-flash</option>
                 <option value="gemini-1.0-pro">gemini-1.0-pro</option>
                 <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
@@ -386,12 +500,28 @@ export default function CreateDatabase() {
             
             <div className="control-group">
               <label htmlFor="param-batch-size">Batch Size (Words):</label>
-              <input type="number" id="param-batch-size" min="1" placeholder="e.g., 30" />
+              <input 
+                type="number" 
+                id="param-batch-size" 
+                min="1" 
+                placeholder="e.g., 30"
+                value={batchSize}
+                onChange={(e) => setBatchSize(parseInt(e.target.value) || 30)}
+                data-testid="input-batch-size"
+              />
             </div>
             
             <div className="control-group">
               <label htmlFor="param-concurrency">Concurrency:</label>
-              <input type="number" id="param-concurrency" min="1" placeholder="e.g., 5" />
+              <input 
+                type="number" 
+                id="param-concurrency" 
+                min="1" 
+                placeholder="e.g., 5"
+                value={concurrency}
+                onChange={(e) => setConcurrency(parseInt(e.target.value) || 5)}
+                data-testid="input-concurrency"
+              />
             </div>
           </div>
 
@@ -407,8 +537,15 @@ export default function CreateDatabase() {
             </h2>
 
             <div className="control-group">
-              <button id="btn-check-status">Check Batch Status</button>
-              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected file above)</small>
+              <button 
+                id="btn-check-status"
+                onClick={handleCheckStatus}
+                disabled={!selectedDatabase}
+                data-testid="button-check-status"
+              >
+                Check Batch Status
+              </button>
+              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected database above)</small>
             </div>
             <hr />
 
@@ -421,8 +558,15 @@ export default function CreateDatabase() {
               <input type="text" id="process-batches" placeholder="e.g., 1,2,5 (optional)" />
             </div>
             <div className="control-group">
-              <button id="btn-process">Process Unprocessed Batches</button>
-              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected file above)</small>
+              <button 
+                id="btn-process"
+                onClick={handleStartProcessing}
+                disabled={!selectedDatabase || isProcessing || startProcessingMutation.isPending}
+                data-testid="button-start-processing"
+              >
+                {isProcessing || startProcessingMutation.isPending ? 'Starting Processing...' : 'Process Unprocessed Batches'}
+              </button>
+              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected database above)</small>
             </div>
             <hr />
 
@@ -472,7 +616,45 @@ export default function CreateDatabase() {
             <pre id="output-area">
               {isUploading && 'Uploading file...'}
               {isCreating && 'Creating database...'}
-              {!isUploading && !isCreating && 'Ready for database creation. Upload a JSON file or initialize with text above.'}
+              {startProcessingMutation.isPending && 'Starting AI processing...'}
+              {!isUploading && !isCreating && !startProcessingMutation.isPending && (
+                <>
+                  Ready for database creation and AI processing.
+                  {'\n\n'}
+                  
+                  {databases && databases.length > 0 && (
+                    <>
+                      Available Databases: {databases.length}
+                      {'\n'}
+                      {databases.map((db: any) => `- ${db.name} (${db.wordCount} words)`).join('\n')}
+                      {'\n\n'}
+                    </>
+                  )}
+                  
+                  {promptTemplates && promptTemplates.length > 0 && (
+                    <>
+                      Available Prompt Templates: {promptTemplates.length}
+                      {'\n'}
+                      {promptTemplates.map((template: any) => `- ${template.name}: ${template.description}`).join('\n')}
+                      {'\n\n'}
+                    </>
+                  )}
+                  
+                  {processingJobs && processingJobs.length > 0 && (
+                    <>
+                      Recent Processing Jobs:
+                      {'\n'}
+                      {processingJobs.slice(0, 5).map((job: any) => {
+                        const dbName = databases?.find((db: any) => db.id === job.databaseId)?.name || 'Unknown DB';
+                        return `- ${dbName}: ${job.status.toUpperCase()} (${job.progress}%)`;
+                      }).join('\n')}
+                      {'\n\n'}
+                    </>
+                  )}
+                  
+                  Upload a JSON file or initialize with text above, then select a database for AI processing.
+                </>
+              )}
             </pre>
           </div>
         </div>
