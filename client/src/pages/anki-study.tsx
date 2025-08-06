@@ -630,7 +630,7 @@ export default function AnkiStudy() {
                                 <td className="p-3 text-slate-400 font-mono text-sm" data-testid={`text-position-${index}`}>
                                   {card.wordKey}
                                 </td>
-                                <td className="p-3 text-white font-semibold" data-testid={`text-word-${index}`}>
+                                <td className={`p-3 font-semibold ${getPosTextColor(card.pos)}`} data-testid={`text-word-${index}`}>
                                   {card.word}
                                 </td>
                                 <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
@@ -667,7 +667,7 @@ export default function AnkiStudy() {
                           data-testid={`card-mobile-${index}`}
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <div className="text-white font-semibold text-lg" data-testid={`text-mobile-word-${index}`}>
+                            <div className={`font-semibold text-lg ${getPosTextColor(card.pos)}`} data-testid={`text-mobile-word-${index}`}>
                               {card.word}
                             </div>
                             <div className="text-slate-400 text-sm font-mono" data-testid={`text-mobile-position-${index}`}>
