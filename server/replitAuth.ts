@@ -43,13 +43,17 @@ async function createSampleDatabase(userId: string) {
     if (fs.existsSync(sampleFilePath)) {
       const sampleData = JSON.parse(fs.readFileSync(sampleFilePath, 'utf8'));
       
-      // Create the sample database
+      // Convert wordDatabase to analysis data format
+      const analysisData = Object.values(sampleData.wordDatabase);
+      
+      // Create the sample database with all required fields
       const database = await storage.createLinguisticDatabase({
         name: "Call Me Ishmael (Spanish Sample)",
         description: "Sample Spanish text analysis - Call Me Ishmael excerpt with full linguistic analysis",
         language: "Spanish",
         originalText: sampleData.inputText,
-        wordDatabase: sampleData.wordDatabase,
+        analysisData: analysisData,
+        wordCount: analysisData.length,
         knownWords: []
       }, userId);
       
