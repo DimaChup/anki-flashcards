@@ -468,28 +468,52 @@ export class DatabaseStorage implements IStorage {
       studySettings: { newCardsPerDay: 20, maxReviews: 100, colorAssist: true }
     });
 
-    // Generate cards from first instance words
+    // Generate cards from first instance words in EXACT database order
     const analysisData = database.analysisData as WordEntry[];
-    const firstInstanceWords = analysisData.filter(word => word.firstInstance);
+    const knownWords = new Set(database.knownWords || [] as string[]);
+    
+    console.log("ANKI CREATION: Total words in database:", analysisData.length);
+    
+    // Create a map of position -> word for precise ordering
+    const positionMap = new Map<number, WordEntry>();
+    
+    analysisData.forEach((word) => {
+      console.log(`ANKI CREATION: Word "${word.word}" has id="${word.id}", position=${word.position}, firstInstance=${word.firstInstance}`);
+      
+      if (word.firstInstance && !knownWords.has(word.word)) {
+        positionMap.set(word.position, word);
+      }
+    });
+    
+    // Sort by position keys (1, 2, 3, 5, etc.) and create cards
+    const sortedPositions = Array.from(positionMap.keys()).sort((a, b) => a - b);
+    console.log("ANKI CREATION: First 20 sorted positions:", sortedPositions.slice(0, 20));
+    
+    const cards: InsertAnkiFlashcard[] = sortedPositions.map((position, index) => {
+      const word = positionMap.get(position)!;
+      console.log(`ANKI CREATION: Creating card ${index + 1} for position ${position}: "${word.word}"`);
+      
+      return {
+        userId,
+        deckId: deck.id,
+        databaseId,
+        signature: `${word.word.toLowerCase()}::${word.pos}`,
+        word: word.word,
+        wordKey: position, // Use the actual database position number
+        pos: word.pos,
+        lemma: word.lemma,
+        translations: [word.translation],
+        sentence: word.sentence,
+        status: 'new',
+        easeFactor: 2500,
+        interval: 0,
+        due: new Date(),
+        repetitions: 0,
+        lapses: 0
+      };
+    });
 
-    const cards: InsertAnkiFlashcard[] = firstInstanceWords.map(word => ({
-      userId,
-      deckId: deck.id,
-      databaseId,
-      signature: `${word.word.toLowerCase()}::${word.pos}`,
-      word: word.word,
-      wordKey: word.position,
-      pos: word.pos,
-      lemma: word.lemma,
-      translations: [word.translation],
-      sentence: word.sentence,
-      status: 'new',
-      easeFactor: 2500,
-      interval: 0,
-      due: new Date(),
-      repetitions: 0,
-      lapses: 0
-    }));
+    console.log(`ANKI CREATION: Creating ${cards.length} cards in database position order`);
 
     // Insert all cards
     for (const card of cards) {
@@ -544,40 +568,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Get cards due for today's study session (reviews + new cards according to limits)
+  // Get deck words in chronological order for sidebar display
+  async getDeckWordsInOrder(databaseId: string, userId: string): Promise<WordEntry[]> {
+    const database = await this.getLinguisticDatabase(databaseId, userId);
+    if (!database) return [];
+
+    const analysisData = database.analysisData as WordEntry[];
+    const knownWords = new Set(database.knownWords || [] as string[]);
+    
+    // Return first instance words that would be in the deck, sorted by position
+    return analysisData
+      .filter(word => word.firstInstance && !knownWords.has(word.word))
+      .sort((a, b) => a.position - b.position);
+  }
+
   async getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]> {
     const now = new Date();
     
-    // Get or create study settings
-    let settings = await this.getAnkiStudySettings(userId, databaseId);
+    // Get study settings (don't create automatically)
+    const settings = await this.getAnkiStudySettings(userId, databaseId);
     if (!settings) {
-      settings = await this.createAnkiStudySettings({
-        userId,
-        databaseId,
-        // deckName not part of settings schema
-        newCardsPerDay: 20,
-        reviewLimit: 200,
-        easyBonus: 0.3,
-        intervalModifier: 1.0,
-        maxInterval: 36500,
-        graduatingInterval: 1,
-        easyInterval: 4,
-        startingEase: 2500,
-        learningSteps: "1,10"
-      });
+      return []; // No settings = no deck created yet
     }
 
-    // Check if any cards exist, if not auto-initialize from database
-    const existingCards = await db.select().from(ankiStudyCards)
-      .where(and(
-        eq(ankiStudyCards.userId, userId),
-        eq(ankiStudyCards.databaseId, databaseId)
-      ))
-      .limit(1);
-      
-    if (existingCards.length === 0) {
-      // Auto-initialize cards from database words (first_inst=true, excluding known words)
-      await this.initializeStudyCards(userId, databaseId);
-    }
+    // Don't auto-initialize - only create cards when explicitly requested
 
     // Filter out cards for words that are now in knownWords
     const database = await this.getLinguisticDatabase(databaseId, userId);
@@ -606,6 +620,7 @@ export class DatabaseStorage implements IStorage {
           eq(ankiStudyCards.databaseId, databaseId),
           eq(ankiStudyCards.state, 'new')
         ))
+        .orderBy(ankiStudyCards.wordKey) // Sort by wordKey (position) for correct database order
         .limit(newCardsNeeded);
       
       // Filter out known words from new cards
@@ -630,12 +645,7 @@ export class DatabaseStorage implements IStorage {
     const eligibleWords = analysisData
       .filter(entry => entry.firstInstance === true)  // Only first instances
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
-      .sort((a, b) => {
-        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
-        const numA = parseInt(a.id.toString(), 10);
-        const numB = parseInt(b.id.toString(), 10);
-        return numA - numB;
-      });
+      .sort((a, b) => a.position - b.position); // Sort by database position
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
@@ -687,6 +697,28 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return deleted.length;
+  }
+
+  // Delete entire Anki deck (cards + settings) for a database
+  async deleteAnkiDeck(userId: string, databaseId: string): Promise<{ deletedCards: number; deletedSettings: boolean }> {
+    // Delete all cards for this database
+    const deletedCards = await db.delete(ankiStudyCards)
+      .where(and(
+        eq(ankiStudyCards.userId, userId),
+        eq(ankiStudyCards.databaseId, databaseId)
+      ));
+
+    // Delete settings for this database  
+    const deletedSettings = await db.delete(ankiStudySettings)
+      .where(and(
+        eq(ankiStudySettings.userId, userId),
+        eq(ankiStudySettings.databaseId, databaseId)
+      ));
+
+    return {
+      deletedCards: deletedCards.rowCount || 0,
+      deletedSettings: deletedSettings.rowCount > 0
+    };
   }
 
   // Process review with real Anki algorithm - exactly matching anki.html
