@@ -769,13 +769,13 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
         </div>
       </div>
 
-      {/* Word List Display - Fixed Height */}
+      {/* Word List Display - Fixed Height for 23 lines */}
       <div 
         className="list-display bg-background border border-border rounded-lg p-4"
         style={{
-          height: '120vh',
-          minHeight: '120vh',
-          maxHeight: '120vh',
+          height: '30vh',
+          minHeight: '400px',
+          maxHeight: '30vh',
           overflowY: 'auto',
           marginBottom: '24px',
           fontSize: 'clamp(0.75rem, 2vw, 0.95rem)',
