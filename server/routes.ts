@@ -34,6 +34,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  // Demo endpoints to simulate different users (for testing multi-tenancy)
+  app.get('/api/demo/user/:userId', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const user = await storage.getUser(userId);
+      const databases = await storage.getAllLinguisticDatabases(userId);
+      
+      res.json({
+        user: user,
+        databases: databases,
+        message: `This user sees ${databases.length} databases`
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch demo user data" });
+    }
+  });
   
   // Get all linguistic databases (now user-filtered)
   app.get("/api/databases", isAuthenticated, async (req: any, res) => {

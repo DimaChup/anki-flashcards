@@ -66,10 +66,10 @@ export default function Landing() {
               variant="outline" 
               size="lg" 
               className="px-8 py-4 text-lg"
-              onClick={() => window.location.href = '/pricing'}
-              data-testid="view-pricing-button"
+              onClick={() => window.location.href = '/demo'}
+              data-testid="view-demo-button"
             >
-              View Pricing
+              See Multi-User Demo
             </Button>
           </div>
         </div>

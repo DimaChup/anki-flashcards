@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import CreateDatabase from "@/pages/create-database";
 import Pricing from "@/pages/pricing";
 import Landing from "@/pages/landing";
+import DemoUsers from "@/pages/demo-users";
 import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/demo" component={DemoUsers} />
           <Route>
             <Landing />
           </Route>
