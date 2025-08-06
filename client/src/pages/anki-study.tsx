@@ -333,6 +333,106 @@ export default function AnkiStudy() {
             </Card>
           )}
 
+          {/* Study Session */}
+          {studyStarted && currentCard && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
+                <div className="flex justify-between text-sm text-slate-400 mt-2">
+                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
+                  <span>Position in text: {currentCard.wordKey}</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* Flash Card */}
+                <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
+                  <div className="text-4xl font-bold text-white mb-4" data-testid="text-card-word">
+                    {currentCard.word}
+                  </div>
+                  
+                  {!showAnswer ? (
+                    <Button
+                      onClick={() => setShowAnswer(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white mx-auto"
+                      data-testid="button-show-answer"
+                    >
+                      Show Answer
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-xl text-green-400" data-testid="text-card-translations">
+                        {currentCard.translations.join(', ')}
+                      </div>
+                      {currentCard.pos && (
+                        <div className="text-sm text-slate-400">
+                          <span className="font-medium">POS:</span> {currentCard.pos}
+                        </div>
+                      )}
+                      {currentCard.sentence && (
+                        <div className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-4">
+                          "{currentCard.sentence}"
+                        </div>
+                      )}
+                      
+                      {/* Rating Buttons */}
+                      <div className="flex gap-2 justify-center mt-6">
+                        <Button
+                          onClick={() => handleCardReview(1)}
+                          disabled={reviewCardMutation.isPending}
+                          variant="destructive"
+                          data-testid="button-again"
+                        >
+                          Again
+                        </Button>
+                        <Button
+                          onClick={() => handleCardReview(2)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                          data-testid="button-hard"
+                        >
+                          Hard
+                        </Button>
+                        <Button
+                          onClick={() => handleCardReview(3)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid="button-good"
+                        >
+                          Good
+                        </Button>
+                        <Button
+                          onClick={() => handleCardReview(4)}
+                          disabled={reviewCardMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700"
+                          data-testid="button-easy"
+                        >
+                          Easy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Study Controls */}
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => {
+                      setStudyStarted(false);
+                      setCurrentCard(null);
+                      setShowAnswer(false);
+                    }}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-end-session"
+                  >
+                    End Study Session
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Deck Controls - Always visible when deck exists */}
           {selectedDatabase && deck && (
             <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl mt-6">
@@ -487,106 +587,6 @@ export default function AnkiStudy() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Study Session */}
-          {studyStarted && currentCard && (
-            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
-                <div className="flex justify-between text-sm text-slate-400 mt-2">
-                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
-                  <span>Position in text: {currentCard.wordKey}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                
-                {/* Flash Card */}
-                <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
-                  <div className="text-4xl font-bold text-white mb-4" data-testid="text-card-word">
-                    {currentCard.word}
-                  </div>
-                  
-                  {!showAnswer ? (
-                    <Button
-                      onClick={() => setShowAnswer(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white mx-auto"
-                      data-testid="button-show-answer"
-                    >
-                      Show Answer
-                    </Button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="text-xl text-green-400" data-testid="text-card-translations">
-                        {currentCard.translations.join(', ')}
-                      </div>
-                      {currentCard.pos && (
-                        <div className="text-sm text-slate-400">
-                          <span className="font-medium">POS:</span> {currentCard.pos}
-                        </div>
-                      )}
-                      {currentCard.sentence && (
-                        <div className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-4">
-                          "{currentCard.sentence}"
-                        </div>
-                      )}
-                      
-                      {/* Rating Buttons */}
-                      <div className="flex gap-2 justify-center mt-6">
-                        <Button
-                          onClick={() => handleCardReview(1)}
-                          disabled={reviewCardMutation.isPending}
-                          variant="destructive"
-                          data-testid="button-again"
-                        >
-                          Again
-                        </Button>
-                        <Button
-                          onClick={() => handleCardReview(2)}
-                          disabled={reviewCardMutation.isPending}
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                          data-testid="button-hard"
-                        >
-                          Hard
-                        </Button>
-                        <Button
-                          onClick={() => handleCardReview(3)}
-                          disabled={reviewCardMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700"
-                          data-testid="button-good"
-                        >
-                          Good
-                        </Button>
-                        <Button
-                          onClick={() => handleCardReview(4)}
-                          disabled={reviewCardMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700"
-                          data-testid="button-easy"
-                        >
-                          Easy
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Study Controls */}
-                <div className="flex justify-center">
-                  <Button
-                    onClick={() => {
-                      setStudyStarted(false);
-                      setCurrentCard(null);
-                      setShowAnswer(false);
-                    }}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                    data-testid="button-end-session"
-                  >
-                    End Study Session
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
