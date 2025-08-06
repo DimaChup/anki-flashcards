@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Script Control Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- Root Variables (Dark Theme) --- */
+        :root {
+            --bg-primary: #1a1d21;
+            --bg-secondary: #252a30;
+            --bg-tertiary: #31363f;
+            --text-primary: #e8eaed;
+            --text-secondary: #bdc1c6;
+            --text-heading: #ffffff;
+            --border-color: #4a5058;
+            --accent-primary: #4a90e2;
+            --accent-primary-hover: #3a7bc8;
+            --accent-secondary: #4b5563;
+            --accent-secondary-hover: #6b7280;
+            --error-bg: #5f1d24;
+            --error-border: #9e3842;
+            --error-text: #fecdd3;
+            --success-bg: #164e3b;
+            --success-border: #34d399;
+            --success-text: #d1fae5;
+            --focus-ring: rgba(74, 144, 226, 0.4);
+            --transition-speed-normal: 0.25s;
+            --transition-timing: ease-in-out;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+        #app-container {
+            background-color: var(--bg-secondary);
+            padding: 30px 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            max-width: 900px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        h1 { font-size: 1.8em; font-weight: 700; margin-bottom: 10px; text-align: center; color: var(--text-heading); }
+        h2 { font-size: 1.3em; color: var(--text-heading); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;}
+        .control-section {
+            background-color: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 15px; /* Row and column gap */
+            align-items: flex-start; /* Align items to top for textarea */
+        }
+        .control-group label {
+            font-weight: bold;
+            color: var(--text-secondary);
+            margin-right: 5px;
+            flex-basis: 150px; /* Align labels somewhat */
+            flex-shrink: 0;
+            font-size: 0.9em; /* Slightly smaller labels */
+            padding-top: 8px; /* Align label better with textarea/select */
+        }
+        /* Specific alignment for select label */
+         .control-group label[for="file-selector"] {
+             padding-top: 8px;
+         }
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group select,
+        .control-group textarea { /* Added textarea */
+            padding: 8px 10px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95em;
+            flex-grow: 1; /* Allow inputs to take space */
+            min-width: 150px; /* Prevent inputs becoming too small */
+            transition: border-color var(--transition-speed-normal) var(--transition-timing), box-shadow var(--transition-speed-normal) var(--transition-timing);
+            font-family: 'Courier New', Courier, monospace; /* Monospace for textarea */
+        }
+        .control-group textarea {
+             min-height: 100px; /* Give textarea some height */
+             resize: vertical;
+        }
+        .control-group input:focus,
+        .control-group select:focus,
+        .control-group textarea:focus {
+             outline: none;
+             border-color: var(--accent-primary);
+             box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+        /* Align button with textarea */
+        .control-group button {
+             align-self: flex-end; /* Align button to bottom if wrapping */
+             margin-left: 10px; /* Add space between textarea and button */
+        }
+
+        button {
+            padding: 9px 15px;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: background-color var(--transition-speed-normal) var(--transition-timing), transform var(--transition-speed-fast) var(--transition-timing);
+            margin-right: 10px;
+            margin-top: 5px; /* Add space when wrapping */
+        }
+        button:hover:not(:disabled) { background-color: var(--accent-primary-hover); transform: translateY(-1px); }
+        button:disabled { background-color: var(--accent-secondary); cursor: not-allowed; opacity: 0.6; }
+        #output-area {
+            margin-top: 20px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 150px;
+            max-height: 400px; /* Limit height */
+            overflow-y: auto; /* Add scrollbar if needed */
+            white-space: pre-wrap; /* Preserve whitespace and newlines */
+            word-wrap: break-word;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+        .status-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .status-message.error { background-color: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); }
+        .status-message.success { background-color: var(--success-bg); border: 1px solid var(--success-border); color: var(--success-text); }
+        .hidden { display: none; }
+        hr { border-color: var(--border-color); opacity: 0.3; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <h1>LLM Script Control Panel</h1>
+
+        <div id="status-area"></div>
+
+        <div class="control-section">
+            <h2>Start Here: Select Existing File OR Initialize New</h2>
+            <div class="control-group">
+                <label for="file-selector">Select Existing File:</label>
+                <select id="file-selector" name="file">
+                    <option value="">Loading files...</option>
+                </select>
+            </div>
+            <hr style="margin: 10px 0;">
+             <div class="control-group">
+                <label for="new-filename">Initialize New File As:</label>
+                <input type="text" id="new-filename" placeholder="e.g., project_b.json (optional)">
+            </div>
+            <div class="control-group">
+                <label for="init-input-text">Input Text for New File:</label>
+                <textarea id="init-input-text" placeholder="Paste the full text here to initialize..."></textarea>
+                <button id="btn-initialize">Initialize File</button>
+            </div>
+             <small style="color: var(--text-secondary); display: block; margin-top: 5px;">Select an existing file for other actions OR enter text/new name above and click 'Initialize'.</small>
+        </div>
+
+         <div class="control-section">
+            <h2>Optional Parameters (Overrides Defaults)</h2>
+            <div class="control-group">
+                <label for="prompt-selector">Prompt Template:</label>
+                <select id="prompt-selector">
+                    <option value="">Loading prompts...</option>
+                    </select>
+            </div>
+             <div class="control-group">
+                <label for="model-selector">LLM Model:</label>
+                <select id="model-selector">
+                    <option value="gemini-2.0-flash" selected>gemini-2.0-flash (Default)</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                    <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
+                    </select>
+            </div>
+            <div class="control-group">
+                <label for="param-batch-size">Batch Size (Words):</label>
+                <input type="number" id="param-batch-size" min="1" placeholder="e.g., 30">
+            </div>
+             <div class="control-group">
+                <label for="param-concurrency">Concurrency:</label>
+                <input type="number" id="param-concurrency" min="1" placeholder="e.g., 5">
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Actions on Selected File</h2>
+
+            <div class="control-group">
+                 <button id="btn-check-status">Check Batch Status</button>
+                 <small style="color: var(--text-secondary); margin-left: 10px;">(Uses selected file above)</small>
+            </div>
+            <hr>
+
+            <div class="control-group">
+                 <label for="process-upto-batch">Process Up To Batch:</label>
+                 <input type="number" id="process-upto-batch" min="1" placeholder="(optional)">
+            </div>
+            <div class="control-group">
+                 <label for="process-batches">Process Specific Batches:</label>
+                 <input type="text" id="process-batches" placeholder="e.g., 1,2,5 (optional)">
+            </div>
+             <div class="control-group">
+                 <button id="btn-process">Process Unprocessed Batches</button>
+                 <small style="color: var(--text-secondary); margin-left: 10px;">(Uses selected file above)</small>
+            </div>
+            <hr>
+
+            <div class="control-group">
+                <label for="reprocess-range">Reprocess Word Range:</label>
+                <input type="text" id="reprocess-range" placeholder="e.g., 50-75">
+                <button id="btn-reprocess">Reprocess Range</button>
+            </div>
+            <hr>
+
+             <div class="control-group">
+                <label for="clear-batch">Clear Batch #:</label>
+                <input type="number" id="clear-batch" min="1">
+                <button id="btn-clear-batch">Clear Batch</button>
+            </div>
+             <div class="control-group">
+                <label for="clear-range">Clear Word Range:</label>
+                <input type="text" id="clear-range" placeholder="e.g., 50-75">
+                <button id="btn-clear-range">Clear Range</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h2>Output / Log</h2>
+            <pre id="output-area">Script output will appear here...</pre>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const fileSelector = document.getElementById('file-selector');
+            const newFilenameInput = document.getElementById('new-filename'); // Input for new filename
+            const promptSelector = document.getElementById('prompt-selector');
+            const modelSelector = document.getElementById('model-selector');
+            const initInputText = document.getElementById('init-input-text'); // Textarea for initialize
+            const processBatchesInput = document.getElementById('process-batches');
+            const processUptoBatchInput = document.getElementById('process-upto-batch');
+            const reprocessRangeInput = document.getElementById('reprocess-range');
+            const clearBatchInput = document.getElementById('clear-batch');
+            const clearRangeInput = document.getElementById('clear-range');
+            const paramBatchSize = document.getElementById('param-batch-size');
+            const paramConcurrency = document.getElementById('param-concurrency');
+            const outputArea = document.getElementById('output-area');
+            const statusArea = document.getElementById('status-area');
+
+            const btnInitialize = document.getElementById('btn-initialize');
+            const btnProcess = document.getElementById('btn-process');
+            const btnCheckStatus = document.getElementById('btn-check-status');
+            const btnReprocess = document.getElementById('btn-reprocess');
+            const btnClearBatch = document.getElementById('btn-clear-batch');
+            const btnClearRange = document.getElementById('btn-clear-range');
+
+            const allButtons = [btnInitialize, btnProcess, btnCheckStatus, btnReprocess, btnClearBatch, btnClearRange];
+
+            // --- API Base URL ---
+            const API_BASE_URL = 'http://localhost:3000/api'; // Adjust if needed
+
+            // --- Helper Functions ---
+            function showStatus(message, isError = false) {
+                statusArea.innerHTML = ''; // Clear previous messages
+                const statusDiv = document.createElement('div');
+                statusDiv.className = `status-message ${isError ? 'error' : 'success'}`;
+                statusDiv.textContent = message;
+                statusArea.appendChild(statusDiv);
+                // Auto-clear success messages after a delay
+                if (!isError) {
+                    setTimeout(clearStatus, 5000); // Clear success after 5 seconds
+                }
+            }
+
+            function clearStatus() { statusArea.innerHTML = ''; }
+            function logOutput(text) { outputArea.textContent += text + '\n'; outputArea.scrollTop = outputArea.scrollHeight; }
+            function clearOutput() { outputArea.textContent = ''; }
+            function disableButtons() { allButtons.forEach(btn => btn.disabled = true); }
+            function enableButtons() { allButtons.forEach(btn => btn.disabled = false); }
+
+            // --- Get Selected Target File ---
+            function getTargetFilename(forInitialize = false) {
+                 const newName = newFilenameInput.value.trim();
+                 // For initialize, prioritize new name if provided
+                 if (forInitialize && newName) {
+                     if (!newName.endsWith('.json')) {
+                         return newName + '.json'; // Append .json if missing
+                     }
+                     return newName;
+                 }
+                 // Otherwise (or if new name is empty for initialize), use the selected file
+                 return fileSelector.value || 'combinedData.json'; // Fallback to default
+            }
+
+
+            // --- API Call Function ---
+            async function runScriptOnBackend(payload) {
+                clearStatus();
+                clearOutput();
+                disableButtons();
+                logOutput(`Sending request to backend with mode: ${payload.mode || 'process'}...`);
+
+                // Determine target filename based on mode
+                const isInitializing = payload.mode === 'initialize';
+                const targetFilename = getTargetFilename(isInitializing);
+
+                // Set output file. For initialize, it's the target. For others, it's also the resume file.
+                payload.outputFile = targetFilename;
+                if (!isInitializing) {
+                    payload.resumeFile = targetFilename; // Set resume for non-init modes
+                }
+
+                // Add selected prompt and model from dropdowns to payload
+                payload.promptFile = promptSelector.value || null;
+                payload.modelName = modelSelector.value || null;
+                // Add other optional params if they have values
+                payload.batchSize = paramBatchSize.value || null;
+                payload.concurrency = paramConcurrency.value || null;
+
+                // Validate input text for initialize mode
+                if (isInitializing) {
+                     if (!payload.inputText || payload.inputText.trim() === '') {
+                         showStatus("Please paste text into the 'Input Text' area for initialization.", true);
+                         enableButtons();
+                         return; // Stop if no text for initialize
+                     }
+                     // Remove resumeFile explicitly if it somehow got added for initialize
+                     delete payload.resumeFile;
+                }
+
+
+                logOutput(`Payload: ${JSON.stringify(payload, null, 2)}`);
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/run-script`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || `HTTP error ${response.status}`);
+                    }
+
+                    logOutput("\n--- Backend Response ---");
+                    if (result.message) {
+                        logOutput(`Message: ${result.message}`);
+                        showStatus(result.message, !result.success);
+                    }
+                    if (result.stdout) {
+                        logOutput("\n--- Script Output (stdout) ---");
+                        logOutput(result.stdout);
+                    }
+                    if (result.stderr) {
+                        logOutput("\n--- Script Output (stderr) ---");
+                        logOutput(result.stderr);
+                        if (!result.success) {
+                             showStatus(`Script finished with errors (see output). Status: ${result.message || 'Failed'}`, true);
+                        }
+                    }
+                    if(result.success && !result.stderr && result.message && !statusArea.hasChildNodes()){
+                         showStatus(result.message, false);
+                    }
+
+
+                } catch (error) {
+                    console.error("Error calling run-script API:", error);
+                    const errorMsg = `API request failed: ${error.message}`;
+                    showStatus(errorMsg, true);
+                    logOutput(errorMsg);
+                } finally {
+                    enableButtons();
+                    logOutput("\n--- Request Complete ---");
+                    // Refresh file list after operations that might create/delete files
+                    if (payload.mode === 'initialize') {
+                         populateFileSelector(); // Refresh file list after initializing
+                    }
+                }
+            }
+
+            // --- Populate File Selector ---
+            async function populateFileSelector() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/datafiles`);
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+                    const files = await response.json();
+
+                    const currentSelection = fileSelector.value;
+                    fileSelector.innerHTML = '';
+                    let foundCurrent = false;
+
+                    if (files && files.length > 0) {
+                        files.forEach(file => {
+                            const option = document.createElement('option');
+                            option.value = file;
+                            option.textContent = file;
+                            fileSelector.appendChild(option);
+                            if (file === currentSelection) {
+                                option.selected = true;
+                                foundCurrent = true;
+                            }
+                        });
+                        if (!foundCurrent) {
+                             const defaultFileOption = fileSelector.querySelector('option[value="combinedData.json"]');
+                             if (defaultFileOption) { defaultFileOption.selected = true; }
+                             else if (fileSelector.options.length > 0) { fileSelector.options[0].selected = true; }
+                        }
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = "";
+                        option.textContent = "No data files found";
+                        option.disabled = true;
+                        fileSelector.appendChild(option);
+                    }
+                } catch (error) {
+                    console.error("Error fetching data files:", error);
+                    fileSelector.innerHTML = '<option value="">Error loading files</option>';
+                    showStatus(`Error loading file list: ${error.message}`, true);
+                }
+            }
+
+             // --- Populate Prompt Selector ---
+             async function populatePromptSelector() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/prompts`);
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+                    const files = await response.json();
+
+                    promptSelector.innerHTML = ''; // Clear loading message
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = ""; // Empty value means use script default
+                    defaultOption.textContent = "-- Use Script Default --";
+                    promptSelector.appendChild(defaultOption);
+
+                    if (files && files.length > 0) {
+                        files.forEach(file => {
+                            const option = document.createElement('option');
+                            option.value = file; // Send filename only
+                            option.textContent = file;
+                            promptSelector.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching prompt files:", error);
+                    promptSelector.innerHTML = '<option value="">Error loading prompts</option>';
+                    showStatus(`Error loading prompt list: ${error.message}`, true);
+                }
+            }
+
+            // --- Event Listeners ---
+            btnInitialize.addEventListener('click', () => {
+                const inputText = initInputText.value; // Get text from textarea
+                // Payload sends inputText instead of inputFile
+                const payload = { mode: 'initialize', inputText: inputText };
+                 // Target filename determined within runScriptOnBackend
+                runScriptOnBackend(payload);
+            });
+
+            btnProcess.addEventListener('click', () => {
+                const payload = {
+                    mode: 'process',
+                    processBatches: processBatchesInput.value.trim() || null,
+                    upToBatch: processUptoBatchInput.value || null
+                };
+                runScriptOnBackend(payload);
+            });
+
+            btnCheckStatus.addEventListener('click', () => {
+                 const payload = { mode: 'check_status' };
+                 runScriptOnBackend(payload);
+            });
+
+            btnReprocess.addEventListener('click', () => {
+                const range = reprocessRangeInput.value.trim();
+                if (!range || !/^\d+-\d+$/.test(range)) { showStatus("Please enter a valid word range (e.g., 50-75) to reprocess.", true); return; }
+                 const payload = { mode: 'reprocess', reprocessRange: range };
+                 runScriptOnBackend(payload);
+            });
+
+             btnClearBatch.addEventListener('click', () => {
+                const batchNum = clearBatchInput.value;
+                if (!batchNum || parseInt(batchNum) < 1) { showStatus("Please enter a valid batch number to clear.", true); return; }
+                 const payload = { mode: 'clear_batch', clearBatch: parseInt(batchNum) };
+                 runScriptOnBackend(payload);
+            });
+
+             btnClearRange.addEventListener('click', () => {
+                const range = clearRangeInput.value.trim();
+                 if (!range || !/^\d+-\d+$/.test(range)) { showStatus("Please enter a valid word range (e.g., 50-75) to clear.", true); return; }
+                 const payload = { mode: 'clear_range', clearRange: range };
+                 runScriptOnBackend(payload);
+            });
+
+
+            // --- Initial Load ---
+            populateFileSelector();
+            populatePromptSelector(); // Populate prompts dropdown
+
+        }); // End DOMContentLoaded
+    </script>
+
+<!-- POS Edit Modal (hidden by default, shown via JS) -->
+<div id="pos-edit-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <button id="close-pos-modal" style="float:right;">&times;</button>
+    <h2>Edit POS Tag</h2>
+    <div class="control-group">
+      <label for="pos-edit-input">POS:</label>
+      <input type="text" id="pos-edit-input" />
+    </div>
+    <input type="hidden" id="pos-edit-key" />
+    <div class="button-row">
+      <button id="save-pos-btn">Save</button>
+      <button id="cancel-pos-btn">Cancel</button>
+    </div>
+    <div id="pos-edit-status" style="margin-top:10px;"></div>
+  </div>
+</div>
+<style>
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .modal-content {
+    background: var(--bg-secondary, #252a30); color: var(--text-primary, #e8eaed);
+    padding: 32px 28px; border-radius: 12px; min-width: 320px; max-width: 95vw; box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .modal-content h2 { margin-top: 0; }
+  .button-row { margin-top: 18px; display: flex; gap: 12px; }
+</style>
+
+</body>
+</html>
