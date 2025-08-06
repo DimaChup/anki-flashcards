@@ -112,11 +112,12 @@ export default function Home() {
             </h1>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setLocation('/anki-study')}
+                onClick={() => selectedDatabaseId ? setLocation(`/anki-study/${selectedDatabaseId}`) : setLocation('/anki-study')}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 data-testid="anki-study-button"
+                title={selectedDatabaseId ? 'Start Anki study session' : 'Select a database first'}
               >
-                🧠 Anki Study
+                🧠 Anki Study {selectedDatabaseId ? '(Go to Study)' : ''}
               </button>
               <button
                 onClick={() => setLocation('/pricing')}
