@@ -14,7 +14,20 @@ export default function PageViewSection({
   knownWords,
   onKnownWordsChange,
 }: PageViewSectionProps) {
-  // Basic states
+  // State variables matching the original page-view.html
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [wordsPerPage, setWordsPerPage] = useState(100);
+  const [isDualPageView, setIsDualPageView] = useState(true);
+  const [isGridView, setIsGridView] = useState(false);
+  const [viewModeBeforeSegments, setViewModeBeforeSegments] = useState(true);
+  
+  // Toggle states
+  const [highlightedPOS, setHighlightedPOS] = useState<Set<string>>(new Set());
+  const [filterFirstInstance, setFilterFirstInstance] = useState(false);
+  const [filterNewWords, setFilterNewWords] = useState(false);
+  const [highlightStyle, setHighlightStyle] = useState<'underline' | 'background'>('underline');
+  const [showGrammar, setShowGrammar] = useState(false);
   const [segmentMode, setSegmentMode] = useState(false);
   const [currentlyHighlightedSegmentId, setCurrentlyHighlightedSegmentId] = useState<string | null>(null);
   const [segmentDisplayState, setSegmentDisplayState] = useState<{
@@ -22,16 +35,107 @@ export default function PageViewSection({
     keys: string[];
     index: number;
   }>({ id: null, keys: [], index: 0 });
+  const [scopeMode, setScopeMode] = useState<'entire' | 'page'>('entire');
+  
+  // Known words state
+  const [knownWordsInput, setKnownWordsInput] = useState("");
+  const [knownSignaturesSet, setKnownSignaturesSet] = useState<Set<string>>(new Set());
+  
+  // Tooltip state
+  const [tooltipData, setTooltipData] = useState<any>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  // Refs
+  const dualPageContainerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Cycle through segment translations
-  const cycleSegmentTranslation = () => {
-    if (!segmentDisplayState.id || segmentDisplayState.keys.length <= 1) return;
+  // POS button configuration matching original
+  const posButtonGroups = [
+    { key: "pink", group: "verb", text: "Verb", tags: ["VERB"], hueVar: "--hl-verb-hue", satVar: "--hl-verb-sat", lightVar: "--hl-verb-light" },
+    { key: "blue", group: "noun-propn", text: "Noun/PropN", tags: ["NOUN", "PROPN"], hueVar: "--hl-noun-hue", satVar: "--hl-noun-sat", lightVar: "--hl-noun-light" },
+    { key: "green", group: "adj", text: "Adjective", tags: ["ADJ"], hueVar: "--hl-adj-hue", satVar: "--hl-adj-sat", lightVar: "--hl-adj-light" },
+    { key: "orange", group: "aux", text: "Aux", tags: ["AUX"], hueVar: "--hl-aux-hue", satVar: "--hl-aux-sat", lightVar: "--hl-aux-light" },
+    { key: "yellow", group: "other", text: "Other", tags: [], hueVar: "--hl-other-hue", satVar: "--hl-other-sat", lightVar: "--hl-other-light" }
+  ];
+
+  // Process known words into signatures
+  useEffect(() => {
+    const signatures = new Set<string>();
+    if (knownWords && Array.isArray(knownWords)) {
+      knownWords.forEach(word => {
+        if (word && word.includes('::')) {
+          signatures.add(word);
+        }
+      });
+      setKnownWordsInput(knownWords.join('\n'));
+    }
+    setKnownSignaturesSet(signatures);
+  }, [knownWords]);
+
+  // Handle known words input change
+  const handleKnownWordsInputChange = (value: string) => {
+    setKnownWordsInput(value);
+    const words = value.split('\n').filter(word => word.trim()).map(word => word.trim());
+    onKnownWordsChange(words);
+  };
+
+  // Toggle POS highlighting
+  const togglePOSHighlight = (tags: string[]) => {
+    setHighlightedPOS(prev => {
+      const newSet = new Set(prev);
+      const hasAll = tags.every(tag => newSet.has(tag));
+      
+      if (hasAll) {
+        // Remove all tags
+        tags.forEach(tag => newSet.delete(tag));
+      } else {
+        // Add all tags
+        tags.forEach(tag => newSet.add(tag));
+      }
+      
+      return newSet;
+    });
+  };
+
+  // Calculate pagination
+  useEffect(() => {
+    if (analysisData?.length) {
+      const total = Math.ceil(analysisData.length / wordsPerPage);
+      setTotalPages(total);
+      if (currentPage > total) {
+        setCurrentPage(1);
+      }
+    }
+  }, [analysisData, wordsPerPage, currentPage]);
+
+  // Handle segment mode toggle
+  const handleSegmentModeToggle = () => {
+    if (!segmentMode) {
+      // Entering segment mode - force dual page view and save current view
+      setViewModeBeforeSegments(isDualPageView);
+      setIsDualPageView(true);
+    } else {
+      // Exiting segment mode - restore previous view
+      setIsDualPageView(viewModeBeforeSegments);
+      setCurrentlyHighlightedSegmentId(null);
+      setSegmentDisplayState({ id: null, keys: [], index: 0 });
+    }
+    setSegmentMode(!segmentMode);
+  };
+
+  // Handle word hover
+  const handleWordHover = (e: React.MouseEvent, word: WordEntry) => {
+    if (segmentMode) return; // Skip regular tooltips in segment mode
     
-    const newIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length;
-    setSegmentDisplayState(prev => ({
-      ...prev,
-      index: newIndex
-    }));
+    setTooltipData(word);
+    setTooltipPosition({ x: e.clientX, y: e.clientY });
+    setShowTooltip(true);
+  };
+
+  const handleWordMouseOut = () => {
+    setShowTooltip(false);
+    setTooltipData(null);
   };
 
   // Handle segment hover
@@ -75,13 +179,56 @@ export default function PageViewSection({
     }
   };
 
-  // Render a simple word span for testing
-  const renderWordSpan = (word: WordEntry, index: number) => {
-    let className = "word-span";
+  // Cycle through segment translations
+  const cycleSegmentTranslation = () => {
+    if (!segmentDisplayState.id || segmentDisplayState.keys.length <= 1) return;
     
-    // Segment highlighting
+    const newIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length;
+    setSegmentDisplayState(prev => ({
+      ...prev,
+      index: newIndex
+    }));
+  };
+
+  // Handle word click
+  const handleWordClick = (word: WordEntry, index: number) => {
+    const signature = `${word.word}::${word.pos}`;
+    const isCurrentlyKnown = knownSignaturesSet.has(signature);
+    
+    const newKnownWords = isCurrentlyKnown 
+      ? knownWords.filter(kw => kw !== signature)
+      : [...knownWords, signature];
+    
+    onKnownWordsChange(newKnownWords);
+  };
+
+  // Handle word right click
+  const handleWordRightClick = (e: React.MouseEvent, word: WordEntry, index: number) => {
+    e.preventDefault();
+    // Could implement context menu here
+    console.log('Right clicked word:', word);
+  };
+
+  // Handle mouse move for tooltip positioning
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (showTooltip) {
+      setTooltipPosition({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  // Render words with highlighting and click functionality
+  const renderWordSpan = (word: WordEntry, absoluteIndex: number) => {
+    const isHighlighted = highlightedPOS.has(word.pos);
+    const signature = `${word.word}::${word.pos}`;
+    const isKnown = knownSignaturesSet.has(signature);
+    const isFirstInstance = word.firstInstance;
+    
+    let className = "word-span";
+    let style: React.CSSProperties = {};
+    
+    // Segment highlighting - takes priority
     if (segmentMode && selectedDatabase?.segments) {
-      const wordPosition = word.position || index;
+      const wordPosition = word.position || absoluteIndex;
       const wordSegment = selectedDatabase.segments.find(segment => 
         wordPosition >= segment.startWordKey && wordPosition <= segment.endWordKey
       );
@@ -93,69 +240,312 @@ export default function PageViewSection({
         }
       }
     }
+    // Regular POS highlighting (only if not in segment mode or no segment highlight)
+    else if (isHighlighted) {
+      if (highlightStyle === 'underline') {
+        className += ` pos-underline pos-underline-${word.pos.toLowerCase()}`;
+      } else {
+        className += ` pos-highlight pos-highlight-${word.pos.toLowerCase()}`;
+      }
+    }
+    
+    // Apply opacity for filtering effects (fading, not removal)
+    if (filterFirstInstance && isFirstInstance) {
+      style.opacity = 0.3;
+    }
+    
+    // Known word styling
+    if (isKnown) {
+      className += " known-word";
+      style.textDecoration = 'line-through';
+      style.opacity = 0.5;
+    }
 
     return (
       <span
-        key={index}
+        key={absoluteIndex}
         className={className}
-        data-key={index}
+        style={style}
+        data-key={absoluteIndex}
+        data-word={word.word}
+        data-pos={word.pos}
+        data-signature={signature}
+        data-first-instance={word.firstInstance ? 'true' : 'false'}
+        onClick={() => handleWordClick(word, absoluteIndex)}
         onMouseEnter={(e) => {
-          handleSegmentHover(e, word.position || index);
+          if (!segmentMode) {
+            handleWordHover(e, word);
+          }
+          handleSegmentHover(e, word.position || absoluteIndex);
         }}
+        onMouseLeave={(e) => {
+          if (!segmentMode) {
+            handleWordMouseOut();
+          }
+        }}
+        onMouseMove={handleMouseMove}
+        onContextMenu={(e) => handleWordRightClick(e, word, absoluteIndex)}
+        title={`${word.word} (${word.pos}) - Hover for details, click to toggle known status`}
       >
         {word.word}
+        {showGrammar && word.contextualInfo && (
+          <sup className="grammar-details">
+            {[
+              word.contextualInfo.gender,
+              word.contextualInfo.number
+            ].filter(Boolean).join('.')}
+          </sup>
+        )}
       </span>
+    );
+  };
+
+  // Reconstruct text with punctuation - like original page-view.html
+  const reconstructTextWithPunctuation = (words: WordEntry[], startIndex: number = 0) => {
+    if (!selectedDatabase?.originalText || !words.length) {
+      // Fallback to simple word display
+      return words.slice(startIndex, startIndex + wordsPerPage).map((word, index) => (
+        <span key={startIndex + index}>
+          {renderWordSpan(word, startIndex + index)}
+          {startIndex + index < words.length - 1 && ' '}
+        </span>
+      ));
+    }
+
+    const pageWords = words.slice(startIndex, startIndex + wordsPerPage);
+    const elements: React.ReactNode[] = [];
+    let textPosition = 0;
+    
+    pageWords.forEach((word, index) => {
+      const absoluteIndex = startIndex + index;
+      const wordStart = selectedDatabase.originalText.indexOf(word.word, textPosition);
+      
+      if (wordStart > textPosition) {
+        // Add any text/punctuation before this word
+        const beforeText = selectedDatabase.originalText.slice(textPosition, wordStart);
+        elements.push(<span key={`before-${absoluteIndex}`}>{beforeText}</span>);
+      }
+      
+      // Add the word span
+      elements.push(renderWordSpan(word, absoluteIndex));
+      
+      textPosition = wordStart + word.word.length;
+    });
+    
+    return elements;
+  };
+
+  // Render page content
+  const renderPageContent = () => {
+    if (!analysisData?.length) {
+      return <div className="no-data">No analysis data available</div>;
+    }
+
+    const startIndex = (currentPage - 1) * wordsPerPage;
+    const pageWords = analysisData.slice(startIndex, startIndex + wordsPerPage);
+    
+    return (
+      <div className="text-reconstruction">
+        {reconstructTextWithPunctuation(analysisData, startIndex)}
+      </div>
+    );
+  };
+
+  // Render right pane content
+  const renderRightPaneContent = () => {
+    if (!segmentMode) return null;
+
+    if (!segmentDisplayState.id || segmentDisplayState.keys.length === 0) {
+      return (
+        <div className="segment-instruction">
+          <p>Hover over words to see segment translations</p>
+        </div>
+      );
+    }
+
+    const currentSegment = selectedDatabase?.segments?.find(s => 
+      (s.id?.toString() || `${s.startWordKey}-${s.endWordKey}`) === segmentDisplayState.id
+    );
+
+    if (!currentSegment) return null;
+
+    const currentKey = segmentDisplayState.keys[segmentDisplayState.index];
+    const translation = currentSegment.translations?.[currentKey];
+
+    return (
+      <div className="segment-translation-display">
+        <div className="segment-info">
+          <strong>Segment:</strong> {segmentDisplayState.id}
+        </div>
+        {segmentDisplayState.keys.length > 1 && (
+          <div className="translation-controls">
+            <button 
+              onClick={cycleSegmentTranslation}
+              className="cycle-button"
+            >
+              {currentKey} ({segmentDisplayState.index + 1}/{segmentDisplayState.keys.length})
+            </button>
+          </div>
+        )}
+        <div className="translation-text">
+          {translation || 'No translation available'}
+        </div>
+      </div>
     );
   };
 
   return (
     <div className="page-view-section">
-      <div className="controls p-4 border-b border-gray-200 bg-white">
-        <button 
-          onClick={() => setSegmentMode(!segmentMode)}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-            segmentMode 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Segment Mode
-        </button>
-      </div>
-      
-      <div className="content flex">
-        <div className="text-content flex-1 p-4">
-          <div className="text-reconstruction">
-            {analysisData.slice(0, 100).map((word, index) => (
-              <span key={index}>
-                {renderWordSpan(word, index)}
-                {index < 99 && ' '}
-              </span>
+      {/* Controls */}
+      <div className="controls-section">
+        {/* POS Highlighting Toggles */}
+        <div className="pos-controls">
+          <div className="pos-toggles">
+            {posButtonGroups.map(group => (
+              <button
+                key={group.key}
+                className={`pos-toggle ${group.key} ${group.tags.every(tag => highlightedPOS.has(tag)) ? 'active' : ''}`}
+                onClick={() => togglePOSHighlight(group.tags)}
+              >
+                {group.text}
+              </button>
             ))}
           </div>
         </div>
+
+        {/* View Controls */}
+        <div className="view-controls">
+          <button
+            className={`view-toggle ${isDualPageView ? 'active' : ''}`}
+            onClick={() => !segmentMode && setIsDualPageView(!isDualPageView)}
+            disabled={segmentMode}
+          >
+            Dual Page View
+          </button>
+          
+          <button
+            className={`segment-toggle ${segmentMode ? 'active' : ''}`}
+            onClick={handleSegmentModeToggle}
+          >
+            Segment Mode
+          </button>
+          
+          <button
+            className={`grammar-toggle ${showGrammar ? 'active' : ''}`}
+            onClick={() => setShowGrammar(!showGrammar)}
+          >
+            Show Grammar
+          </button>
+        </div>
+
+        {/* Filter Controls */}
+        <div className="filter-controls">
+          <label>
+            <input
+              type="checkbox"
+              checked={filterFirstInstance}
+              onChange={(e) => setFilterFirstInstance(e.target.checked)}
+            />
+            Filter First Instance
+          </label>
+          
+          <label>
+            <input
+              type="checkbox"
+              checked={filterNewWords}
+              onChange={(e) => setFilterNewWords(e.target.checked)}
+            />
+            Filter New Words
+          </label>
+        </div>
+
+        {/* Pagination */}
+        <div className="pagination-controls">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+          <select
+            value={wordsPerPage}
+            onChange={(e) => setWordsPerPage(Number(e.target.value))}
+          >
+            <option value={50}>50 words/page</option>
+            <option value={100}>100 words/page</option>
+            <option value={200}>200 words/page</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className={`main-content ${isDualPageView ? 'dual-page' : 'single-page'}`}>
+        <div className="left-pane">
+          {renderPageContent()}
+        </div>
         
-        {segmentMode && (
-          <div className="right-pane w-1/3 p-4 border-l border-gray-300 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-4">Segment Translation</h3>
-            {segmentDisplayState.id && segmentDisplayState.keys.length > 0 && (
-              <div>
-                <button 
-                  onClick={cycleSegmentTranslation}
-                  className="mb-3 px-3 py-1 bg-blue-500 text-white rounded text-sm"
-                >
-                  Cycle Translation ({segmentDisplayState.index + 1}/{segmentDisplayState.keys.length})
-                </button>
-                <div className="segment-translation p-3 bg-white border rounded">
-                  {selectedDatabase?.segments?.find(s => 
-                    (s.id?.toString() || `${s.startWordKey}-${s.endWordKey}`) === segmentDisplayState.id
-                  )?.translations?.[segmentDisplayState.keys[segmentDisplayState.index]]}
-                </div>
+        {isDualPageView && (
+          <div className="right-pane">
+            {segmentMode ? (
+              renderRightPaneContent()
+            ) : (
+              <div className="known-words-section">
+                <h3>Known Words</h3>
+                <textarea
+                  value={knownWordsInput}
+                  onChange={(e) => handleKnownWordsInputChange(e.target.value)}
+                  placeholder="Enter known words (word::POS format)"
+                  rows={10}
+                />
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Tooltip */}
+      {showTooltip && tooltipData && !segmentMode && (
+        <div
+          ref={tooltipRef}
+          className="word-tooltip"
+          style={{
+            position: 'fixed',
+            left: tooltipPosition.x + 10,
+            top: tooltipPosition.y - 10,
+            zIndex: 1000
+          }}
+        >
+          <div className="tooltip-content">
+            <div className="tooltip-line">
+              <strong>{tooltipData.word}</strong> ({tooltipData.pos})
+            </div>
+            {tooltipData.translations && (
+              <div className="tooltip-line">
+                {Array.isArray(tooltipData.translations) 
+                  ? tooltipData.translations.join(', ')
+                  : tooltipData.translations}
+              </div>
+            )}
+            {tooltipData.contextualInfo && (
+              <div className="grammar-details">
+                {tooltipData.contextualInfo.gender && (
+                  <div>Gender: {tooltipData.contextualInfo.gender}</div>
+                )}
+                {tooltipData.contextualInfo.number && (
+                  <div>Number: {tooltipData.contextualInfo.number}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
