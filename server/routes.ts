@@ -1032,12 +1032,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get Anki deck for a database
   app.get('/api/anki/deck/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const databaseId = req.params.databaseId;
       
       // First verify user owns this database
-      const database = await storage.getLinguisticDatabase(databaseId, userId);
-      if (!database) {
+      const database = await storage.getDatabase(databaseId);
+      if (!database || database.userId !== userId) {
         return res.status(404).json({ message: "Database not found" });
       }
       
@@ -1045,7 +1045,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If no deck exists, create one automatically
       if (!deck) {
-        deck = await storage.generateAnkiDeckFromDatabase(databaseId, userId);
+        deck = await storage.createAnkiDeck({
+          userId,
+          databaseId,
+          name: `${database.name} Flashcards`,
+          totalCards: 0,
+          newCards: 0,
+          learningCards: 0,
+          reviewCards: 0,
+        });
+        
+        // Auto-create cards from first instance words
+        if (database.analysisData) {
+          const firstInstanceWords = database.analysisData.filter((word: any) => 
+            word.firstInstance && word.translation && word.translation.trim()
+          );
+          
+          let createdCount = 0;
+          for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
+            try {
+              await storage.createAnkiCard({
+                deckId: deck.id,
+                word: word.word,
+                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
+                pos: word.pos || null,
+                lemma: word.lemma || null,
+                sentence: word.sentence || null,
+                status: 'new',
+                easeFactor: 2500,
+                interval: 0,
+                repetitions: 0,
+                due: new Date(),
+              });
+              createdCount++;
+            } catch (error) {
+              console.error('Error creating card for word:', word.word, error);
+            }
+          }
+          
+          // Update deck stats
+          if (createdCount > 0) {
+            await storage.updateAnkiDeck(deck.id, {
+              totalCards: createdCount,
+              newCards: createdCount,
+            });
+            
+            deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+          }
+        }
       }
       
       res.json(deck);
@@ -1058,11 +1105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get cards for an Anki deck with optional status filter
   app.get('/api/anki/cards/:deckId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const deckId = req.params.deckId;
       const status = req.query.status as string;
       
-      // TODO: Add deck ownership verification if needed
       const cards = await storage.getAnkiCards(deckId, status);
       res.json(cards);
     } catch (error) {
@@ -1074,7 +1120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get cards due for review
   app.get('/api/anki/deck/:deckId/due', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const deckId = req.params.deckId;
       const limit = parseInt(req.query.limit as string) || 20;
       

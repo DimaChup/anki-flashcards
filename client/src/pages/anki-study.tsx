@@ -21,6 +21,8 @@ export default function AnkiStudy() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
   const [newWordsLimit, setNewWordsLimit] = useState(20);
+  const [enablePosColors, setEnablePosColors] = useState(true);
+  const [excludeKnownWords, setExcludeKnownWords] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -163,49 +165,70 @@ export default function AnkiStudy() {
 
         {/* Session Setup */}
         {selectedDatabase && !sessionStarted && (
-          <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+          <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl max-w-2xl mx-auto">
             <CardHeader className="text-center">
               <h2 className="text-2xl font-bold text-white">Study Session Setup</h2>
               <p className="text-slate-300">Configure your study session</p>
             </CardHeader>
             <CardContent className="space-y-6">
-              {deck && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-slate-700 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-400">{deck.totalCards}</div>
-                    <div className="text-sm text-slate-400">Total Cards</div>
-                  </div>
-                  <div className="text-center p-4 bg-slate-700 rounded-lg">
-                    <div className="text-2xl font-bold text-green-400">{deck.newCards}</div>
-                    <div className="text-sm text-slate-400">New</div>
-                  </div>
-                  <div className="text-center p-4 bg-slate-700 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-400">{deck.learningCards}</div>
-                    <div className="text-sm text-slate-400">Learning</div>
-                  </div>
-                  <div className="text-center p-4 bg-slate-700 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-400">{deck.reviewCards}</div>
-                    <div className="text-sm text-slate-400">Review</div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-4">
-                <label className="text-slate-300">New words per session:</label>
+              
+              {/* New words per session control */}
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 text-lg">New words per session:</label>
                 <input
                   type="number"
                   value={newWordsLimit}
                   onChange={(e) => setNewWordsLimit(Number(e.target.value))}
-                  className="w-20 p-2 bg-slate-700 border-slate-600 text-white text-center rounded"
+                  className="w-20 p-2 bg-slate-900 border border-slate-600 text-white text-center rounded text-xl"
                   min="1"
-                  max="50"
+                  max="100"
                 />
               </div>
 
-              <div className="flex gap-4">
+              {/* Toggle for POS color assistance */}
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 text-lg cursor-pointer flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={enablePosColors}
+                    onChange={(e) => setEnablePosColors(e.target.checked)}
+                    className="hidden"
+                  />
+                  <div className={`relative inline-block w-10 h-5 rounded-full transition-colors ${
+                    enablePosColors ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}>
+                    <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${
+                      enablePosColors ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}></div>
+                  </div>
+                  Enable POS color assistance
+                </label>
+              </div>
+
+              {/* Toggle for excluding known words */}
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 text-lg cursor-pointer flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={excludeKnownWords}
+                    onChange={(e) => setExcludeKnownWords(e.target.checked)}
+                    className="hidden"
+                  />
+                  <div className={`relative inline-block w-10 h-5 rounded-full transition-colors ${
+                    excludeKnownWords ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}>
+                    <div className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${
+                      excludeKnownWords ? 'translate-x-5' : 'translate-x-0.5'
+                    }`}></div>
+                  </div>
+                  Exclude known words
+                </label>
+              </div>
+
+              <div className="flex gap-4 pt-4">
                 <Button
                   onClick={startSession}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg"
                   disabled={deckLoading || !deck}
                 >
                   Start Study Session
@@ -213,7 +236,7 @@ export default function AnkiStudy() {
                 <Button
                   onClick={() => setSelectedDatabase('')}
                   variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700 px-6"
                 >
                   Change Database
                 </Button>
@@ -263,7 +286,7 @@ export default function AnkiStudy() {
                     </div>
                     
                     {currentCard.pos && (
-                      <Badge className={`${getPosColor(currentCard.pos)} text-xs font-medium`}>
+                      <Badge className={`${enablePosColors ? getPosColor(currentCard.pos) : 'bg-gray-100 text-gray-800 border-gray-300'} text-xs font-medium`}>
                         {currentCard.pos}
                       </Badge>
                     )}
