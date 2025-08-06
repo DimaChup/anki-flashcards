@@ -30,6 +30,16 @@ interface AnkiCard {
   wordKey: number; // Position in original text
 }
 
+// Helper function to get POS color class
+function getPosColorClass(pos: string): string {
+  const posLower = pos.toLowerCase();
+  if (posLower.includes('verb')) return 'highlight-verb';
+  if (posLower.includes('noun') || posLower.includes('propn')) return 'highlight-noun';
+  if (posLower.includes('adj')) return 'highlight-adj';
+  if (posLower.includes('aux')) return 'highlight-aux';
+  return 'highlight-other';
+}
+
 export default function AnkiStudy() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -43,6 +53,7 @@ export default function AnkiStudy() {
   const [viewDeck, setViewDeck] = useState(false);
   const [newCardsLimit, setNewCardsLimit] = useState(20);
   const [hideKnownWords, setHideKnownWords] = useState(false);
+  const [posAssist, setPosAssist] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -345,6 +356,27 @@ export default function AnkiStudy() {
                           </span>
                         </div>
                       </div>
+                      
+                      {/* POS Assist Toggle */}
+                      <div className="flex items-center gap-4">
+                        <label className="text-slate-300 text-sm">POS Assist:</label>
+                        <Button
+                          onClick={() => setPosAssist(!posAssist)}
+                          variant="outline"
+                          size="sm"
+                          className={`border-slate-600 text-sm ${
+                            posAssist 
+                              ? 'bg-purple-600 text-white border-purple-600' 
+                              : 'text-slate-300 hover:bg-slate-700'
+                          }`}
+                          data-testid="button-pos-assist"
+                        >
+                          {posAssist ? 'ON' : 'OFF'}
+                        </Button>
+                        <span className="text-slate-400 text-xs">
+                          Color-code words by part of speech during study
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex gap-4">
@@ -397,7 +429,11 @@ export default function AnkiStudy() {
                 
                 {/* Flash Card */}
                 <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
-                  <div className="text-4xl font-bold text-white mb-4" data-testid="text-card-word">
+                  <div className={`text-4xl font-bold mb-4 px-4 py-2 rounded-lg inline-block ${
+                    posAssist 
+                      ? `${getPosColorClass(currentCard.pos)} text-slate-900` 
+                      : 'text-white'
+                  }`} data-testid="text-card-word">
                     {currentCard.word}
                   </div>
                   
