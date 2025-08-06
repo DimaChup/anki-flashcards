@@ -624,9 +624,9 @@ export class DatabaseStorage implements IStorage {
     const knownWords = new Set(database.knownWords || [] as string[]);
     const now = new Date();
     
-    // Get all words that have firstInstance=true and are not in knownWords
+    // Get all words that have first_inst=true and are not in knownWords
     const eligibleWords = analysisData
-      .filter(entry => entry.firstInstance === true)  // Only first instances
+      .filter(entry => (entry as any).first_inst === true)  // Only first instances (using correct property name)
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
       .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
     
@@ -640,10 +640,11 @@ export class DatabaseStorage implements IStorage {
       databaseId,
       wordKey: wordEntry.id.toString(),
       word: wordEntry.word,
-      lemma: wordEntry.lemma, // Add lemma field
+      lemma: wordEntry.lemma,
       definition: wordEntry.translation || wordEntry.lemma,
       context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
-      pos: wordEntry.pos, // Add POS field
+      pos: wordEntry.pos,
+      translations: JSON.stringify([wordEntry.translation || wordEntry.lemma]), // Add translations field
       state: 'new' as const,
       easeFactor: 2500,
       interval: 0,
