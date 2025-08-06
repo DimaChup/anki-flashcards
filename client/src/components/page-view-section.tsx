@@ -224,6 +224,17 @@ export default function PageViewSection({
     setTooltipData(null);
   };
 
+  // Cycle through segment translation variants - exactly like original
+  const cycleSegmentTranslation = () => {
+    if (!segmentDisplayState.id || segmentDisplayState.keys.length <= 1) return;
+    
+    const nextIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length;
+    setSegmentDisplayState(prev => ({
+      ...prev,
+      index: nextIndex
+    }));
+  };
+
   // Handle mouse move to update tooltip position
   const handleMouseMove = (e: React.MouseEvent) => {
     if (tooltipData) {
@@ -366,16 +377,7 @@ export default function PageViewSection({
       }
     };
 
-    // Cycle through segment translations
-    const cycleSegmentTranslation = () => {
-      if (!segmentDisplayState.id || segmentDisplayState.keys.length <= 1) return;
-      
-      const newIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length;
-      setSegmentDisplayState(prev => ({
-        ...prev,
-        index: newIndex
-      }));
-    };
+    // This function should be at component level, not here
 
     return (
       <span
