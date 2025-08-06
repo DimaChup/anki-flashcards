@@ -307,28 +307,6 @@ export default function AnkiStudy() {
                         <Play className="h-4 w-4 mr-2" />
                         Start Study Session ({newCardsLimit} cards)
                       </Button>
-                      
-                      <Button
-                        onClick={() => setViewDeck(!viewDeck)}
-                        disabled={deck.totalCards === 0}
-                        variant="outline"
-                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                        data-testid="button-view-deck"
-                      >
-                        {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                        {viewDeck ? 'Hide Deck' : 'View Deck'}
-                      </Button>
-                      
-                      <Button
-                        onClick={() => generateDeckMutation.mutate(selectedDatabase)}
-                        disabled={generateDeckMutation.isPending}
-                        variant="outline"
-                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                        data-testid="button-regenerate-deck"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Regenerate Deck
-                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -351,6 +329,40 @@ export default function AnkiStudy() {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Deck Controls - Always visible when deck exists */}
+          {selectedDatabase && deck && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl mt-6">
+              <CardHeader>
+                <CardTitle className="text-white text-xl">Deck Controls</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  <Button
+                    onClick={() => setViewDeck(!viewDeck)}
+                    disabled={deck.totalCards === 0}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-view-deck"
+                  >
+                    {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                    {viewDeck ? 'Hide Deck' : 'View Deck'}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => generateDeckMutation.mutate(selectedDatabase)}
+                    disabled={generateDeckMutation.isPending}
+                    variant="outline"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-regenerate-deck"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Regenerate Deck
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -483,24 +495,10 @@ export default function AnkiStudy() {
           {studyStarted && currentCard && (
             <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
               <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-white text-2xl">Study Session</CardTitle>
-                    <div className="flex justify-between text-sm text-slate-400 mt-2">
-                      <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
-                      <span>Position in text: {currentCard.wordKey}</span>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => setViewDeck(!viewDeck)}
-                    variant="outline"
-                    size="sm"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                    data-testid="button-toggle-deck-view"
-                  >
-                    {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                    {viewDeck ? 'Hide Deck' : 'View Deck'}
-                  </Button>
+                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
+                <div className="flex justify-between text-sm text-slate-400 mt-2">
+                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
+                  <span>Position in text: {currentCard.wordKey}</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
