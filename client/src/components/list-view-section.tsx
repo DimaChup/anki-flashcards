@@ -792,7 +792,22 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
       </div>
 
       {/* Flashcard Section */}
-      {database && <FlashcardSection selectedDatabaseId={database.id} batchSize={batchSize} batchByUnknown={batchByUnknown} newWordsOnly={newWordsOnly} />}
+      {database && (
+        <FlashcardSection 
+          selectedDatabaseId={database.id} 
+          batchSize={batchSize} 
+          batchByUnknown={batchByUnknown} 
+          newWordsOnly={newWordsOnly}
+          firstInstancesOnly={firstInstancesOnly}
+          // Pass the exact First Instances List settings for batch generation
+          batchSettings={{
+            batchSize,
+            batchByUnknown,
+            newWordsOnly,
+            firstInstancesOnly
+          }}
+        />
+      )}
 
       {/* Tooltip - exact copy from original page-view.html */}
       {tooltipData && (

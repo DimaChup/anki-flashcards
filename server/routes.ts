@@ -908,6 +908,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate flashcard batches using First Instances List logic  
+  app.post("/api/spaced-repetition/generate-batches/:databaseId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const databaseId = req.params.databaseId;
+      
+      // Get the parameters from request body (same as First Instances List)
+      const {
+        batchSize = 25,
+        batchByUnknown = true,
+        newWordsOnly = true,
+        firstInstancesOnly = true
+      } = req.body;
+      
+      // Get database and its data
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
+      // Get unique words (same endpoint as First Instances List uses)
+      const uniqueWords = await storage.getUniqueWords(databaseId, userId, firstInstancesOnly);
+      const knownWords = (database.knownWords as string[]) || [];
+      
+      // Clear existing batches and cards for this database
+      await SpacedRepetitionService.clearBatchesForDatabase(userId, databaseId);
+      
+      // Create new batches using IDENTICAL logic to First Instances List
+      const batches = await SpacedRepetitionService.createBatchesFromFirstInstancesData(
+        userId,
+        databaseId,
+        uniqueWords,
+        knownWords,
+        batchSize,
+        batchByUnknown,
+        newWordsOnly,
+        firstInstancesOnly
+      );
+      
+      res.json({ 
+        message: "Flashcard batches generated successfully", 
+        batches: batches.length,
+        totalWords: batches.reduce((sum, batch) => sum + batch.totalWords, 0)
+      });
+    } catch (error) {
+      console.error('Error generating batches:', error);
+      res.status(500).json({ message: "Failed to generate flashcard batches" });
+    }
+  });
+
   // Get batch learning statistics
   app.get('/api/spaced-repetition/batch-stats/:databaseId', isAuthenticated, async (req: any, res) => {
     try {

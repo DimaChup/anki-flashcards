@@ -52,14 +52,57 @@ interface FlashcardSectionProps {
   batchSize: number;
   batchByUnknown: boolean;
   newWordsOnly: boolean;
+  firstInstancesOnly?: boolean;
+  batchSettings?: {
+    batchSize: number;
+    batchByUnknown: boolean;
+    newWordsOnly: boolean;
+    firstInstancesOnly: boolean;
+  };
 }
 
-export default function FlashcardSection({ selectedDatabaseId, batchSize, batchByUnknown, newWordsOnly }: FlashcardSectionProps) {
+export default function FlashcardSection({ 
+  selectedDatabaseId, 
+  batchSize, 
+  batchByUnknown, 
+  newWordsOnly, 
+  firstInstancesOnly = true,
+  batchSettings 
+}: FlashcardSectionProps) {
   const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedBatchNumber, setSelectedBatchNumber] = useState<number>(1);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Generate batches using First Instances List logic
+  const generateBatchesMutation = useMutation({
+    mutationFn: async () => {
+      const settings = batchSettings || {
+        batchSize,
+        batchByUnknown,
+        newWordsOnly,
+        firstInstancesOnly
+      };
+      
+      const response = await apiRequest('POST', `/api/spaced-repetition/generate-batches/${selectedDatabaseId}`, settings);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Batches Generated",
+        description: `Created ${data.batches} flashcard batches with ${data.totalWords} words using First Instances List logic`
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats', selectedDatabaseId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate batches",
+        variant: "destructive"
+      });
+    }
+  });
 
   // Get batch learning statistics
   const { data: stats, isLoading: statsLoading } = useQuery<BatchLearningStats>({
@@ -147,7 +190,7 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
   // Create batches from first instances using the EXACT same settings as First Instances list
   const createBatches = () => {
     if (!selectedDatabaseId) return;
-    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize, batchByUnknown, newWordsOnly });
+    generateBatchesMutation.mutate();
   };
 
   // Activate next batch
@@ -319,11 +362,14 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
                 </p>
                 <Button 
                   onClick={createBatches}
-                  disabled={createBatchesMutation.isPending}
+                  disabled={generateBatchesMutation.isPending}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  {createBatchesMutation.isPending ? "Creating Batches..." : `Create Batches (${batchSize} words each)`}
+                  {generateBatchesMutation.isPending ? "Creating Batches..." : `Generate Flashcard Batches (${batchSize} words each)`}
                 </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Batches will use the exact same words and order as your First Instances List
+                </p>
               </div>
             )}
           </div>

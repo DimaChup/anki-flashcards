@@ -24,36 +24,55 @@ export class SpacedRepetitionService {
     throw new Error("Use createBatchesFromAnalysisData instead");
   }
 
-  // Create batches from analysis data using the EXACT same logic as First Instances list
-  static async createBatchesFromAnalysisData(
+  // Create batches using IDENTICAL logic to First Instances List View
+  static async createBatchesFromFirstInstancesData(
     userId: string,
     databaseId: string,
-    analysisData: any[],
-    batchSize: number = 20,
+    uniqueWords: any[],
+    knownWords: string[] = [],
+    batchSize: number = 25,
     batchByUnknown: boolean = true,
-    newWordsOnly: boolean = true
+    newWordsOnly: boolean = true,
+    firstInstancesOnly: boolean = true
   ): Promise<SpacedRepetitionBatch[]> {
-    // Filter to first instances only and sort by position (EXACT same as list view)
-    const firstInstances = analysisData
-      .filter(word => word.firstInstance && word.translation && word.translation.trim())
-      .sort((a, b) => a.position - b.position);
+    // Step 1: Apply IDENTICAL filtering logic as List View
+    let filtered = [...uniqueWords];
+    const knownWordsSet = new Set(knownWords);
 
-    // Create batches using the EXACT same logic as First Instances list
+    // Filter by known words if newWordsOnly is enabled (EXACT list view logic)
+    if (newWordsOnly) {
+      filtered = filtered.filter(word => 
+        !knownWordsSet.has(`${word.word}::${word.pos}`) && 
+        !knownWordsSet.has(word.word.toLowerCase())
+      );
+    }
+
+    // Filter to first instances only if enabled
+    if (firstInstancesOnly) {
+      filtered = filtered.filter(word => word.firstInstance);
+    }
+
+    // Step 2: Apply IDENTICAL batching logic as List View
     const wordBatches: any[][] = [];
     
     if (batchByUnknown) {
-      // Batch by unknown words count (IDENTICAL logic to list view)
+      // Batch by unknown words count (IDENTICAL to list view implementation)
       let currentBatch: any[] = [];
       let unknownCount = 0;
       
-      for (const word of firstInstances) {
-        const isUnknown = newWordsOnly; // Use same logic as list view: if newWordsOnly, all are unknown
+      for (const word of filtered) {
         currentBatch.push(word);
+        
+        // Count as unknown if newWordsOnly is enabled (same as list view)
+        const isUnknown = newWordsOnly ? 
+          (!knownWordsSet.has(`${word.word}::${word.pos}`) && !knownWordsSet.has(word.word.toLowerCase())) :
+          true;
         
         if (isUnknown) {
           unknownCount++;
         }
         
+        // Create new batch when we hit the unknown word limit
         if (unknownCount >= batchSize) {
           wordBatches.push([...currentBatch]);
           currentBatch = [];
@@ -61,13 +80,14 @@ export class SpacedRepetitionService {
         }
       }
       
+      // Add remaining words as final batch
       if (currentBatch.length > 0) {
         wordBatches.push(currentBatch);
       }
     } else {
-      // Simple batching by count
-      for (let i = 0; i < firstInstances.length; i += batchSize) {
-        wordBatches.push(firstInstances.slice(i, i + batchSize));
+      // Simple sequential batching by total count
+      for (let i = 0; i < filtered.length; i += batchSize) {
+        wordBatches.push(filtered.slice(i, i + batchSize));
       }
     }
 
@@ -112,6 +132,25 @@ export class SpacedRepetitionService {
     }
 
     return batches;
+  }
+
+  // Clear all batches and cards for a database (used when regenerating)
+  static async clearBatchesForDatabase(userId: string, databaseId: string): Promise<void> {
+    // Delete all cards first (due to foreign key constraints)
+    await db.delete(spacedRepetitionCards).where(
+      and(
+        eq(spacedRepetitionCards.userId, userId),
+        eq(spacedRepetitionCards.databaseId, databaseId)
+      )
+    );
+    
+    // Delete all batches
+    await db.delete(spacedRepetitionBatches).where(
+      and(
+        eq(spacedRepetitionBatches.userId, userId),
+        eq(spacedRepetitionBatches.databaseId, databaseId)
+      )
+    );
   }
 
   // Get all batches for a database
