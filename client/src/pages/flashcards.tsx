@@ -189,22 +189,29 @@ export default function Flashcards() {
 
         {/* Database Selection */}
         {databases.length > 0 && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Select Database:</label>
-            <select 
-              value={selectedDatabase} 
-              onChange={(e) => setSelectedDatabase(e.target.value)}
-              className="w-full max-w-md p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-800"
-              data-testid="database-select"
-            >
-              <option value="">Choose a database...</option>
-              {databases.map((db: any) => (
-                <option key={db.id} value={db.id}>
-                  {db.name} ({db.language}) - {db.wordCount} words
-                </option>
-              ))}
-            </select>
-          </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>📚 Select Database for Batch Learning</CardTitle>
+              <CardDescription>
+                Choose a database to learn words in batches based on their appearance order in the text
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <select 
+                value={selectedDatabase} 
+                onChange={(e) => setSelectedDatabase(e.target.value)}
+                className="w-full max-w-md p-3 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-800"
+                data-testid="database-select"
+              >
+                <option value="">Choose a database to create flashcard batches from...</option>
+                {databases.map((db: any) => (
+                  <option key={db.id} value={db.id}>
+                    {db.name} ({db.language}) - {db.analysisData?.filter((w: any) => w.firstInstance && w.translation).length || 0} words available
+                  </option>
+                ))}
+              </select>
+            </CardContent>
+          </Card>
         )}
 
         {selectedDatabase && (
@@ -267,8 +274,66 @@ export default function Flashcards() {
                   </CardContent>
                 </Card>
               ) : (
-                // Review Dashboard
+                // Batch Learning Dashboard
                 <div className="space-y-6">
+                  {/* Batch Overview */}
+                  {stats?.currentBatch ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          📦 Current Batch: {stats.currentBatch.name}
+                        </CardTitle>
+                        <CardDescription>
+                          Learning words {stats.currentBatch.batchNumber * 20 - 19} to {stats.currentBatch.batchNumber * 20} as they appear in your text
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span>Progress:</span>
+                            <span className="font-semibold">
+                              {stats.currentBatch.wordsLearned}/{stats.currentBatch.totalWords} words mastered
+                            </span>
+                          </div>
+                          <Progress value={stats.currentBatch.progress} className="w-full" />
+                          
+                          {stats.currentBatch.isReadyForNext && (
+                            <div className="text-center mt-4">
+                              <p className="text-green-600 dark:text-green-400 mb-3 font-semibold">
+                                🎉 Batch completed! Ready for next batch?
+                              </p>
+                              <Button 
+                                onClick={activateNextBatch}
+                                disabled={activateNextBatchMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Start Next Batch
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Create Learning Batches</CardTitle>
+                        <CardDescription>
+                          Organize words from your database into learning batches based on their first appearance in the text
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Button 
+                          onClick={() => createBatches(20)}
+                          disabled={createBatchesMutation.isPending}
+                          className="w-full"
+                        >
+                          {createBatchesMutation.isPending ? "Creating Batches..." : "Create Batches (20 words each)"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {stats && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card>

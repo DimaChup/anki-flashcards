@@ -110,6 +110,13 @@ export default function Home() {
             </h1>
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setLocation('/flashcards')}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                data-testid="flashcards-button"
+              >
+                🧠 Flashcards
+              </button>
+              <button
                 onClick={() => setLocation('/pricing')}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 data-testid="pricing-button"
