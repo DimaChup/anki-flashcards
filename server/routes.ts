@@ -9,8 +9,10 @@ import {
   insertPromptTemplateSchema,
   insertProcessingConfigSchema,
   insertProcessingJobSchema,
+  reviewCardSchema,
   type WordEntry 
 } from "@shared/schema";
+import { SpacedRepetitionService } from "./spacedRepetition";
 import multer from "multer";
 
 // Configure multer for file uploads
@@ -773,6 +775,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to start processing" });
       }
+    }
+  });
+
+  // === SPACED REPETITION API ROUTES ===
+  
+  // Get cards due for review
+  app.get('/api/spaced-repetition/due', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.query.databaseId as string;
+      
+      const dueCards = await SpacedRepetitionService.getDueCards(userId, databaseId);
+      res.json(dueCards);
+    } catch (error) {
+      console.error("Error fetching due cards:", error);
+      res.status(500).json({ message: "Failed to fetch due cards" });
+    }
+  });
+
+  // Create cards from words in a database
+  app.post('/api/spaced-repetition/create-cards', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { databaseId, words } = req.body;
+      
+      if (!databaseId || !words || !Array.isArray(words)) {
+        return res.status(400).json({ message: "databaseId and words array required" });
+      }
+
+      const cards = await SpacedRepetitionService.createCardsFromWords(userId, databaseId, words);
+      res.status(201).json(cards);
+    } catch (error) {
+      console.error("Error creating cards:", error);
+      res.status(500).json({ message: "Failed to create cards" });
+    }
+  });
+
+  // Review a card (submit answer quality)
+  app.post('/api/spaced-repetition/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = reviewCardSchema.parse(req.body);
+      
+      const updatedCard = await SpacedRepetitionService.reviewCard(
+        validatedData.cardId, 
+        validatedData.quality
+      );
+      
+      res.json(updatedCard);
+    } catch (error) {
+      console.error("Error reviewing card:", error);
+      res.status(500).json({ message: "Failed to review card" });
+    }
+  });
+
+  // Get learning statistics
+  app.get('/api/spaced-repetition/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.query.databaseId as string;
+      
+      const stats = await SpacedRepetitionService.getLearningStats(userId, databaseId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching learning stats:", error);
+      res.status(500).json({ message: "Failed to fetch learning stats" });
+    }
+  });
+
+  // Get all cards for a database
+  app.get('/api/spaced-repetition/cards/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const databaseId = req.params.databaseId;
+      
+      const cards = await SpacedRepetitionService.getCardsForDatabase(userId, databaseId);
+      res.json(cards);
+    } catch (error) {
+      console.error("Error fetching cards:", error);
+      res.status(500).json({ message: "Failed to fetch cards" });
+    }
+  });
+
+  // Delete a card
+  app.delete('/api/spaced-repetition/cards/:cardId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const cardId = req.params.cardId;
+      
+      await SpacedRepetitionService.deleteCard(cardId, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting card:", error);
+      res.status(500).json({ message: "Failed to delete card" });
     }
   });
 

@@ -99,6 +99,39 @@ export const linguisticDatabases = pgTable("linguistic_databases", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Spaced Repetition Card Schema (Anki-like algorithm)
+export const spacedRepetitionCards = pgTable("spaced_repetition_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  databaseId: varchar("database_id").notNull(),
+  wordId: text("word_id").notNull(), // Reference to word in analysisData
+  word: text("word").notNull(),
+  translation: text("translation").notNull(),
+  // Anki algorithm fields
+  easeFactor: integer("ease_factor").notNull().default(2500), // Starting at 2.5 (stored as 2500)
+  interval: integer("interval").notNull().default(1), // Days until next review
+  repetitions: integer("repetitions").notNull().default(0), // Number of successful reviews
+  quality: integer("quality").default(0), // Last response quality (0-5)
+  // Review scheduling
+  nextReviewDate: timestamp("next_review_date", { withTimezone: true }).notNull(),
+  lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Review History for Analytics
+export const reviewHistory = pgTable("review_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  cardId: varchar("card_id").notNull(),
+  quality: integer("quality").notNull(), // 0-5 (fail, hard, good, easy, etc.)
+  previousInterval: integer("previous_interval").notNull(),
+  newInterval: integer("new_interval").notNull(),
+  previousEaseFactor: integer("previous_ease_factor").notNull(),
+  newEaseFactor: integer("new_ease_factor").notNull(),
+  reviewDate: timestamp("review_date", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertLinguisticDatabaseSchema = createInsertSchema(linguisticDatabases).omit({
   id: true,
   createdAt: true,
@@ -112,6 +145,22 @@ export const updateKnownWordsSchema = z.object({
 export type InsertLinguisticDatabase = z.infer<typeof insertLinguisticDatabaseSchema>;
 export type LinguisticDatabase = typeof linguisticDatabases.$inferSelect;
 export type UpdateKnownWordsRequest = z.infer<typeof updateKnownWordsSchema>;
+
+// Spaced Repetition schemas
+export const insertSpacedRepetitionCardSchema = createInsertSchema(spacedRepetitionCards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const reviewCardSchema = z.object({
+  cardId: z.string(),
+  quality: z.number().min(0).max(5), // 0=complete failure, 5=perfect recall
+});
+
+export type SpacedRepetitionCard = typeof spacedRepetitionCards.$inferSelect;
+export type InsertSpacedRepetitionCard = z.infer<typeof insertSpacedRepetitionCardSchema>;
+export type ReviewHistory = typeof reviewHistory.$inferSelect;
 
 // POS highlighting configuration
 export const posConfigSchema = z.object({

@@ -8,6 +8,7 @@ import CreateDatabase from "@/pages/create-database";
 import Pricing from "@/pages/pricing";
 import Landing from "@/pages/landing";
 import DemoUsers from "@/pages/demo-users";
+import Flashcards from "@/pages/flashcards";
 import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/create" component={CreateDatabase} />
+          <Route path="/flashcards" component={Flashcards} />
           <Route path="/pricing" component={Pricing} />
           <Route>
             <div className="min-h-screen flex items-center justify-center">
