@@ -35,35 +35,32 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return await bcrypt.compare(password, hashedPassword);
 }
 
-// Create default Mundo database for new users
-async function createMundoDatabase(userId: string) {
+// Create sample database for new users
+async function createSampleDatabase(userId: string) {
   try {
     const sampleFilePath = path.join(process.cwd(), 'sample-mundo-database.json');
     
     if (fs.existsSync(sampleFilePath)) {
       const sampleData = JSON.parse(fs.readFileSync(sampleFilePath, 'utf8'));
       
-      // Convert wordDatabase to analysis data format
-      const analysisData = Object.values(sampleData.wordDatabase);
-      
-      // Create the Mundo database
+      // Create the sample database
       const database = await storage.createLinguisticDatabase({
-        name: "Mundo",
-        description: "Default Spanish linguistic analysis database",
+        name: "Call Me Ishmael (Spanish Sample)",
+        description: "Sample Spanish text analysis - Call Me Ishmael excerpt with full linguistic analysis",
         language: "Spanish",
-        originalText: sampleData.inputText,
-        analysisData: analysisData,
-        wordCount: analysisData.length,
+        inputText: sampleData.inputText,
+        wordDatabase: sampleData.wordDatabase,
         knownWords: []
       }, userId);
       
-      console.log(`Created Mundo database for user ${userId}: ${database.id}`);
+      console.log(`Created sample database for user ${userId}: ${database.id}`);
       return database;
     } else {
-      console.log('Mundo database file not found');
+      console.log('Sample database file not found, skipping sample creation');
     }
   } catch (error) {
-    console.error('Error creating Mundo database:', error);
+    console.error('Error creating sample database:', error);
+    // Don't throw error - this is optional
   }
 }
 
@@ -198,8 +195,8 @@ export async function setupAuth(app: Express) {
         passwordHash,
       });
 
-      // Create default Mundo database for new user
-      await createMundoDatabase(newUser.id);
+      // Create sample database for the new user
+      await createSampleDatabase(newUser.id);
 
       // Remove password hash from response
       const { passwordHash: _, ...userWithoutPassword } = newUser;

@@ -58,7 +58,7 @@ Preferred communication style: Simple, everyday language.
   - Real-time job status monitoring and progress tracking
   - Python-based processing scripts with asynchronous execution
 - **Export Capabilities**: CSV generation for external data analysis
-- **Default Mundo Database**: Every new user gets exactly one database called "Mundo" with 70,000+ Spanish words automatically created upon registration
+- **Default Sample Database**: Permanent "Call Me Ishmael" Spanish database with 20,000+ words
 
 ## External Dependencies
 
