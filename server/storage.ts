@@ -624,11 +624,20 @@ export class DatabaseStorage implements IStorage {
     const knownWords = new Set(database.knownWords || [] as string[]);
     const now = new Date();
     
-    // Get all words that have firstInstance=true and are not in knownWords
-    const eligibleWords = analysisData
-      .filter(entry => entry.firstInstance === true)  // Only first instances
+    // Debug: Let's see what we have in the analysis data
+    console.log(`Total words in analysis: ${analysisData.length}`);
+    console.log(`Sample entry:`, analysisData[0]);
+    console.log(`Known words count: ${knownWords.size}`);
+    
+    // Get all words that have firstInstance=true (correct property name!)
+    const firstInstWords = analysisData.filter(entry => entry.firstInstance === true);
+    console.log(`Words with firstInstance=true: ${firstInstWords.length}`);
+    
+    const eligibleWords = firstInstWords
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
       .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
+      
+    console.log(`Eligible words after filtering known words: ${eligibleWords.length}`);
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
@@ -644,7 +653,7 @@ export class DatabaseStorage implements IStorage {
       definition: wordEntry.translation || wordEntry.lemma,
       context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
       pos: wordEntry.pos,
-      translations: [wordEntry.translation || wordEntry.lemma], // JSON array
+      translations: JSON.stringify([wordEntry.translation || wordEntry.lemma]), // Add translations field
       state: 'new' as const,
       easeFactor: 2500,
       interval: 0,
@@ -652,10 +661,7 @@ export class DatabaseStorage implements IStorage {
       due: now,
       reviews: 0,
       lapses: 0,
-      lastQuality: 0, // Default to 0 instead of null
-      learningSteps: "1,10",
-      graduatingInterval: 1,
-      easyInterval: 4
+      lastQuality: null
     })) as InsertAnkiStudyCard[];
 
     if (newCards.length === 0) return [];
