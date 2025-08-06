@@ -261,14 +261,11 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     position: number | null;
     firstInstance: boolean;
     contextualInfo?: any;
+    showDetailed?: boolean;
   } | null>(null);
 
-  // Handle right-click (show word details) - exact copy from page-view.html
-  const handleWordRightClick = (e: React.MouseEvent, word: WordEntry) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Calculate tooltip position like original
+  // Handle word hover (show tooltip) - exact copy from page-view.html behavior
+  const handleWordHover = (e: React.MouseEvent, word: WordEntry) => {
     const mouseX = e.clientX;
     const mouseY = e.clientY;
     
@@ -286,7 +283,37 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
     });
   };
 
-  // Hide tooltip when clicking elsewhere
+  // Handle word mouse out (hide tooltip)
+  const handleWordMouseOut = () => {
+    setTooltipData(null);
+  };
+
+  // Handle right-click (toggle detailed view) - like original contextmenu behavior
+  const handleWordRightClick = (e: React.MouseEvent, word: WordEntry) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Toggle detailed view if tooltip is visible
+    if (tooltipData) {
+      setTooltipData({
+        ...tooltipData,
+        showDetailed: !tooltipData.showDetailed
+      });
+    }
+  };
+
+  // Handle mouse move to update tooltip position
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (tooltipData) {
+      setTooltipData({
+        ...tooltipData,
+        x: e.clientX,
+        y: e.clientY
+      });
+    }
+  };
+
+  // Hide tooltip when clicking elsewhere or moving mouse away
   useEffect(() => {
     const handleClickOutside = () => {
       setTooltipData(null);
@@ -314,8 +341,11 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
         data-signature={signature}
         data-first-instance={word.firstInstance ? 'true' : 'false'}
         onClick={() => handleWordClick(word)}
+        onMouseEnter={(e) => handleWordHover(e, word)}
+        onMouseLeave={handleWordMouseOut}
+        onMouseMove={handleMouseMove}
         onContextMenu={(e) => handleWordRightClick(e, word)}
-        title={`${word.word} (${word.pos}) - Click to toggle known status, right-click for details`}
+        title={`${word.word} (${word.pos}) - Hover for details, click to toggle known status`}
         style={{
           opacity: isKnown ? 'var(--known-word-opacity)' : 1
         }}
@@ -722,7 +752,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
             </div>
             
             {/* Detailed part - conditional display like original */}
-            {tooltipData.contextualInfo && (
+            {tooltipData.contextualInfo && tooltipData.showDetailed && (
               <div 
                 className="tooltip-part detailed-part" 
                 style={{ 
