@@ -294,22 +294,22 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
             {activeBatchData?.allCards && activeBatchData.allCards.length > 0 ? (
               <div className="space-y-4">
                 <h5 className="font-medium">Words to Learn in Batch {selectedBatchNumber}:</h5>
-                <div className="grid gap-3 max-h-60 overflow-y-auto">
+                <div className="grid gap-4 max-h-60 overflow-y-auto">
                   {activeBatchData.allCards.map((card, index) => (
                     <div 
                       key={card.id} 
-                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-xl hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
                       onClick={() => {
                         setCurrentCard(card);
                         setShowAnswer(false);
                       }}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
-                        <span className="font-medium text-lg">{card.word}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-full min-w-8 text-center">{index + 1}</span>
+                        <span className="font-bold text-xl text-gray-900 dark:text-white">{card.word}</span>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm text-gray-600">Click to practice</div>
+                        <div className="text-sm font-medium text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full">Practice</div>
                       </div>
                     </div>
                   ))}
