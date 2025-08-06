@@ -49,9 +49,10 @@ interface ActiveBatchData {
 
 interface FlashcardSectionProps {
   selectedDatabaseId: string;
+  batchSize: number;
 }
 
-export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectionProps) {
+export default function FlashcardSection({ selectedDatabaseId, batchSize }: FlashcardSectionProps) {
   const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedBatchNumber, setSelectedBatchNumber] = useState<number>(1);
@@ -142,8 +143,8 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
     }
   };
 
-  // Create batches from first instances
-  const createBatches = async (batchSize: number = 20) => {
+  // Create batches from first instances using the current batch size
+  const createBatches = () => {
     if (!selectedDatabaseId) return;
     createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize });
   };
@@ -335,11 +336,11 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
                   Organize words from your database into learning batches based on their first appearance in the text
                 </p>
                 <Button 
-                  onClick={() => createBatches(20)}
+                  onClick={createBatches}
                   disabled={createBatchesMutation.isPending}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  {createBatchesMutation.isPending ? "Creating Batches..." : "Create Batches (20 words each)"}
+                  {createBatchesMutation.isPending ? "Creating Batches..." : `Create Batches (${batchSize} words each)`}
                 </Button>
               </div>
             ) : (
