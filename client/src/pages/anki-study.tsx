@@ -309,26 +309,29 @@ export default function AnkiStudy() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 md:px-4 py-4 md:py-8">
         
-        {/* Header */}
-        <div className="mb-8">
+        {/* Header - Mobile Responsive */}
+        <div className="mb-4 md:mb-8">
           <Button
             onClick={() => setLocation('/')}
             variant="outline"
-            className="border-slate-600 text-slate-300 hover:bg-slate-700 mb-4"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700 mb-4 min-h-[44px] text-sm md:text-base"
             data-testid="button-back-home"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
+            <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Back to Home</span>
+            <span className="sm:hidden">Home</span>
           </Button>
           
-          <h1 className="text-4xl font-bold text-white mb-2">
-            <Brain className="inline h-8 w-8 mr-3 text-purple-400" />
-            Anki Study System
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
+            <Brain className="inline h-6 w-6 md:h-8 md:w-8 mr-2 md:mr-3 text-purple-400" />
+            <span className="hidden sm:inline">Anki Study System</span>
+            <span className="sm:hidden">Anki Study</span>
           </h1>
-          <p className="text-slate-300 text-lg">
-            Generate flashcard decks from your linguistic databases and study with spaced repetition
+          <p className="text-slate-300 text-sm md:text-lg">
+            <span className="hidden sm:inline">Generate flashcard decks from your linguistic databases and study with spaced repetition</span>
+            <span className="sm:hidden">Smart flashcard learning system</span>
           </p>
         </div>
 
@@ -528,21 +531,21 @@ export default function AnkiStudy() {
             </Card>
           )}
 
-          {/* Study Session */}
+          {/* Study Session - Mobile Optimized */}
           {studyStarted && currentCard && (
             <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
-                <div className="flex justify-between text-sm text-slate-400 mt-2">
+              <CardHeader className="px-3 md:px-6">
+                <CardTitle className="text-white text-lg md:text-2xl">Study Session</CardTitle>
+                <div className="flex justify-between text-xs md:text-sm text-slate-400 mt-2">
                   <span>Card {sessionCards.findIndex(c => c.id === currentCard.id) + 1} of {sessionCards.length}</span>
-                  <span>Position in text: {currentCard.wordKey}</span>
+                  <span className="hidden sm:inline">Position: {currentCard.wordKey}</span>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 md:space-y-6 px-3 md:px-6">
                 
-                {/* Flash Card */}
-                <div className="bg-slate-700/50 p-8 rounded-lg text-center min-h-[200px] flex flex-col justify-center">
-                  <div className={`text-4xl font-bold mb-4 ${
+                {/* Flash Card - Mobile Responsive */}
+                <div className="bg-slate-700/50 p-4 md:p-8 rounded-lg text-center min-h-[200px] md:min-h-[250px] flex flex-col justify-center">
+                  <div className={`text-2xl md:text-4xl font-bold mb-4 break-words ${
                     posAssist 
                       ? getPosTextColor(currentCard.pos)
                       : 'text-white'
@@ -553,14 +556,14 @@ export default function AnkiStudy() {
                   {!showAnswer ? (
                     <Button
                       onClick={() => setShowAnswer(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white mx-auto"
+                      className="bg-blue-600 hover:bg-blue-700 text-white mx-auto min-h-[50px] px-8 text-lg"
                       data-testid="button-show-answer"
                     >
                       Show Answer
                     </Button>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="text-xl text-green-400" data-testid="text-card-translations">
+                    <div className="space-y-3 md:space-y-4">
+                      <div className="text-lg md:text-xl text-green-400 break-words" data-testid="text-card-translations">
                         {currentCard.translations.join(', ')}
                       </div>
                       {currentCard.pos && (
@@ -569,17 +572,18 @@ export default function AnkiStudy() {
                         </div>
                       )}
                       {currentCard.sentence && (
-                        <div className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-4">
+                        <div className="text-xs md:text-sm text-slate-300 italic border-l-2 border-slate-600 pl-3 md:pl-4 break-words">
                           "{currentCard.sentence}"
                         </div>
                       )}
                       
-                      {/* Rating Buttons */}
-                      <div className="flex gap-2 justify-center mt-6">
+                      {/* Rating Buttons - Mobile Optimized */}
+                      <div className="grid grid-cols-2 gap-2 md:flex md:gap-3 justify-center mt-4 md:mt-6">
                         <Button
                           onClick={() => handleCardReview(1)}
                           disabled={reviewCardMutation.isPending}
                           variant="destructive"
+                          className="min-h-[50px] text-sm md:text-base"
                           data-testid="button-again"
                         >
                           Again
@@ -587,7 +591,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(2)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-yellow-600 hover:bg-yellow-700"
+                          className="bg-yellow-600 hover:bg-yellow-700 min-h-[50px] text-sm md:text-base"
                           data-testid="button-hard"
                         >
                           Hard
@@ -595,7 +599,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(3)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-blue-600 hover:bg-blue-700 min-h-[50px] text-sm md:text-base"
                           data-testid="button-good"
                         >
                           Good
@@ -603,7 +607,7 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleCardReview(4)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 min-h-[50px] text-sm md:text-base"
                           data-testid="button-easy"
                         >
                           Easy
@@ -613,8 +617,8 @@ export default function AnkiStudy() {
                   )}
                 </div>
 
-                {/* Study Controls */}
-                <div className="flex justify-center">
+                {/* Study Controls - Mobile Responsive */}
+                <div className="flex justify-center pt-2">
                   <Button
                     onClick={() => {
                       setStudyStarted(false);
@@ -622,10 +626,11 @@ export default function AnkiStudy() {
                       setShowAnswer(false);
                     }}
                     variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700 min-h-[44px] text-sm md:text-base"
                     data-testid="button-end-session"
                   >
-                    End Study Session
+                    <span className="hidden sm:inline">End Study Session</span>
+                    <span className="sm:hidden">End Session</span>
                   </Button>
                 </div>
               </CardContent>

@@ -589,9 +589,9 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   return (
     <div className="list-view-section">
 
-      {/* Controls Container */}
-      <div className="controls-container bg-muted p-4 rounded-lg mb-6">
-        <div className="flex flex-wrap gap-6 justify-between items-start">
+      {/* Controls Container - Mobile Responsive */}
+      <div className="controls-container bg-muted p-3 md:p-4 rounded-lg mb-4 md:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-4 lg:gap-6 justify-between items-start">
           
           {/* Filter Toggles */}
           <div className="control-group flex flex-col gap-3">
@@ -676,9 +676,10 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
               onClick={() => setIsGridView(!isGridView)}
               variant="outline"
               size="sm"
-              className="view-toggle-button"
+              className="view-toggle-button min-h-[44px] text-sm md:text-base"
             >
-              {isGridView ? 'Switch to List View' : 'Switch to Grid View'}
+              <span className="hidden sm:inline">{isGridView ? 'Switch to List View' : 'Switch to Grid View'}</span>
+              <span className="sm:hidden">{isGridView ? 'List View' : 'Grid View'}</span>
             </Button>
           </div>
 
@@ -723,7 +724,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
             <Button
               onClick={handleDownload}
               disabled={totalBatches === 0}
-              className="bg-green-600 hover:bg-green-700"
+              className="min-h-[44px] text-sm md:text-base bg-green-600 hover:bg-green-700"
               size="sm"
             >
               <Download className="w-4 h-4 mr-1" />

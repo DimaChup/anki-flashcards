@@ -99,36 +99,39 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="flex justify-center p-5">
+      <div className="flex justify-center p-2 md:p-5">
         <div 
-          className="w-full max-w-7xl flex flex-col gap-6 p-8 rounded-2xl shadow-2xl"
+          className="w-full max-w-7xl flex flex-col gap-4 md:gap-6 p-4 md:p-8 rounded-2xl shadow-2xl"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
-          {/* Main Header */}
-          <header className="flex items-center justify-between mb-4">
-            <h1 className="flex items-center gap-3 text-3xl font-bold">
-              <Languages className="w-8 h-8" />
-              My Personal Linguistic Databases
+          {/* Main Header - Mobile Responsive */}
+          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+            <h1 className="flex items-center gap-2 md:gap-3 text-xl md:text-3xl font-bold">
+              <Languages className="w-6 h-6 md:w-8 md:h-8" />
+              <span className="hidden sm:inline">My Personal Linguistic Databases</span>
+              <span className="sm:hidden">My Databases</span>
             </h1>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <button
                 onClick={() => setLocation('/anki-study')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
                 data-testid="anki-study-button"
               >
-                🧠 Anki Study
+                <span className="hidden sm:inline">🧠 Anki Study</span>
+                <span className="sm:hidden">🧠 Study</span>
               </button>
               <button
                 onClick={() => setLocation('/pricing')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
                 data-testid="pricing-button"
               >
-                View Pricing
+                <span className="hidden sm:inline">View Pricing</span>
+                <span className="sm:hidden">Pricing</span>
               </button>
               <button
                 onClick={logout}
                 disabled={isLoggingOut}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm md:text-base flex-1 sm:flex-initial min-h-[44px]"
                 data-testid="logout-button"
               >
                 {isLoggingOut ? 'Logging out...' : 'Logout'}
