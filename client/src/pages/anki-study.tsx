@@ -214,8 +214,9 @@ export default function AnkiStudy() {
       // Move to next card
       handleNextCard();
       
-      // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
+      // Invalidate queries to refresh deck view and study queue
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/deck', selectedDatabase] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', selectedDatabase] });
       queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue'] });
     },
     onError: (error: any) => {
@@ -265,6 +266,10 @@ export default function AnkiStudy() {
         setSessionCycleCards([]);
         
         const totalReviewed = sessionCards.length;
+        // Refresh deck view to show updated statuses
+        queryClient.invalidateQueries({ queryKey: ['/api/anki/deck', selectedDatabase] });
+        queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', selectedDatabase] });
+        
         toast({ 
           title: "Study Session Complete!", 
           description: `Great work! You reviewed ${totalReviewed} cards using Anki's spaced repetition algorithm.` 
