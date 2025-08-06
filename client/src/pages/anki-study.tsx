@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock, Trash2, Play } from 'lucide-react';
+import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -72,7 +72,6 @@ export default function AnkiStudyPage() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [studyStats, setStudyStats] = useState({ reviewed: 0, total: 0 });
   const [settingsTab, setSettingsTab] = useState('daily');
-  const [studyMode, setStudyMode] = useState(false);
 
   // Get study settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -147,34 +146,6 @@ export default function AnkiStudyPage() {
     },
   });
 
-  // Delete deck mutation
-  const deleteDeckMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('DELETE', `/api/anki-study/deck/${databaseId}`, {});
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: 'Deck Deleted',
-        description: `Removed ${data.deletedCards} cards from your Anki deck`,
-      });
-      
-      // Reset state and refetch data
-      setStudyMode(false);
-      setSessionComplete(false);
-      setCurrentCardIndex(0);
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Delete Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
   // Initialize cards mutation
   const initializeCardsMutation = useMutation({
     mutationFn: async () => {
@@ -193,12 +164,36 @@ export default function AnkiStudyPage() {
         description: `${data.message}`,
       });
       // Refresh the session to show the new cards
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
+      refetchSession();
     },
     onError: (error: Error) => {
       toast({
         title: 'Initialization Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete deck mutation
+  const deleteDeckMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) throw new Error('No database selected');
+      
+      const deleteResponse = await apiRequest('DELETE', `/api/anki-study/cards/${databaseId}`);
+      return await deleteResponse.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Deck Deleted!',
+        description: `Deleted ${data.deleted} study cards. You can now regenerate the deck.`,
+      });
+      // Refresh the session to show no cards
+      refetchSession();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Delete Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -348,79 +343,6 @@ export default function AnkiStudyPage() {
               >
                 <Target className="w-4 h-4 mr-2" />
                 {initializeCardsMutation.isPending ? 'Creating Anki Deck...' : 'Create Anki Deck from Database'}
-              </Button>
-              
-              <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
-                <Home className="w-4 h-4 mr-2" />
-                Go back to Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show deck status and study options when deck exists but not in study mode
-  const hasDeck = session?.cards && session.cards.length > 0;
-  
-  if (hasDeck && !studyMode) {
-    return (
-      <div className="container mx-auto p-6 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-600" />
-              Anki Deck Ready
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-600 mb-2">{session.cards.length}</div>
-              <div className="text-sm text-green-800 font-medium">Cards Ready for Study</div>
-              <div className="text-xs text-green-600 mt-1">
-                Sorted by appearance order • First instances only • Known words excluded
-              </div>
-            </div>
-
-            {/* Deck breakdown */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <div className="text-lg font-semibold text-blue-600">{session.breakdown?.new || 0}</div>
-                <div className="text-xs text-gray-600">New</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-orange-600">{session.breakdown?.learning || 0}</div>
-                <div className="text-xs text-gray-600">Learning</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-green-600">{session.breakdown?.review || 0}</div>
-                <div className="text-xs text-gray-600">Review</div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Button 
-                onClick={() => setStudyMode(true)}
-                className="w-full bg-green-600 hover:bg-green-700"
-                size="lg"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Begin Study Session
-              </Button>
-              
-              <Button 
-                variant="destructive"
-                onClick={() => {
-                  if (confirm('Are you sure you want to delete this Anki deck? All progress will be lost.')) {
-                    deleteDeckMutation.mutate();
-                  }
-                }}
-                disabled={deleteDeckMutation.isPending}
-                className="w-full"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {deleteDeckMutation.isPending ? 'Deleting Deck...' : 'Delete Deck'}
               </Button>
               
               <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
