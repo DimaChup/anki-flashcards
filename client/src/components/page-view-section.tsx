@@ -188,6 +188,50 @@ export default function PageViewSection({
     }
   };
 
+  // Find idioms for a specific word key (like original findIdiomForKey)
+  const findIdiomForKey = (wordKey: number) => {
+    if (!selectedDatabase?.idioms) return null;
+    return selectedDatabase.idioms.find(idiom => 
+      wordKey >= idiom.startWordKey && wordKey <= idiom.endWordKey
+    ) || null;
+  };
+
+  // Find all idioms within a segment (like original findIdiomsInSegment)
+  const findIdiomsInSegment = (segment: any) => {
+    if (!segment || !selectedDatabase?.idioms) return [];
+    
+    const idioms = new Set();
+    for (let k = segment.startWordKey; k <= segment.endWordKey; k++) {
+      const idiom = findIdiomForKey(k);
+      if (idiom) {
+        idioms.add(idiom);
+      }
+    }
+    return Array.from(idioms);
+  };
+
+  // Format idiom for display (like original formatIdiomTooltipContent)
+  const formatIdiomContent = (idiom: any) => {
+    if (!idiom) return '';
+    
+    // Build full idiom text from word positions
+    let fullIdiomText = '';
+    if (analysisData) {
+      for (let k = idiom.startWordKey; k <= idiom.endWordKey; k++) {
+        const word = analysisData.find(w => w.position === k);
+        if (word) {
+          fullIdiomText += word.word + ' ';
+        }
+      }
+    }
+    fullIdiomText = fullIdiomText.trim();
+    
+    return {
+      text: fullIdiomText || idiom.text || '',
+      translation: idiom.translation || idiom.meaning || ''
+    };
+  };
+
   // Tooltip state - exactly like original page-view.html
   const [tooltipData, setTooltipData] = useState<{
     visible: boolean;
@@ -201,12 +245,16 @@ export default function PageViewSection({
     firstInstance: boolean;
     contextualInfo?: any;
     showDetailed?: boolean;
+    idiom?: any; // Add idiom data for tooltip
   } | null>(null);
 
   // Handle word hover (show tooltip) - exact copy from page-view.html behavior
   const handleWordHover = (e: React.MouseEvent, word: WordEntry) => {
     const mouseX = e.clientX;
     const mouseY = e.clientY;
+    
+    // Check for idiom at this position (like original)
+    const idiom = findIdiomForKey(word.position || 0);
     
     setTooltipData({
       visible: true,
@@ -218,7 +266,8 @@ export default function PageViewSection({
       frequency: word.frequency || 1,
       position: word.position || null,
       firstInstance: word.firstInstance || false,
-      contextualInfo: word.contextualInfo
+      contextualInfo: word.contextualInfo,
+      idiom: idiom // Include idiom data
     });
   };
 
@@ -583,6 +632,55 @@ export default function PageViewSection({
             </span>
           )}
         </div>
+        
+        {/* Idiom Info Section - like original idiom display */}
+        {(() => {
+          if (!segmentDisplayState.id || !selectedDatabase?.segments) return null;
+          
+          const segment = selectedDatabase.segments.find(seg => {
+            const segmentId = seg.id?.toString() || `${seg.startWordKey}-${seg.endWordKey}`;
+            return segmentId === segmentDisplayState.id;
+          });
+          
+          if (!segment) return null;
+          
+          const idioms = findIdiomsInSegment(segment);
+          if (idioms.length === 0) return null;
+          
+          return (
+            <>
+              <hr style={{ 
+                borderTop: '1px solid hsl(59, 90%, 70%)', // Blue border like original
+                margin: '12px 0',
+                borderBottom: 'none'
+              }} />
+              {idioms.map((idiom, index) => {
+                const idiomContent = formatIdiomContent(idiom);
+                return (
+                  <div key={index} className="idiom-info-block" style={{ 
+                    marginBottom: '8px',
+                    paddingLeft: '5px',
+                    borderLeft: '2px solid hsl(59, 90%, 70%)' // Blue border like original
+                  }}>
+                    <div style={{ 
+                      fontWeight: 'bold',
+                      color: 'var(--text-primary)',
+                      marginBottom: '2px'
+                    }}>
+                      {idiomContent.text}
+                    </div>
+                    <div style={{ 
+                      color: 'var(--text-primary)',
+                      fontStyle: 'italic'
+                    }}>
+                      {idiomContent.translation}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          );
+        })()}
       </div>
     );
   };
@@ -1104,6 +1202,38 @@ export default function PageViewSection({
                     ))}
                   </>
                 )}
+              </div>
+            )}
+            
+            {/* Idiom part - like original idiom tooltip */}
+            {tooltipData.idiom && (
+              <div className="tooltip-part idiom-part" style={{ 
+                padding: '8px 12px', 
+                whiteSpace: 'pre-wrap', 
+                color: 'hsl(210, 9%, 91%)', 
+                maxWidth: '350px',
+                borderLeft: '1px solid hsl(215, 14%, 29%)'
+              }}>
+                {(() => {
+                  const idiomContent = formatIdiomContent(tooltipData.idiom);
+                  return (
+                    <div className="idiom-info-block">
+                      <div style={{ 
+                        fontWeight: 'bold',
+                        marginBottom: '4px',
+                        color: 'hsl(210, 9%, 91%)'
+                      }}>
+                        Idiom: {idiomContent.text}
+                      </div>
+                      <div style={{ 
+                        fontStyle: 'italic',
+                        color: 'hsl(210, 9%, 91%)'
+                      }}>
+                        {idiomContent.translation}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

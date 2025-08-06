@@ -37,6 +37,18 @@ export const segmentSchema = z.object({
 
 export type Segment = z.infer<typeof segmentSchema>;
 
+// Idiom schema for text idioms - matching original format
+export const idiomSchema = z.object({
+  id: z.number().optional(),
+  startWordKey: z.number(),
+  endWordKey: z.number(),
+  text: z.string().optional(),
+  translation: z.string().optional(),
+  meaning: z.string().optional(),
+});
+
+export type Idiom = z.infer<typeof idiomSchema>;
+
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
   "sessions",
@@ -110,6 +122,7 @@ export const linguisticDatabases = pgTable("linguistic_databases", {
   analysisData: jsonb("analysis_data").notNull(), // Array of WordEntry objects
   knownWords: jsonb("known_words").notNull().default('[]'), // Array of known word strings
   segments: jsonb("segments").default('[]'), // Array of Segment objects
+  idioms: jsonb("idioms").default('[]'), // Array of Idiom objects
   isPublic: text("is_public").notNull().default('false'), // Allow sharing for premium users
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
