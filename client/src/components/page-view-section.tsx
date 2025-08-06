@@ -112,13 +112,13 @@ export default function PageViewSection({
     const wasSegmentModeActive = segmentMode;
     
     if (newSegmentMode && !wasSegmentModeActive) {
-      // Entering segment mode
+      // Entering segment mode - force dual page view to show translations
       setViewModeBeforeSegments(isDualPageView);
-      if (isDualPageView) {
-        setIsDualPageView(false);
+      if (!isDualPageView) {
+        setIsDualPageView(true);
       }
     } else if (!newSegmentMode && wasSegmentModeActive) {
-      // Exiting segment mode
+      // Exiting segment mode - restore previous view
       setIsDualPageView(viewModeBeforeSegments);
     }
     
@@ -375,10 +375,16 @@ export default function PageViewSection({
         data-first-instance={word.firstInstance ? 'true' : 'false'}
         onClick={() => handleWordClick(word, index)}
         onMouseEnter={(e) => {
-          handleWordHover(e, word);
+          if (!segmentMode) {
+            handleWordHover(e, word);
+          }
           handleSegmentHover(e, index);
         }}
-        onMouseLeave={handleWordMouseOut}
+        onMouseLeave={(e) => {
+          if (!segmentMode) {
+            handleWordMouseOut();
+          }
+        }}
         onMouseMove={handleMouseMove}
         onContextMenu={(e) => handleWordRightClick(e, word, index)}
         title={`${word.word} (${word.pos}) - Hover for details, click to toggle known status`}
@@ -807,6 +813,11 @@ export default function PageViewSection({
                 </div>
                 <span className="text-sm">View: Dual/Single</span>
               </label>
+            )}
+            {segmentMode && (
+              <span className="text-sm text-muted-foreground">
+                Segment Mode: Dual view (translations shown in right pane)
+              </span>
             )}
             
             <div className="setting-control flex items-center gap-2">
