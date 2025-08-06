@@ -133,7 +133,7 @@ export default function AnkiStudy() {
       setCurrentCard(cardsToStudy[0]);
       setStudyStarted(true);
       setShowAnswer(false);
-      setViewDeck(false); // Hide deck view when starting study
+      // Don't hide deck view - user can toggle it during study
     }
   };
 
@@ -483,10 +483,24 @@ export default function AnkiStudy() {
           {studyStarted && currentCard && (
             <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
               <CardHeader>
-                <CardTitle className="text-white text-2xl">Study Session</CardTitle>
-                <div className="flex justify-between text-sm text-slate-400">
-                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
-                  <span>Position in text: {currentCard.wordKey}</span>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-white text-2xl">Study Session</CardTitle>
+                    <div className="flex justify-between text-sm text-slate-400 mt-2">
+                      <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
+                      <span>Position in text: {currentCard.wordKey}</span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setViewDeck(!viewDeck)}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                    data-testid="button-toggle-deck-view"
+                  >
+                    {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                    {viewDeck ? 'Hide Deck' : 'View Deck'}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
