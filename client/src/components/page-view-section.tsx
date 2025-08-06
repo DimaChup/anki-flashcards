@@ -173,58 +173,74 @@ export default function PageViewSection({
     }
   };
 
-  // Handle right-click (show word details)
+  // Tooltip state - exactly like original page-view.html
+  const [tooltipData, setTooltipData] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    word: string;
+    pos: string;
+    translation: string;
+    frequency: number;
+    position: number | null;
+    firstInstance: boolean;
+    contextualInfo?: any;
+    showDetailed?: boolean;
+  } | null>(null);
+
+  // Handle word hover (show tooltip) - exact copy from page-view.html behavior
+  const handleWordHover = (e: React.MouseEvent, word: WordEntry) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    
+    setTooltipData({
+      visible: true,
+      x: mouseX,
+      y: mouseY,
+      word: word.word,
+      pos: word.pos,
+      translation: word.translation || '',
+      frequency: word.frequency || 1,
+      position: word.position || null,
+      firstInstance: word.firstInstance || false,
+      contextualInfo: word.contextualInfo
+    });
+  };
+
+  // Handle word mouse out (hide tooltip)
+  const handleWordMouseOut = () => {
+    setTooltipData(null);
+  };
+
+  // Handle mouse move to update tooltip position
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (tooltipData) {
+      setTooltipData({
+        ...tooltipData,
+        x: e.clientX,
+        y: e.clientY
+      });
+    }
+  };
+
+  // Handle right-click (toggle detailed view) - like original contextmenu behavior
   const handleWordRightClick = (e: React.MouseEvent, word: WordEntry, index: number) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    // Create and show tooltip with word details
-    const tooltip = tooltipRef.current;
-    const wordInfo = wordInfoTooltipRef.current;
-    
-    if (tooltip && wordInfo) {
-      const contextDetails = [];
-      if (word.contextualInfo?.gender) contextDetails.push(`Gender: ${word.contextualInfo.gender}`);
-      if (word.contextualInfo?.number) contextDetails.push(`Number: ${word.contextualInfo.number}`);
-      if (word.contextualInfo?.tense) contextDetails.push(`Tense: ${word.contextualInfo.tense}`);
-      if (word.contextualInfo?.mood) contextDetails.push(`Mood: ${word.contextualInfo.mood}`);
-      if (word.contextualInfo?.person) contextDetails.push(`Person: ${word.contextualInfo.person}`);
-      
-      wordInfo.innerHTML = `
-        <div class="word-tooltip-content">
-          <div class="word-tooltip-header">
-            <strong>${word.word}</strong> <span class="pos-tag">${word.pos}</span>
-          </div>
-          <div class="word-tooltip-body">
-            <div><strong>Translation:</strong> ${word.translation || 'N/A'}</div>
-            <div><strong>Frequency:</strong> ${word.frequency || 1}</div>
-            <div><strong>Position:</strong> ${word.position || index + 1}</div>
-            <div><strong>First Instance:</strong> ${word.firstInstance ? 'Yes' : 'No'}</div>
-            ${contextDetails.length > 0 ? `<div><strong>Grammar:</strong> ${contextDetails.join(', ')}</div>` : ''}
-            <div class="word-tooltip-hint">Left-click to toggle known status</div>
-          </div>
-        </div>
-      `;
-      
-      // Position tooltip near mouse
-      tooltip.style.left = `${e.pageX + 10}px`;
-      tooltip.style.top = `${e.pageY - 10}px`;
-      tooltip.style.display = 'block';
-      
-      // Hide tooltip after 3 seconds or on next click
-      setTimeout(() => {
-        if (tooltip.style.display === 'block') {
-          tooltip.style.display = 'none';
-        }
-      }, 3000);
+    // Toggle detailed view if tooltip is visible
+    if (tooltipData) {
+      setTooltipData({
+        ...tooltipData,
+        showDetailed: !tooltipData.showDetailed
+      });
     }
   };
   
-  // Hide tooltip on any click outside
+  // Hide tooltip when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = () => {
-      if (tooltipRef.current) {
-        tooltipRef.current.style.display = 'none';
-      }
+      setTooltipData(null);
     };
     
     document.addEventListener('click', handleClickOutside);
@@ -283,8 +299,11 @@ export default function PageViewSection({
         data-signature={signature}
         data-first-instance={word.firstInstance ? 'true' : 'false'}
         onClick={() => handleWordClick(word, index)}
+        onMouseEnter={(e) => handleWordHover(e, word)}
+        onMouseLeave={handleWordMouseOut}
+        onMouseMove={handleMouseMove}
         onContextMenu={(e) => handleWordRightClick(e, word, index)}
-        title={`${word.word} (${word.pos}) - Click to toggle known status, right-click for details`}
+        title={`${word.word} (${word.pos}) - Hover for details, click to toggle known status`}
       >
         {word.word}
         {showGrammar && word.contextualInfo && (
@@ -631,6 +650,83 @@ export default function PageViewSection({
         <div ref={idiomInfoTooltipRef} className="idiom-info-tooltip bg-popover border border-border rounded-lg p-2 shadow-lg">
         </div>
       </div>
+
+      {/* Tooltip - exact copy from original page-view.html */}
+      {tooltipData && (
+        <div
+          id="tooltip-container"
+          style={{
+            position: 'fixed',
+            left: tooltipData.x + 10,
+            top: tooltipData.y + 10,
+            zIndex: 1000,
+            backgroundColor: 'var(--tooltip-bg)',
+            border: '1px solid var(--tooltip-border)',
+            borderRadius: '6px',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            fontSize: '0.9em',
+            maxWidth: '700px',
+            pointerEvents: 'none'
+          }}
+        >
+          <div id="word-info-tooltip" style={{ display: 'flex' }}>
+            {/* Concise part */}
+            <div className="tooltip-part" style={{ padding: '8px 12px', whiteSpace: 'pre-wrap', color: 'var(--tooltip-text)', maxWidth: '350px' }}>
+              <div className="tooltip-line">
+                <strong>{tooltipData.word}</strong> ({tooltipData.pos})
+              </div>
+              <div className="tooltip-line tooltip-best-translation" style={{ fontSize: '1.8em', lineHeight: '1.1' }}>
+                {tooltipData.translation || 'No translation'}
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '6px 0' }} />
+              <div className="tooltip-line">
+                <strong>Freq:</strong> {tooltipData.frequency}
+              </div>
+              {tooltipData.position && (
+                <div className="tooltip-line">
+                  <strong>Pos:</strong> {tooltipData.position}
+                </div>
+              )}
+              <div className="tooltip-line">
+                <strong>First:</strong> {tooltipData.firstInstance ? 'Yes' : 'No'}
+              </div>
+            </div>
+            
+            {/* Detailed part - conditional display like original */}
+            {tooltipData.contextualInfo && tooltipData.showDetailed && (
+              <div 
+                className="tooltip-part detailed-part" 
+                style={{ 
+                  padding: '8px 12px', 
+                  borderLeft: '1px solid var(--tooltip-separator-color)', 
+                  whiteSpace: 'pre-wrap', 
+                  color: 'var(--tooltip-text)', 
+                  maxWidth: '350px' 
+                }}
+              >
+                <div className="tooltip-line">
+                  <strong>Grammar Details:</strong>
+                </div>
+                {tooltipData.contextualInfo.gender && (
+                  <div className="tooltip-line">Gender: {tooltipData.contextualInfo.gender}</div>
+                )}
+                {tooltipData.contextualInfo.number && (
+                  <div className="tooltip-line">Number: {tooltipData.contextualInfo.number}</div>
+                )}
+                {tooltipData.contextualInfo.tense && (
+                  <div className="tooltip-line">Tense: {tooltipData.contextualInfo.tense}</div>
+                )}
+                {tooltipData.contextualInfo.mood && (
+                  <div className="tooltip-line">Mood: {tooltipData.contextualInfo.mood}</div>
+                )}
+                {tooltipData.contextualInfo.person && (
+                  <div className="tooltip-line">Person: {tooltipData.contextualInfo.person}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
