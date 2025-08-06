@@ -17,6 +17,9 @@ export default function CreateDatabase() {
     language: 'Spanish'
   });
   
+  const [initializeText, setInitializeText] = useState('');
+  const [initializeFilename, setInitializeFilename] = useState('');
+  
   const [selectedDatabase, setSelectedDatabase] = useState<string>('');
   const [selectedPromptTemplate, setSelectedPromptTemplate] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
@@ -103,9 +106,9 @@ export default function CreateDatabase() {
     }
   };
 
-  const handleInitializeFile = async () => {
+  const handleCreateDatabaseFromForm = async () => {
     if (!formData.inputText.trim()) {
-      showStatus('Please enter text to initialize the database.', 'error');
+      showStatus('Please enter text to create the database.', 'error');
       return;
     }
 
@@ -130,7 +133,7 @@ export default function CreateDatabase() {
 
       if (response.ok) {
         const result = await response.json();
-        showStatus(`Database "${result.name}" initialized successfully.`, 'success');
+        showStatus(`Database "${result.name}" created successfully.`, 'success');
         setTimeout(() => setLocation('/'), 2000);
       } else {
         const error = await response.json();
@@ -194,6 +197,59 @@ export default function CreateDatabase() {
 
     const latestJob = jobsForDatabase[0]; // Assuming jobs are sorted by creation date
     showStatus(`Latest job status: ${latestJob.status} (${latestJob.progress}% complete)`, 'success');
+  };
+
+  // Initialize File functionality - creates a new database from raw text
+  const initializeFileMutation = useMutation({
+    mutationFn: async (data: { filename: string; inputText: string; language: string; description?: string }) => {
+      const response = await fetch('/api/databases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.filename,
+          originalText: data.inputText,
+          language: data.language,
+          description: data.description || `Database initialized from text input`,
+          analysisData: [],
+          knownWords: [],
+          segments: [],
+          wordCount: data.inputText.split(/\s+/).filter(word => word.trim()).length
+        })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to initialize database');
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
+      setSelectedDatabase(result.id); // Auto-select the newly created database
+      showStatus(`Database "${result.name}" initialized successfully!`, 'success');
+      // Clear the initialize form
+      setInitializeText('');
+      setInitializeFilename('');
+    },
+    onError: (error: Error) => {
+      showStatus(error.message, 'error');
+    }
+  });
+
+  const handleInitializeFile = () => {
+    if (!initializeText.trim()) {
+      showStatus('Please enter text to initialize a new database', 'error');
+      return;
+    }
+
+    const filename = initializeFilename.trim() || `database_${Date.now()}`;
+    const finalFilename = filename.endsWith('.json') ? filename.slice(0, -5) : filename;
+
+    initializeFileMutation.mutate({
+      filename: finalFilename,
+      inputText: initializeText,
+      language: formData.language,
+      description: `Initialized from text input on ${new Date().toLocaleDateString()}`
+    });
   };
 
   return (
@@ -421,9 +477,9 @@ export default function CreateDatabase() {
                 type="text"
                 id="new-filename"
                 placeholder="e.g., project_b.json (optional)"
-                value={formData.filename}
-                onChange={(e) => setFormData(prev => ({ ...prev, filename: e.target.value }))}
-                data-testid="input-filename"
+                value={initializeFilename}
+                onChange={(e) => setInitializeFilename(e.target.value)}
+                data-testid="input-new-filename"
               />
             </div>
             
@@ -432,23 +488,76 @@ export default function CreateDatabase() {
               <textarea
                 id="init-input-text"
                 placeholder="Paste the full text here to initialize..."
-                value={formData.inputText}
-                onChange={(e) => setFormData(prev => ({ ...prev, inputText: e.target.value }))}
-                data-testid="textarea-input-text"
+                rows={6}
+                value={initializeText}
+                onChange={(e) => setInitializeText(e.target.value)}
+                data-testid="textarea-init-input-text"
               />
               <button
                 id="btn-initialize"
                 onClick={handleInitializeFile}
-                disabled={!formData.inputText.trim() || isCreating}
+                disabled={initializeFileMutation.isPending || !initializeText.trim()}
                 data-testid="button-initialize"
               >
-                {isCreating ? 'Initializing...' : 'Initialize File'}
+                {initializeFileMutation.isPending ? 'Initializing...' : 'Initialize File'}
               </button>
             </div>
             
             <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '5px' }}>
-              Upload an existing JSON file for processing OR enter text/new name above and click 'Initialize'.
+              Select an existing database for other actions OR enter text/new name above and click 'Initialize'.
             </small>
+            
+            <hr style={{ margin: '20px 0' }} />
+            
+            <h3 style={{ fontSize: '1.1em', color: 'var(--text-heading)', marginBottom: '15px' }}>
+              Or Create Database from JSON File:
+            </h3>
+
+            <div className="control-group">
+              <label htmlFor="init-file-name">Database Name:</label>
+              <input
+                type="text"
+                id="init-file-name"
+                placeholder="e.g., My Spanish Text"
+                value={formData.filename}
+                onChange={(e) => setFormData(prev => ({ ...prev, filename: e.target.value }))}
+                data-testid="input-database-name"
+              />
+            </div>
+
+            <div className="control-group">
+              <label htmlFor="init-file-desc">Description (optional):</label>
+              <input
+                type="text"
+                id="init-file-desc"
+                placeholder="Brief description of this text"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                data-testid="input-description"
+              />
+            </div>
+
+            <div className="control-group">
+              <label htmlFor="json-input-text">Input Text:</label>
+              <textarea
+                id="json-input-text"
+                placeholder="Paste the full text here to create database..."
+                rows={6}
+                value={formData.inputText}
+                onChange={(e) => setFormData(prev => ({ ...prev, inputText: e.target.value }))}
+                data-testid="textarea-json-input-text"
+              />
+              <button
+                id="btn-create-database"
+                onClick={handleCreateDatabaseFromForm}
+                disabled={isCreating || !formData.inputText.trim()}
+                data-testid="button-create-database"
+              >
+                {isCreating ? 'Creating...' : 'Create Database'}
+              </button>
+            </div>
+            
+
           </div>
 
           <div className="control-section">
