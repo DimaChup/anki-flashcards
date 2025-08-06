@@ -38,28 +38,22 @@ export default function AnkiStudy() {
     enabled: isAuthenticated,
   });
 
-  // Get Anki deck for selected database
-  const { data: deck, isLoading: deckLoading } = useQuery<AnkiStudyDeck>({
-    queryKey: ['/api/anki/deck', selectedDatabase],
+  // Get study cards for selected database
+  const { data: studyData, isLoading: cardsLoading } = useQuery({
+    queryKey: [`/api/anki/study-cards/${selectedDatabase}`],
     enabled: !!selectedDatabase,
   });
 
-  // Get cards due for review
-  const { 
-    data: dueCards = [], 
-    isLoading: cardsLoading, 
-    refetch: refetchCards 
-  } = useQuery<AnkiFlashcard[]>({
-    queryKey: ['/api/anki/deck', deck?.id, 'due'],
-    enabled: !!deck?.id && sessionStarted,
-  });
+  // Simple study cards list
+  const studyCards = studyData?.cards || [];
+  const totalCards = studyData?.totalCards || 0;
 
-  // Set the first due card as current when session starts
+  // Set the first card as current when session starts
   useEffect(() => {
-    if (sessionStarted && dueCards.length > 0 && !currentCard) {
-      setCurrentCard(dueCards[0]);
+    if (sessionStarted && studyCards.length > 0 && !currentCard) {
+      setCurrentCard(studyCards[0]);
     }
-  }, [sessionStarted, dueCards, currentCard]);
+  }, [sessionStarted, studyCards, currentCard]);
 
   // Review card mutation
   const reviewMutation = useMutation({
@@ -68,18 +62,19 @@ export default function AnkiStudy() {
     },
     onSuccess: () => {
       // Move to next card
-      const currentIndex = dueCards.findIndex(card => card.id === currentCard?.id);
-      const nextCard = dueCards[currentIndex + 1];
+      const currentIndex = studyCards.findIndex(card => card.id === currentCard?.id);
+      const nextCard = studyCards[currentIndex + 1];
       
       if (nextCard) {
         setCurrentCard(nextCard);
+        setShowAnswer(false);
       } else {
         // Session complete
         setCurrentCard(null);
         setSessionStarted(false);
         toast({
           title: "Session Complete!",
-          description: "You've reviewed all due cards. Great job!",
+          description: "You've studied all available cards. Great job!",
         });
       }
       
@@ -104,9 +99,11 @@ export default function AnkiStudy() {
   };
 
   const startSession = () => {
-    setSessionStarted(true);
-    setShowAnswer(false);
-    setCurrentCard(null);
+    if (studyCards.length > 0) {
+      setSessionStarted(true);
+      setShowAnswer(false);
+      setCurrentCard(studyCards[0]);
+    }
   };
 
   const resetSession = () => {
@@ -252,11 +249,11 @@ export default function AnkiStudy() {
               <div className="flex gap-4 pt-4">
                 <Button
                   onClick={() => {
-                    console.log('Start session clicked!', { deck, deckLoading });
+                    console.log('Start session clicked!', { studyData, cardsLoading });
                     startSession();
                   }}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg"
-                  disabled={deckLoading || !deck}
+                  disabled={cardsLoading || totalCards === 0}
                   data-testid="start-session-btn"
                 >
                   Start Study Session
@@ -276,18 +273,18 @@ export default function AnkiStudy() {
             {/* Study Session */}
             {sessionStarted && (
               <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
-                {dueCards.length === 0 ? (
+                {studyCards.length === 0 ? (
                   <CardContent className="flex flex-col items-center justify-center py-16">
                     <div className="text-6xl mb-4">🎉</div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Session Complete!</h3>
+                    <h3 className="text-2xl font-bold text-white mb-2">No Cards to Study!</h3>
                     <p className="text-slate-300 mb-6 text-center">
-                      You've reviewed all due cards. Come back later for more practice.
+                      All first instance words are already in your known words list.
                     </p>
                     <Button
                       onClick={resetSession}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      Start New Session
+                      Back to Setup
                     </Button>
                   </CardContent>
                 ) : currentCard ? (
@@ -295,7 +292,7 @@ export default function AnkiStudy() {
                     <CardHeader className="text-center border-b border-slate-700 pb-6">
                       <div className="flex justify-between items-center mb-4">
                         <Badge variant="outline" className="border-slate-600 text-slate-300">
-                          {dueCards.findIndex(card => card.id === currentCard.id) + 1} / {dueCards.length}
+                          {studyCards.findIndex(card => card.id === currentCard.id) + 1} / {studyCards.length}
                         </Badge>
                         <Button
                           onClick={resetSession}

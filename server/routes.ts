@@ -1028,77 +1028,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Anki Study System API Routes
-  // Get Anki deck for a database
-  app.get('/api/anki/deck/:databaseId', isAuthenticated, async (req: any, res) => {
+  // Simple Anki Study Session - just get study cards from database
+  app.get('/api/anki/study-cards/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const databaseId = req.params.databaseId;
       
-      // First verify user owns this database
+      // Get user's database
       const database = await storage.getLinguisticDatabase(databaseId, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
       }
       
-      let deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+      // Get known words list
+      const knownWords = database.knownWords || [];
+      const knownWordsSet = new Set(knownWords.map((w: any) => w.toLowerCase()));
       
-      // If no deck exists, create one automatically
-      if (!deck) {
-        deck = await storage.createAnkiDeck({
-          userId,
-          databaseId,
-          name: `${database.name} Flashcards`,
-          totalCards: 0,
-          newCards: 0,
-          learningCards: 0,
-          reviewCards: 0,
-        });
-        
-        // Auto-create cards from first instance words
-        if (database.analysisData) {
-          const firstInstanceWords = database.analysisData.filter((word: any) => 
-            word.firstInstance && word.translation && word.translation.trim()
-          );
-          
-          let createdCount = 0;
-          for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
-            try {
-              await storage.createAnkiCard({
-                deckId: deck.id,
-                word: word.word,
-                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
-                pos: word.pos || null,
-                lemma: word.lemma || null,
-                sentence: word.sentence || null,
-                status: 'new',
-                easeFactor: 2500,
-                interval: 0,
-                repetitions: 0,
-                due: new Date(),
-              });
-              createdCount++;
-            } catch (error) {
-              console.error('Error creating card for word:', word.word, error);
-            }
-          }
-          
-          // Update deck stats
-          if (createdCount > 0) {
-            await storage.updateAnkiDeck(deck.id, {
-              totalCards: createdCount,
-              newCards: createdCount,
-            });
-            
-            deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
-          }
-        }
-      }
+      // Filter for first instance words that are NOT in known words
+      const studyCards = database.analysisData
+        .filter((word: any) => 
+          word.firstInstance && 
+          word.translation && 
+          word.translation.trim() &&
+          !knownWordsSet.has(word.word.toLowerCase())
+        )
+        .slice(0, 50) // Limit to 50 cards per session
+        .map((word: any) => ({
+          id: word.id || word.word,
+          word: word.word,
+          translation: Array.isArray(word.translation) ? word.translation.join(', ') : word.translation,
+          pos: word.pos,
+          lemma: word.lemma,
+          sentence: word.sentence
+        }));
       
-      res.json(deck);
+      res.json({
+        databaseName: database.name,
+        totalCards: studyCards.length,
+        cards: studyCards
+      });
     } catch (error) {
-      console.error("Error fetching Anki deck:", error);
-      res.status(500).json({ message: "Failed to fetch Anki deck" });
+      console.error("Error getting study cards:", error);
+      res.status(500).json({ message: "Failed to get study cards" });
     }
   });
 
