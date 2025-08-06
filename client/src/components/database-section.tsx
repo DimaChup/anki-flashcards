@@ -146,24 +146,42 @@ export default function DatabaseSection({
                       {database.language} • {database.wordCount?.toLocaleString() || 0} words
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onDeleteDatabase(database.id, database.name);
-                    }}
-                    className={`ml-2 p-1 h-auto transition-colors ${
-                      selectedDatabaseId === database.id
-                        ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/80'
-                        : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
-                    }`}
-                    data-testid={`delete-database-${database.id}`}
-                    title={`Delete ${database.name}`}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {selectedDatabaseId === database.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          window.location.href = `/anki-study/${database.id}`;
+                        }}
+                        className="ml-1 p-1 h-auto transition-colors text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        data-testid={`anki-study-${database.id}`}
+                        title={`Start Anki study session for ${database.name}`}
+                      >
+                        🧠
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onDeleteDatabase(database.id, database.name);
+                      }}
+                      className={`ml-1 p-1 h-auto transition-colors ${
+                        selectedDatabaseId === database.id
+                          ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/80'
+                          : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+                      }`}
+                      data-testid={`delete-database-${database.id}`}
+                      title={`Delete ${database.name}`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}

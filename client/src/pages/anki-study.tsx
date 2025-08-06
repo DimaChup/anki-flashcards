@@ -1,473 +1,520 @@
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
-import { useLocation } from 'wouter';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation, Link } from 'wouter';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Brain, Home } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { AlertCircle, RotateCcw, Settings, Home, BookOpen, Brain, Target, Trophy, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-interface StudyCard {
+interface AnkiStudyCard {
   id: string;
+  userId: string;
+  databaseId: string;
+  wordKey: string;
   word: string;
-  translation: string;
   pos: string;
-  lemma?: string;
-  sentence?: string;
+  lemma: string;
+  translations: string[];
+  state: 'new' | 'learning' | 'review' | 'relearning';
+  easeFactor: number;
+  interval: number;
+  step: number;
+  due: string;
+  reviews: number;
+  lapses: number;
+  lastQuality: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export default function AnkiStudy() {
-  const { user, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+interface AnkiStudySettings {
+  id: string;
+  userId: string;
+  databaseId: string;
+  newCardsPerDay: number;
+  reviewLimit: number;
+  learningSteps: string;
+  graduatingInterval: number;
+  easyInterval: number;
+  startingEase: number;
+}
+
+interface StudySession {
+  total: number;
+  cards: AnkiStudyCard[];
+  breakdown: {
+    new: number;
+    learning: number;
+    review: number;
+  };
+}
+
+export default function AnkiStudyPage() {
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
-  const [selectedDatabase, setSelectedDatabase] = useState<string>('');
-  const [sessionStarted, setSessionStarted] = useState(false);
+  // Extract database ID from URL params
+  const databaseId = location.split('/anki-study/')[1];
+  
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [enablePosColors, setEnablePosColors] = useState(true);
-  const [excludeKnownWords, setExcludeKnownWords] = useState(true);
-  const [newWordsPerDay, setNewWordsPerDay] = useState(20);
-  
-  // Anki SRS state
-  const [studyQueue, setStudyQueue] = useState<StudyCard[]>([]);
-  const [cardSRS, setCardSRS] = useState<{[cardId: string]: {
-    status: 'new' | 'learning' | 'review';
-    interval: number; // in days
-    easeFactor: number;
-    due: Date;
-  }}>({});
-  
-  // SRS Constants matching anki.html
-  const SRS_DEFAULTS = {
-    EASE_FACTOR: 2.5,
-    INTERVAL_MODIFIERS: { AGAIN: 0, HARD: 1.2, GOOD: 1.0, EASY: 1.3 },
-    EASE_MODIFIERS: { AGAIN: -0.20, HARD: -0.15, GOOD: 0, EASY: 0.15 },
-    LEARNING_STEPS: [1, 10], // in minutes
-    GRADUATING_INTERVAL: 1, // in days
-  };
+  const [sessionComplete, setSessionComplete] = useState(false);
+  const [studyStats, setStudyStats] = useState({ reviewed: 0, total: 0 });
+  const [settingsTab, setSettingsTab] = useState('daily');
 
-  // POS color mapping
-  const posColors: Record<string, string> = {
-    'VERB': 'text-pink-400',
-    'NOUN': 'text-blue-400',
-    'ADJ': 'text-green-400',
-    'AUX': 'text-orange-400',
-    'PROPN': 'text-purple-400',
-    'PRON': 'text-cyan-400',
-    'ADV': 'text-yellow-400',
-    'ADP': 'text-gray-400',
-    'SCONJ': 'text-red-400',
-    'NUM': 'text-indigo-400',
-  };
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation('/');
-    }
-  }, [isAuthenticated, setLocation]);
-
-  // Get user's databases
-  const { data: databases = [] } = useQuery({
-    queryKey: ['/api/databases'],
-    enabled: isAuthenticated,
+  // Get study settings
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: [`/api/anki-study/settings/${databaseId}`],
+    enabled: !!databaseId,
   });
 
-  // Get study cards for selected database with proper query invalidation
-  const { data: studyData, isLoading: cardsLoading, refetch } = useQuery({
-    queryKey: ['/api/anki/study-cards', selectedDatabase, excludeKnownWords],
-    queryFn: () => {
-      console.log('Fetching study cards with excludeKnownWords:', excludeKnownWords);
-      return fetch(`/api/anki/study-cards/${selectedDatabase}?excludeKnownWords=${excludeKnownWords}`)
-        .then(res => res.json());
+  // Get today's study session
+  const { data: session, isLoading: sessionLoading, refetch: refetchSession } = useQuery<StudySession>({
+    queryKey: [`/api/anki-study/cards/${databaseId}/today`],
+    enabled: !!databaseId,
+  });
+
+  // Review card mutation
+  const reviewMutation = useMutation({
+    mutationFn: async ({ cardId, rating }: { cardId: string; rating: 1 | 2 | 3 | 4 }) => {
+      const response = await apiRequest('POST', `/api/anki-study/cards/${cardId}/review`, { rating });
+      return await response.json();
     },
-    enabled: !!selectedDatabase,
+    onSuccess: (data, variables) => {
+      const { rating } = variables;
+      const ratingNames = ['', 'Again', 'Hard', 'Good', 'Easy'];
+      
+      toast({
+        title: `Reviewed: ${ratingNames[rating]}`,
+        description: `Next review: ${data.nextReviewTime} (${data.intervalDays} days)`,
+      });
+      
+      // Update study stats
+      setStudyStats(prev => ({ ...prev, reviewed: prev.reviewed + 1 }));
+      
+      // Move to next card or complete session
+      if (currentCardIndex < (session?.cards.length || 0) - 1) {
+        setCurrentCardIndex(prev => prev + 1);
+        setShowAnswer(false);
+      } else {
+        setSessionComplete(true);
+      }
+      
+      // Invalidate and refetch session data for updated counts
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/cards/${databaseId}/today`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Review Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 
-  // Refetch when excludeKnownWords changes
+  // Update settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (newSettings: Partial<AnkiStudySettings>) => {
+      if (!settings?.id) throw new Error('Settings not found');
+      const response = await apiRequest('PUT', `/api/anki-study/settings/${settings.id}`, newSettings);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Settings Updated',
+        description: 'Your study preferences have been saved.',
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/anki-study/settings/${databaseId}`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Settings Update Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Initialize study stats when session loads
   useEffect(() => {
-    if (selectedDatabase && !sessionStarted) {
-      refetch();
+    if (session) {
+      setStudyStats({ reviewed: 0, total: session.total });
     }
-  }, [excludeKnownWords, selectedDatabase, sessionStarted, refetch]);
+  }, [session]);
 
-  const studyCards: StudyCard[] = studyData?.cards || [];
-  const currentCard = studyQueue[0]; // Always take first card from queue
+  const currentCard = session?.cards[currentCardIndex];
 
-  const startSession = () => {
-    if (studyCards.length > 0) {
-      const now = new Date();
-      
-      // Initialize SRS data for new cards
-      const initialSRS: {[cardId: string]: any} = {};
-      const limitedCards = studyCards.slice(0, newWordsPerDay);
-      
-      limitedCards.forEach(card => {
-        initialSRS[card.id] = {
-          status: 'new',
-          interval: 0,
-          easeFactor: SRS_DEFAULTS.EASE_FACTOR,
-          due: now
-        };
-      });
-      
-      setCardSRS(initialSRS);
-      setStudyQueue([...limitedCards]);
-      setSessionStarted(true);
-      setCurrentCardIndex(0);
-      setShowAnswer(false);
-    } else {
-      toast({
-        title: "No cards available",
-        description: "No study cards found for this database.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Real Anki SRS algorithm from anki.html
-  const processReview = (rating: 1 | 2 | 3 | 4) => {
+  const handleReview = (rating: 1 | 2 | 3 | 4) => {
     if (!currentCard) return;
-    
-    const cardId = currentCard.id;
-    const srs = cardSRS[cardId];
-    if (!srs) return;
-    
-    const now = new Date();
-    const ratingMap = { 1: 'AGAIN', 2: 'HARD', 3: 'GOOD', 4: 'EASY' } as const;
-    const ratingName = ratingMap[rating];
-    
-    // Update ease factor
-    const newEaseFactor = Math.max(1.3, srs.easeFactor + SRS_DEFAULTS.EASE_MODIFIERS[ratingName]);
-    
-    let newInterval: number;
-    let newStatus: 'new' | 'learning' | 'review';
-    
-    if (ratingName === 'AGAIN') {
-      // Failed card goes to learning
-      newStatus = 'learning';
-      newInterval = SRS_DEFAULTS.LEARNING_STEPS[0] / (24 * 60); // Convert minutes to days
-    } else {
-      if (srs.status === 'new' || srs.status === 'learning') {
-        // Graduate to review
-        newStatus = 'review';
-        newInterval = SRS_DEFAULTS.GRADUATING_INTERVAL;
-      } else {
-        // Existing review card
-        newStatus = 'review';
-        newInterval = srs.interval * newEaseFactor * SRS_DEFAULTS.INTERVAL_MODIFIERS[ratingName];
-      }
-    }
-    
-    const newDue = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
-    
-    // Update card SRS data
-    const updatedSRS = {
-      ...cardSRS,
-      [cardId]: {
-        status: newStatus,
-        interval: newInterval,
-        easeFactor: newEaseFactor,
-        due: newDue
-      }
-    };
-    setCardSRS(updatedSRS);
-    
-    // Remove current card from queue
-    const newQueue = studyQueue.slice(1);
-    
-    // If card is still due (learning cards), add it back to queue
-    if (newDue <= now) {
-      newQueue.push(currentCard);
-    }
-    
-    setStudyQueue(newQueue);
-    
-    // Check if session is complete
-    if (newQueue.length === 0) {
-      setSessionStarted(false);
-      setCurrentCardIndex(0);
-      toast({
-        title: "Session Complete!",
-        description: "You've finished all cards for this session. Great job!",
-      });
-      return;
-    }
-    
-    setShowAnswer(false);
+    reviewMutation.mutate({ cardId: currentCard.id, rating });
   };
 
-  const endSession = () => {
-    setSessionStarted(false);
+  const resetSession = () => {
     setCurrentCardIndex(0);
     setShowAnswer(false);
+    setSessionComplete(false);
+    setStudyStats({ reviewed: 0, total: session?.total || 0 });
+    refetchSession();
   };
 
-  if (!isAuthenticated) {
-    return null;
+  if (!databaseId) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No database selected. Please go back and select a database to study.
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Link href="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800">
+            <Home className="w-4 h-4" />
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (settingsLoading || sessionLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">Loading study session...</div>
+      </div>
+    );
+  }
+
+  // Session complete state
+  if (sessionComplete) {
+    return (
+      <div className="container mx-auto p-6 max-w-2xl">
+        <Card className="text-center">
+          <CardHeader>
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Trophy className="w-8 h-8 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl text-green-700">Session Complete!</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-3xl font-bold text-blue-600">{studyStats.reviewed}</div>
+                <div className="text-sm text-gray-600">Cards Reviewed</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-purple-600">{Math.round((studyStats.reviewed / studyStats.total) * 100)}%</div>
+                <div className="text-sm text-gray-600">Completion</div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-3">
+              <Button onClick={resetSession} className="w-full" size="lg">
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Study More Cards
+              </Button>
+              <Link href="/" className="block">
+                <Button variant="outline" className="w-full" size="lg">
+                  <Home className="w-4 h-4 mr-2" />
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // No cards to study
+  if (!session || session.cards.length === 0) {
+    return (
+      <div className="container mx-auto p-6 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              No Cards to Study
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-gray-600">
+              You don't have any cards due for review today. You can:
+            </p>
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
+                <Home className="w-4 h-4 mr-2" />
+                Go back and initialize new study cards
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Brain className="h-8 w-8 text-blue-400" />
-            <h1 className="text-3xl font-bold text-white">Anki Study System</h1>
+    <div className="container mx-auto p-6 max-w-4xl">
+      {/* Header with progress */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Brain className="w-6 h-6 text-blue-600" />
+            Anki Study Session
+          </h1>
+          <Link href="/" className="text-blue-600 hover:text-blue-800">
+            <Home className="w-5 h-5" />
+          </Link>
+        </div>
+        
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Progress: {studyStats.reviewed} / {studyStats.total}</span>
+            <span>{Math.round((studyStats.reviewed / studyStats.total) * 100)}%</span>
           </div>
-          <Button
-            onClick={() => setLocation('/')}
-            variant="outline"
-            className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            data-testid="back-home-btn"
-          >
-            <Home className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
+          <Progress value={(studyStats.reviewed / studyStats.total) * 100} className="w-full" />
         </div>
 
-        {!sessionStarted ? (
-          /* Session Setup */
-          <div className="max-w-2xl mx-auto">
-            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
+        {/* Session breakdown */}
+        <div className="flex gap-4 mt-4">
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Target className="w-3 h-3" />
+            New: {session.breakdown.new}
+          </Badge>
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Learning: {session.breakdown.learning}
+          </Badge>
+          <Badge variant="outline" className="flex items-center gap-1">
+            <RotateCcw className="w-3 h-3" />
+            Review: {session.breakdown.review}
+          </Badge>
+        </div>
+      </div>
+
+      <Tabs value="study" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="study">Study Cards</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="study" className="space-y-6">
+          {/* Current Card */}
+          {currentCard && (
+            <Card className="max-w-2xl mx-auto">
               <CardHeader>
-                <h2 className="text-2xl font-bold text-white text-center">Session Setup</h2>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl">{currentCard.word}</CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {currentCard.pos} • {currentCard.lemma}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant={currentCard.state === 'new' ? 'default' : 
+                                   currentCard.state === 'learning' ? 'secondary' : 'outline'}>
+                      {currentCard.state.toUpperCase()}
+                    </Badge>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Card {currentCardIndex + 1} of {session.cards.length}
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
+              
               <CardContent className="space-y-6">
-                {/* Database Selection */}
-                <div className="space-y-2">
-                  <label className="text-slate-300 font-medium">Select Database:</label>
-                  <Select value={selectedDatabase} onValueChange={setSelectedDatabase}>
-                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue placeholder="Choose a database to study" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {databases.map((db: any) => (
-                        <SelectItem key={db.id} value={db.id}>
-                          {db.name} ({db.analysisData?.length || 0} words)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* POS Colors Toggle */}
-                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
-                  <div className="space-y-1">
-                    <label className="text-slate-300 font-medium">Enable POS Color Assistance</label>
-                    <p className="text-sm text-slate-400">Color-code words by their part of speech</p>
-                  </div>
-                  <Switch
-                    checked={enablePosColors}
-                    onCheckedChange={setEnablePosColors}
-                    data-testid="pos-colors-toggle"
-                  />
-                </div>
-
-                {/* Exclude Known Words Toggle */}
-                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
-                  <div className="space-y-1">
-                    <label className="text-slate-300 font-medium">Exclude Known Words</label>
-                    <p className="text-sm text-slate-400">Skip words you've already marked as known</p>
-                  </div>
-                  <Switch
-                    checked={excludeKnownWords}
-                    onCheckedChange={setExcludeKnownWords}
-                    data-testid="exclude-known-toggle"
-                  />
-                </div>
-
-                {/* New Words Per Day */}
-                <div className="space-y-2">
-                  <label className="text-slate-300 font-medium">New Words Per Day:</label>
-                  <Select value={newWordsPerDay.toString()} onValueChange={(value) => setNewWordsPerDay(parseInt(value))}>
-                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 words</SelectItem>
-                      <SelectItem value="10">10 words</SelectItem>
-                      <SelectItem value="15">15 words</SelectItem>
-                      <SelectItem value="20">20 words</SelectItem>
-                      <SelectItem value="25">25 words</SelectItem>
-                      <SelectItem value="30">30 words</SelectItem>
-                      <SelectItem value="50">50 words</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Study Info */}
-                {selectedDatabase && studyData && (
-                  <div className="p-4 bg-slate-700/50 rounded-lg">
-                    <h3 className="text-white font-medium mb-2">Ready to Study:</h3>
-                    <div className="text-slate-300 space-y-1">
-                      <div>Database: <span className="text-white">{studyData.databaseName}</span></div>
-                      <div>Available Cards: <span className="text-white">{studyData.totalCards}</span></div>
-                      {studyData.knownWordsCount > 0 && (
-                        <div>Known Words: <span className="text-white">{studyData.knownWordsCount}</span></div>
-                      )}
+                {!showAnswer ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl font-bold mb-4 text-blue-600">
+                      {currentCard.word}
                     </div>
-                  </div>
-                )}
-
-                {/* Start Button */}
-                <Button
-                  onClick={startSession}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg"
-                  disabled={cardsLoading || !selectedDatabase || studyCards.length === 0}
-                  data-testid="start-session-btn"
-                >
-                  {cardsLoading ? 'Loading...' : 'Start Study Session'}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          /* Study Session */
-          <div className="max-w-3xl mx-auto">
-            {currentCard ? (
-              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl min-h-[500px]">
-                <CardHeader className="text-center border-b border-slate-700 pb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex gap-2">
-                      <Badge variant="outline" className="border-slate-600 text-slate-300">
-                        Cards Left: {studyQueue.length}
-                      </Badge>
-                      {currentCard && cardSRS[currentCard.id] && (
-                        <Badge variant="outline" className={
-                          cardSRS[currentCard.id].status === 'new' ? "border-blue-600 text-blue-300" :
-                          cardSRS[currentCard.id].status === 'learning' ? "border-yellow-600 text-yellow-300" :
-                          "border-green-600 text-green-300"
-                        }>
-                          {cardSRS[currentCard.id].status.toUpperCase()}
-                        </Badge>
-                      )}
+                    <div className="text-gray-600 mb-6">
+                      Part of Speech: <span className="font-medium">{currentCard.pos}</span>
                     </div>
-                    <Button
-                      onClick={endSession}
-                      variant="ghost"
-                      className="text-slate-400 hover:text-white hover:bg-slate-700"
-                      size="sm"
-                    >
-                      End Session
+                    <Button onClick={() => setShowAnswer(true)} size="lg" className="px-8">
+                      Show Answer
                     </Button>
                   </div>
-                  
-                  {/* Question - Word with POS coloring */}
-                  <div className="space-y-4">
-                    <div className="text-5xl font-bold mb-4">
-                      <span className={enablePosColors ? (posColors[currentCard.pos] || 'text-white') : 'text-white'}>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold mb-2 text-blue-600">
                         {currentCard.word}
-                      </span>
-                    </div>
-                    
-                    {currentCard.pos && (
-                      <Badge className="bg-slate-600 text-slate-200 text-sm">
-                        {currentCard.pos}
-                      </Badge>
-                    )}
-                    
-                    {currentCard.sentence && (
-                      <p className="text-slate-300 italic text-lg leading-relaxed max-w-2xl mx-auto">
-                        "{currentCard.sentence}"
-                      </p>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-6">
-                  {/* Answer Section */}
-                  {showAnswer && (
-                    <div className="border-t border-slate-600 pt-6 mb-6">
-                      <div className="text-center space-y-3">
-                        <div className="text-3xl font-semibold text-green-400">
-                          {currentCard.translation}
-                        </div>
-                        
-                        {currentCard.lemma && currentCard.lemma !== currentCard.word && (
-                          <div className="text-slate-400">
-                            <span className="text-sm">Lemma: </span>
-                            <span className="font-medium">{currentCard.lemma}</span>
-                          </div>
-                        )}
+                      </div>
+                      <div className="text-xl text-gray-700 mb-4">
+                        {currentCard.translations.join(', ')}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {currentCard.pos} • {currentCard.lemma}
                       </div>
                     </div>
-                  )}
 
-                  {/* Action Buttons */}
-                  <div className="space-y-4">
-                    {!showAnswer ? (
-                      <Button
-                        onClick={() => setShowAnswer(true)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 text-lg"
-                        data-testid="show-answer-btn"
-                      >
-                        Show Answer
-                      </Button>
-                    ) : (
+                    <Separator />
+
+                    {/* Review buttons */}
+                    <div className="space-y-3">
+                      <p className="text-center text-sm text-gray-600 font-medium">
+                        How well did you know this word?
+                      </p>
                       <div className="grid grid-cols-2 gap-3">
                         <Button
-                          onClick={() => processReview(1)}
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-sm flex flex-col"
-                          data-testid="again-btn"
+                          variant="destructive"
+                          onClick={() => handleReview(1)}
+                          disabled={reviewMutation.isPending}
+                          className="h-12"
                         >
-                          Again
-                          <div className="text-xs opacity-75">1 min</div>
+                          <span className="font-bold">Again</span>
+                          <span className="ml-2 text-xs opacity-75">&lt; 1min</span>
                         </Button>
                         <Button
-                          onClick={() => processReview(2)}
-                          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 text-sm flex flex-col"
-                          data-testid="hard-btn"
+                          variant="outline"
+                          onClick={() => handleReview(2)}
+                          disabled={reviewMutation.isPending}
+                          className="h-12 border-orange-300 text-orange-700 hover:bg-orange-50"
                         >
-                          Hard
-                          <div className="text-xs opacity-75">×1.2</div>
+                          <span className="font-bold">Hard</span>
+                          <span className="ml-2 text-xs opacity-75">6min</span>
                         </Button>
                         <Button
-                          onClick={() => processReview(3)}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-sm flex flex-col"
-                          data-testid="good-btn"
+                          variant="outline"
+                          onClick={() => handleReview(3)}
+                          disabled={reviewMutation.isPending}
+                          className="h-12 border-green-300 text-green-700 hover:bg-green-50"
                         >
-                          Good
-                          <div className="text-xs opacity-75">×1.0</div>
+                          <span className="font-bold">Good</span>
+                          <span className="ml-2 text-xs opacity-75">10min</span>
                         </Button>
                         <Button
-                          onClick={() => processReview(4)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-sm flex flex-col"
-                          data-testid="easy-btn"
+                          onClick={() => handleReview(4)}
+                          disabled={reviewMutation.isPending}
+                          className="h-12 bg-blue-600 hover:bg-blue-700"
                         >
-                          Easy
-                          <div className="text-xs opacity-75">×1.3</div>
+                          <span className="font-bold">Easy</span>
+                          <span className="ml-2 text-xs opacity-75">4 days</span>
                         </Button>
+                      </div>
+                    </div>
+
+                    {/* Card info */}
+                    {currentCard.reviews > 0 && (
+                      <div className="text-xs text-gray-500 text-center">
+                        Reviews: {currentCard.reviews} • Ease: {Math.round(currentCard.easeFactor / 100)}% • 
+                        Lapses: {currentCard.lapses}
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <div className="text-6xl mb-4">🎉</div>
-                  <h3 className="text-2xl font-bold text-white mb-2">No Cards Available</h3>
-                  <p className="text-slate-300 mb-6 text-center">
-                    All first instance words are already in your known words list.
-                  </p>
-                  <Button
-                    onClick={endSession}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Back to Setup
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Study Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {settings && (
+                <Tabs value={settingsTab} onValueChange={setSettingsTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="daily">Daily Limits</TabsTrigger>
+                    <TabsTrigger value="algorithm">Algorithm</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="daily" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="newCardsPerDay">New Cards Per Day</Label>
+                        <Input
+                          id="newCardsPerDay"
+                          type="number"
+                          defaultValue={settings.newCardsPerDay}
+                          min="1"
+                          max="100"
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value !== settings.newCardsPerDay) {
+                              updateSettingsMutation.mutate({ newCardsPerDay: value });
+                            }
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="reviewLimit">Review Limit</Label>
+                        <Input
+                          id="reviewLimit"
+                          type="number"
+                          defaultValue={settings.reviewLimit}
+                          min="10"
+                          max="500"
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value !== settings.reviewLimit) {
+                              updateSettingsMutation.mutate({ reviewLimit: value });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="algorithm" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="graduatingInterval">Graduating Interval (days)</Label>
+                        <Input
+                          id="graduatingInterval"
+                          type="number"
+                          defaultValue={settings.graduatingInterval}
+                          min="1"
+                          max="10"
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value !== settings.graduatingInterval) {
+                              updateSettingsMutation.mutate({ graduatingInterval: value });
+                            }
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="easyInterval">Easy Interval (days)</Label>
+                        <Input
+                          id="easyInterval"
+                          type="number"
+                          defaultValue={settings.easyInterval}
+                          min="2"
+                          max="10"
+                          onBlur={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value !== settings.easyInterval) {
+                              updateSettingsMutation.mutate({ easyInterval: value });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

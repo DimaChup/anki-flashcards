@@ -17,12 +17,18 @@ import {
   type AnkiFlashcard,
   type InsertAnkiFlashcard,
   type AnkiReview,
+  type AnkiStudyCard,
+  type InsertAnkiStudyCard,
+  type AnkiStudySettings,
+  type InsertAnkiStudySettings,
   linguisticDatabases,
   promptTemplates,
   processingConfigs,
   processingJobs,
   ankiStudyDecks,
-  ankiFlashcards
+  ankiFlashcards,
+  ankiStudyCards,
+  ankiStudySettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, lte } from "drizzle-orm";
@@ -84,6 +90,18 @@ export interface IStorage {
   updateAnkiCard(cardId: string, updates: Partial<InsertAnkiFlashcard>): Promise<AnkiFlashcard | undefined>;
   reviewAnkiCard(review: AnkiReview): Promise<AnkiFlashcard | undefined>;
   generateAnkiDeckFromDatabase(databaseId: string, userId: string): Promise<AnkiStudyDeck>;
+
+  // Long-term Anki Study Cards (proper spaced repetition)
+  getAnkiStudySettings(userId: string, databaseId: string): Promise<AnkiStudySettings | undefined>;
+  createAnkiStudySettings(settings: InsertAnkiStudySettings): Promise<AnkiStudySettings>;
+  updateAnkiStudySettings(id: string, settings: Partial<InsertAnkiStudySettings>): Promise<AnkiStudySettings | undefined>;
+  
+  // Get cards due for today's study session (reviews + new cards according to limits)
+  getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]>;
+  // Initialize new study cards from database words
+  initializeStudyCards(userId: string, databaseId: string, wordKeys: string[]): Promise<AnkiStudyCard[]>;
+  // Process review with real Anki algorithm
+  processStudyCardReview(cardId: string, rating: 1 | 2 | 3 | 4): Promise<AnkiStudyCard | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -501,6 +519,168 @@ export class DatabaseStorage implements IStorage {
       default:
         return 'other';
     }
+  }
+
+  // Long-term Anki Study Cards (proper spaced repetition) - implementing full system
+  async getAnkiStudySettings(userId: string, databaseId: string): Promise<AnkiStudySettings | undefined> {
+    const [settings] = await db.select().from(ankiStudySettings)
+      .where(and(eq(ankiStudySettings.userId, userId), eq(ankiStudySettings.databaseId, databaseId)));
+    return settings || undefined;
+  }
+
+  async createAnkiStudySettings(settings: InsertAnkiStudySettings): Promise<AnkiStudySettings> {
+    const [newSettings] = await db.insert(ankiStudySettings).values(settings).returning();
+    return newSettings;
+  }
+
+  async updateAnkiStudySettings(id: string, settings: Partial<InsertAnkiStudySettings>): Promise<AnkiStudySettings | undefined> {
+    const [updated] = await db.update(ankiStudySettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(ankiStudySettings.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Get cards due for today's study session (reviews + new cards according to limits)
+  async getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]> {
+    const now = new Date();
+    
+    // Get settings or use defaults
+    const settings = await this.getAnkiStudySettings(userId, databaseId) || {
+      newCardsPerDay: 20,
+      reviewLimit: 200,
+      learningSteps: "1,10",
+      graduatingInterval: 1,
+      easyInterval: 4
+    };
+
+    // Get due review cards (due <= now)
+    const dueCards = await db.select().from(ankiStudyCards)
+      .where(and(
+        eq(ankiStudyCards.userId, userId),
+        eq(ankiStudyCards.databaseId, databaseId),
+        lte(ankiStudyCards.due, now)
+      ))
+      .orderBy(ankiStudyCards.due)
+      .limit(settings.reviewLimit || 200);
+
+    // Get new cards if we haven't hit the daily limit
+    const newCardsNeeded = Math.max(0, (settings.newCardsPerDay || 20) - dueCards.filter(c => c.state === 'new').length);
+    
+    if (newCardsNeeded > 0) {
+      const newCards = await db.select().from(ankiStudyCards)
+        .where(and(
+          eq(ankiStudyCards.userId, userId),
+          eq(ankiStudyCards.databaseId, databaseId),
+          eq(ankiStudyCards.state, 'new')
+        ))
+        .limit(newCardsNeeded);
+      
+      return [...dueCards, ...newCards];
+    }
+
+    return dueCards;
+  }
+
+  // Initialize new study cards from database words
+  async initializeStudyCards(userId: string, databaseId: string, wordKeys: string[]): Promise<AnkiStudyCard[]> {
+    const database = await this.getLinguisticDatabase(databaseId, userId);
+    if (!database) return [];
+
+    const analysisData = database.analysisData as WordEntry[];
+    const now = new Date();
+    
+    const newCards = wordKeys.map(wordKey => {
+      const wordEntry = analysisData.find(entry => entry.id === wordKey);
+      if (!wordEntry) return null;
+
+      return {
+        userId,
+        databaseId,
+        wordKey,
+        word: wordEntry.word,
+        pos: wordEntry.pos,
+        lemma: wordEntry.lemma,
+        translations: [wordEntry.translation],
+        state: 'new' as const,
+        easeFactor: 2500,
+        interval: 0,
+        step: 0,
+        due: now,
+        learningSteps: "1,10",
+        graduatingInterval: 1,
+        easyInterval: 4,
+        reviews: 0,
+        lapses: 0,
+        lastQuality: 0
+      };
+    }).filter(Boolean) as InsertAnkiStudyCard[];
+
+    if (newCards.length === 0) return [];
+
+    const inserted = await db.insert(ankiStudyCards).values(newCards).returning();
+    return inserted;
+  }
+
+  // Process review with real Anki algorithm - exactly matching anki.html
+  async processStudyCardReview(cardId: string, rating: 1 | 2 | 3 | 4): Promise<AnkiStudyCard | undefined> {
+    const [card] = await db.select().from(ankiStudyCards).where(eq(ankiStudyCards.id, cardId));
+    if (!card) return undefined;
+
+    const now = new Date();
+    const ratingMap = { 1: 'AGAIN', 2: 'HARD', 3: 'GOOD', 4: 'EASY' } as const;
+    const ratingName = ratingMap[rating];
+    
+    // SRS Constants from research (exact Anki algorithm)
+    const EASE_MODIFIERS = { AGAIN: -0.20, HARD: -0.15, GOOD: 0, EASY: 0.15 };
+    const INTERVAL_MODIFIERS = { AGAIN: 0, HARD: 1.2, GOOD: 1.0, EASY: 1.3 };
+    const LEARNING_STEPS = [1, 10]; // minutes
+    const GRADUATING_INTERVAL = 1; // days
+
+    // Update ease factor (minimum 130% = 1300)
+    let newEaseFactor = Math.max(1300, (card.easeFactor || 2500) + (EASE_MODIFIERS[ratingName] * 100));
+    
+    let newInterval: number;
+    let newStatus: 'new' | 'learning' | 'review' | 'relearning';
+    let newStep = card.step || 0;
+    
+    if (ratingName === 'AGAIN') {
+      // Failed card goes to learning
+      newStatus = 'learning';
+      newStep = 0;
+      newInterval = LEARNING_STEPS[0] / (24 * 60); // Convert minutes to days
+    } else {
+      if (card.state === 'new' || card.state === 'learning') {
+        // Graduate to review
+        newStatus = 'review';
+        newInterval = GRADUATING_INTERVAL;
+        newStep = 0;
+      } else {
+        // Existing review card
+        newStatus = 'review';
+        newInterval = (card.interval || 1) * (newEaseFactor / 100) * INTERVAL_MODIFIERS[ratingName];
+      }
+    }
+    
+    const newDue = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
+    
+    // Update the card
+    const [updated] = await db.update(ankiStudyCards)
+      .set({
+        state: newStatus,
+        easeFactor: newEaseFactor,
+        interval: Math.round(newInterval),
+        step: newStep,
+        due: newDue,
+        reviews: (card.reviews || 0) + 1,
+        lapses: ratingName === 'AGAIN' ? (card.lapses || 0) + 1 : card.lapses,
+        lastQuality: rating,
+        updatedAt: now
+      })
+      .where(eq(ankiStudyCards.id, cardId))
+      .returning();
+    
+    return updated || undefined;
   }
 }
 

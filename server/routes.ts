@@ -1168,6 +1168,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === LONG-TERM ANKI STUDY SYSTEM (Proper Spaced Repetition) ===
+  
+  // Get or create study settings for a database
+  app.get('/api/anki-study/settings/:databaseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { databaseId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      let settings = await storage.getAnkiStudySettings(userId, databaseId);
+      
+      // Create default settings if none exist
+      if (!settings) {
+        settings = await storage.createAnkiStudySettings({
+          userId,
+          databaseId,
+          newCardsPerDay: 20,
+          reviewLimit: 200,
+          learningSteps: "1,10",
+          graduatingInterval: 1,
+          easyInterval: 4,
+          startingEase: 2500
+        });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error('Error getting study settings:', error);
+      res.status(500).json({ message: 'Failed to get study settings' });
+    }
+  });
+
+  app.post('/api/anki-study/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = { ...req.body, userId };
+      
+      const created = await storage.createAnkiStudySettings(settings);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating study settings:', error);
+      res.status(500).json({ message: 'Failed to create study settings' });
+    }
+  });
+
+  app.put('/api/anki-study/settings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      
+      const updated = await storage.updateAnkiStudySettings(id, req.body);
+      if (!updated) {
+        return res.status(404).json({ message: 'Settings not found' });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating study settings:', error);
+      res.status(500).json({ message: 'Failed to update study settings' });
+    }
+  });
+
+  // Get today's study session (due reviews + new cards according to daily limits)
+  app.get('/api/anki-study/cards/:databaseId/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const { databaseId } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const cards = await storage.getTodaysStudyCards(userId, databaseId);
+      
+      // Shuffle cards for better learning experience
+      const shuffledCards = cards.sort(() => Math.random() - 0.5);
+      
+      res.json({
+        total: shuffledCards.length,
+        cards: shuffledCards,
+        breakdown: {
+          new: cards.filter(c => c.state === 'new').length,
+          learning: cards.filter(c => c.state === 'learning').length,
+          review: cards.filter(c => c.state === 'review').length
+        }
+      });
+    } catch (error) {
+      console.error('Error getting today\'s study cards:', error);
+      res.status(500).json({ message: 'Failed to get today\'s study cards' });
+    }
+  });
+
+  // Initialize new study cards from selected database words
+  app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { databaseId, wordKeys } = req.body;
+      
+      if (!Array.isArray(wordKeys) || wordKeys.length === 0) {
+        return res.status(400).json({ message: 'wordKeys must be a non-empty array' });
+      }
+      
+      const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
+      res.status(201).json({
+        message: `Initialized ${cards.length} study cards`,
+        cards: cards.length,
+        initialized: cards
+      });
+    } catch (error) {
+      console.error('Error initializing study cards:', error);
+      res.status(500).json({ message: 'Failed to initialize study cards' });
+    }
+  });
+
+  // Process a study card review with Anki algorithm (1=Again, 2=Hard, 3=Good, 4=Easy)
+  app.post('/api/anki-study/cards/:cardId/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const { cardId } = req.params;
+      const { rating } = req.body; // 1-4: Again, Hard, Good, Easy
+      
+      if (!rating || rating < 1 || rating > 4) {
+        return res.status(400).json({ message: 'Rating must be between 1 and 4 (1=Again, 2=Hard, 3=Good, 4=Easy)' });
+      }
+      
+      const updated = await storage.processStudyCardReview(cardId, rating);
+      if (!updated) {
+        return res.status(404).json({ message: 'Card not found' });
+      }
+      
+      // Return the updated card with human-readable next review time
+      const nextReviewTime = updated.due.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      res.json({
+        ...updated,
+        nextReviewTime,
+        ratingGiven: rating,
+        ratingName: ['', 'Again', 'Hard', 'Good', 'Easy'][rating],
+        intervalDays: updated.interval
+      });
+    } catch (error) {
+      console.error('Error processing card review:', error);
+      res.status(500).json({ message: 'Failed to process review' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
