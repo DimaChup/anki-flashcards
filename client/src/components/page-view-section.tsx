@@ -47,13 +47,16 @@ export default function PageViewSection({
   const wordInfoTooltipRef = useRef<HTMLDivElement>(null);
   const idiomInfoTooltipRef = useRef<HTMLDivElement>(null);
 
-  // POS button configuration matching original
+  // POS button configuration matching original page-view.html
   const posButtonGroups = [
+    // Row 1: Verbs
     { key: "pink", group: "verb", text: "Verb", tags: ["VERB"], hueVar: "--hl-verb-hue", satVar: "--hl-verb-sat", lightVar: "--hl-verb-light" },
+    // Row 2: Nouns 
     { key: "blue", group: "noun-propn", text: "Noun/PropN", tags: ["NOUN", "PROPN"], hueVar: "--hl-noun-hue", satVar: "--hl-noun-sat", lightVar: "--hl-noun-light" },
+    // Row 3: Adjectives, Aux, and Other
     { key: "green", group: "adj", text: "Adjective", tags: ["ADJ"], hueVar: "--hl-adj-hue", satVar: "--hl-adj-sat", lightVar: "--hl-adj-light" },
     { key: "orange", group: "aux", text: "Aux", tags: ["AUX"], hueVar: "--hl-aux-hue", satVar: "--hl-aux-sat", lightVar: "--hl-aux-light" },
-    { key: "yellow", group: "other", text: "Other", tags: [], hueVar: "--hl-other-hue", satVar: "--hl-other-sat", lightVar: "--hl-other-light" }
+    { key: "yellow", group: "other", text: "Other", tags: ["DET", "PRON", "ADP", "CCONJ", "SCONJ", "PART", "NUM", "ADV", "INTJ", "X"], hueVar: "--hl-other-hue", satVar: "--hl-other-sat", lightVar: "--hl-other-light" }
   ];
 
   // Process known words into signatures
@@ -95,7 +98,7 @@ export default function PageViewSection({
     });
   };
 
-  // Toggle all highlights
+  // Toggle all highlights  
   const toggleAllHighlights = () => {
     const allTags = posButtonGroups.flatMap(group => group.tags);
     const hasAll = allTags.every(tag => highlightedPOS.has(tag));
@@ -311,7 +314,7 @@ export default function PageViewSection({
         
         if (highlightStyle === 'background') {
           style.backgroundColor = `hsl(var(${group.hueVar}), var(${group.satVar}), var(${group.lightVar}))`;
-          style.color = 'var(--hl-text)';
+          style.color = 'black'; // Black text for better contrast on highlighted background
         } else {
           style.textDecoration = 'underline';
           style.textDecorationColor = `hsl(var(${group.hueVar}), var(${group.satVar}), var(${group.lightVar}))`;
@@ -715,24 +718,56 @@ export default function PageViewSection({
           </div>
           
           <div className="highlight-row button-container">
-            {(posButtonGroups[2]?.tags || []).map((pos: string) => (
-              <button
-                key={pos}
-                onClick={() => togglePOSHighlight([pos])}
-                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                  highlightedPOS.has(pos)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-background border-border hover:bg-muted'
-                }`}
-                style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[2]?.hueVar}), var(${posButtonGroups[2]?.satVar}), var(${posButtonGroups[2]?.lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[2]?.hueVar}), var(${posButtonGroups[2]?.satVar}), var(${posButtonGroups[2]?.lightVar}))`,
-                  color: 'white'
-                } : {}}
-              >
-                {pos}
-              </button>
-            ))}
+            {/* ADJ Button */}
+            <button
+              onClick={() => togglePOSHighlight(posButtonGroups[2].tags)}
+              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag))
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-background border-border hover:bg-muted'
+              }`}
+              style={posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag)) ? {
+                backgroundColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+                borderColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+                color: 'white'
+              } : {}}
+            >
+              {posButtonGroups[2].text}
+            </button>
+            
+            {/* AUX Button */}
+            <button
+              onClick={() => togglePOSHighlight(posButtonGroups[3].tags)}
+              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag))
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-background border-border hover:bg-muted'
+              }`}
+              style={posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag)) ? {
+                backgroundColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
+                borderColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
+                color: 'white'
+              } : {}}
+            >
+              {posButtonGroups[3].text}
+            </button>
+            
+            {/* Other Button */}
+            <button
+              onClick={() => togglePOSHighlight(posButtonGroups[4].tags)}
+              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
+                posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag))
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-background border-border hover:bg-muted'
+              }`}
+              style={posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag)) ? {
+                backgroundColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
+                borderColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
+                color: 'white'
+              } : {}}
+            >
+              {posButtonGroups[4].text}
+            </button>
           </div>
         </div>
 
