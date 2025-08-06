@@ -1028,76 +1028,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple Anki Study Session - get study cards from database with known words filtering
-  app.get('/api/anki/study-cards/:databaseId', isAuthenticated, async (req: any, res) => {
+  // Anki Study System API Routes
+  // Get Anki deck for a database
+  app.get('/api/anki/deck/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const databaseId = req.params.databaseId;
-      const excludeKnownWords = req.query.excludeKnownWords !== 'false'; // Default to true
       
-      console.log('Anki study cards request:', { databaseId, excludeKnownWords, queryParam: req.query.excludeKnownWords, query: req.query });
-      
-      // Get user's database
+      // First verify user owns this database
       const database = await storage.getLinguisticDatabase(databaseId, userId);
       if (!database) {
         return res.status(404).json({ message: "Database not found" });
       }
       
-      // Get known words list - knownWords format is "word::POS" or just "word"
-      const knownWords = database.knownWords || [];
-      const knownWordsSet = new Set(
-        knownWords.map((entry: string) => {
-          // Handle both "word::POS" and "word" formats
-          const word = entry.includes('::') ? entry.split('::')[0] : entry;
-          return word.toLowerCase();
-        })
-      );
+      let deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
       
-      console.log('Known words:', { count: knownWords.length, words: knownWords.slice(0, 5) });
-      
-      // Filter for first instance words, optionally excluding known words
-      const allFirstInstance = database.analysisData.filter((word: any) => word.firstInstance === true);
-      console.log('All first instance words:', allFirstInstance.length);
-      
-      const studyCards = database.analysisData
-        .filter((word: any) => {
-          const isFirstInstance = word.firstInstance === true;
-          const hasTranslation = word.translation && word.translation.trim();
-          const isKnownWord = knownWordsSet.has(word.word.toLowerCase());
+      // If no deck exists, create one automatically
+      if (!deck) {
+        deck = await storage.createAnkiDeck({
+          userId,
+          databaseId,
+          name: `${database.name} Flashcards`,
+          totalCards: 0,
+          newCards: 0,
+          learningCards: 0,
+          reviewCards: 0,
+        });
+        
+        // Auto-create cards from first instance words
+        if (database.analysisData) {
+          const firstInstanceWords = database.analysisData.filter((word: any) => 
+            word.firstInstance && word.translation && word.translation.trim()
+          );
           
-          if (isFirstInstance && hasTranslation) {
-            console.log('Word check:', { 
-              word: word.word, 
-              isKnownWord, 
-              excludeKnownWords, 
-              shouldInclude: !excludeKnownWords || !isKnownWord 
-            });
+          let createdCount = 0;
+          for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
+            try {
+              await storage.createAnkiCard({
+                deckId: deck.id,
+                word: word.word,
+                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
+                pos: word.pos || null,
+                lemma: word.lemma || null,
+                sentence: word.sentence || null,
+                status: 'new',
+                easeFactor: 2500,
+                interval: 0,
+                repetitions: 0,
+                due: new Date(),
+              });
+              createdCount++;
+            } catch (error) {
+              console.error('Error creating card for word:', word.word, error);
+            }
           }
           
-          return isFirstInstance && hasTranslation && (!excludeKnownWords || !isKnownWord);
-        })
-        .slice(0, 50) // Limit to 50 cards per session
-        .map((word: any) => ({
-          id: word.id || word.word,
-          word: word.word,
-          translation: Array.isArray(word.translation) ? word.translation.join(', ') : word.translation,
-          pos: word.pos,
-          lemma: word.lemma,
-          sentence: word.sentence
-        }));
+          // Update deck stats
+          if (createdCount > 0) {
+            await storage.updateAnkiDeck(deck.id, {
+              totalCards: createdCount,
+              newCards: createdCount,
+            });
+            
+            deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
+          }
+        }
+      }
       
-      console.log('Final study cards count:', studyCards.length);
-      
-      res.json({
-        databaseName: database.name,
-        totalCards: studyCards.length,
-        cards: studyCards,
-        excludeKnownWords,
-        knownWordsCount: knownWords.length
-      });
+      res.json(deck);
     } catch (error) {
-      console.error("Error getting study cards:", error);
-      res.status(500).json({ message: "Failed to get study cards" });
+      console.error("Error fetching Anki deck:", error);
+      res.status(500).json({ message: "Failed to fetch Anki deck" });
     }
   });
 
@@ -1165,154 +1166,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error regenerating Anki deck:", error);
       res.status(500).json({ message: "Failed to regenerate Anki deck" });
-    }
-  });
-
-  // === LONG-TERM ANKI STUDY SYSTEM (Proper Spaced Repetition) ===
-  
-  // Get or create study settings for a database
-  app.get('/api/anki-study/settings/:databaseId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { databaseId } = req.params;
-      const userId = req.user.id;
-      
-      let settings = await storage.getAnkiStudySettings(userId, databaseId);
-      
-      // Create default settings if none exist
-      if (!settings) {
-        settings = await storage.createAnkiStudySettings({
-          userId,
-          databaseId,
-          newCardsPerDay: 20,
-          reviewLimit: 200,
-          learningSteps: "1,10",
-          graduatingInterval: 1,
-          easyInterval: 4,
-          startingEase: 2500
-        });
-      }
-      
-      res.json(settings);
-    } catch (error) {
-      console.error('Error getting study settings:', error);
-      res.status(500).json({ message: 'Failed to get study settings' });
-    }
-  });
-
-  app.post('/api/anki-study/settings', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const settings = { ...req.body, userId };
-      
-      const created = await storage.createAnkiStudySettings(settings);
-      res.status(201).json(created);
-    } catch (error) {
-      console.error('Error creating study settings:', error);
-      res.status(500).json({ message: 'Failed to create study settings' });
-    }
-  });
-
-  app.put('/api/anki-study/settings/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      
-      const updated = await storage.updateAnkiStudySettings(id, req.body);
-      if (!updated) {
-        return res.status(404).json({ message: 'Settings not found' });
-      }
-      
-      res.json(updated);
-    } catch (error) {
-      console.error('Error updating study settings:', error);
-      res.status(500).json({ message: 'Failed to update study settings' });
-    }
-  });
-
-  // Get today's study session (due reviews + new cards according to daily limits)
-  app.get('/api/anki-study/cards/:databaseId/today', isAuthenticated, async (req: any, res) => {
-    try {
-      const { databaseId } = req.params;
-      const userId = req.user.id;
-      
-      const cards = await storage.getTodaysStudyCards(userId, databaseId);
-      
-      // Shuffle cards for better learning experience
-      const shuffledCards = cards.sort(() => Math.random() - 0.5);
-      
-      res.json({
-        total: shuffledCards.length,
-        cards: shuffledCards,
-        breakdown: {
-          new: cards.filter(c => c.state === 'new').length,
-          learning: cards.filter(c => c.state === 'learning').length,
-          review: cards.filter(c => c.state === 'review').length
-        }
-      });
-    } catch (error) {
-      console.error('Error getting today\'s study cards:', error);
-      res.status(500).json({ message: 'Failed to get today\'s study cards' });
-    }
-  });
-
-  // Initialize new study cards from selected database words
-  app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { databaseId, wordKeys } = req.body;
-      
-      if (!databaseId) {
-        return res.status(400).json({ message: 'Database ID is required' });
-      }
-      
-      // Initialize cards (if no wordKeys provided, it will use all eligible words from database)
-      const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
-      
-      res.status(201).json({
-        message: `Initialized ${cards.length} study cards from database words (first instances, excluding known words)`,
-        cards: cards.length,
-        details: `Created Anki deck with words in order of appearance, automatically filtering out known words`
-      });
-    } catch (error) {
-      console.error('Error initializing study cards:', error);
-      res.status(500).json({ message: 'Failed to initialize study cards' });
-    }
-  });
-
-  // Process a study card review with Anki algorithm (1=Again, 2=Hard, 3=Good, 4=Easy)
-  app.post('/api/anki-study/cards/:cardId/review', isAuthenticated, async (req: any, res) => {
-    try {
-      const { cardId } = req.params;
-      const { rating } = req.body; // 1-4: Again, Hard, Good, Easy
-      
-      if (!rating || rating < 1 || rating > 4) {
-        return res.status(400).json({ message: 'Rating must be between 1 and 4 (1=Again, 2=Hard, 3=Good, 4=Easy)' });
-      }
-      
-      const updated = await storage.processStudyCardReview(cardId, rating);
-      if (!updated) {
-        return res.status(404).json({ message: 'Card not found' });
-      }
-      
-      // Return the updated card with human-readable next review time
-      const nextReviewTime = updated.due.toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      res.json({
-        ...updated,
-        nextReviewTime,
-        ratingGiven: rating,
-        ratingName: ['', 'Again', 'Hard', 'Good', 'Easy'][rating],
-        intervalDays: updated.interval
-      });
-    } catch (error) {
-      console.error('Error processing card review:', error);
-      res.status(500).json({ message: 'Failed to process review' });
     }
   });
 
