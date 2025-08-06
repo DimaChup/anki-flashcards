@@ -13,6 +13,7 @@ interface DatabaseSectionProps {
   isDatabasesLoading: boolean;
   selectedDatabaseId: string;
   onDatabaseSelect: (databaseId: string) => void;
+  onCreateNew?: () => void;
 }
 
 export default function DatabaseSection({
@@ -20,6 +21,7 @@ export default function DatabaseSection({
   isDatabasesLoading,
   selectedDatabaseId,
   onDatabaseSelect,
+  onCreateNew,
 }: DatabaseSectionProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -152,6 +154,7 @@ export default function DatabaseSection({
           
           <Button
             variant="default"
+            onClick={onCreateNew}
             className="flex items-center gap-2"
             data-testid="create-new-button"
           >

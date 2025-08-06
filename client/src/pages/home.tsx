@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import DatabaseSection from "@/components/database-section";
 import PageViewSection from "@/components/page-view-section";
 import ListViewSection from "@/components/list-view-section";
@@ -9,6 +10,7 @@ import { Languages } from "lucide-react";
 
 export default function Home() {
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string>("");
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: databases, isLoading: isDatabasesLoading } = useQuery<LinguisticDatabase[]>({
@@ -67,6 +69,7 @@ export default function Home() {
             isDatabasesLoading={isDatabasesLoading}
             selectedDatabaseId={selectedDatabaseId}
             onDatabaseSelect={setSelectedDatabaseId}
+            onCreateNew={() => setLocation('/create')}
             data-testid="database-section"
           />
 
