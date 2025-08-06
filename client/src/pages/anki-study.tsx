@@ -25,6 +25,20 @@ export default function AnkiStudy() {
   const [enablePosColors, setEnablePosColors] = useState(true);
   const [excludeKnownWords, setExcludeKnownWords] = useState(true);
 
+  // POS color mapping matching anki.html
+  const posColors = {
+    'VERB': 'text-pink-400',    // Verbs in pink
+    'NOUN': 'text-blue-400',    // Nouns in blue  
+    'ADJ': 'text-green-400',    // Adjectives in green
+    'AUX': 'text-orange-400',   // Auxiliaries in orange
+    'PROPN': 'text-purple-400', // Proper nouns in purple
+    'PRON': 'text-cyan-400',    // Pronouns in cyan
+    'ADV': 'text-yellow-400',   // Adverbs in yellow
+    'ADP': 'text-gray-400',     // Adpositions in gray
+    'SCONJ': 'text-red-400',    // Subordinating conjunctions in red
+    'NUM': 'text-indigo-400',   // Numbers in indigo
+  };
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -93,9 +107,26 @@ export default function AnkiStudy() {
     },
   });
 
+  // Simplified card navigation without complex review system
   const handleReview = (rating: number) => {
     if (!currentCard) return;
-    reviewMutation.mutate({ cardId: currentCard.id, rating });
+    
+    // Move to next card
+    const currentIndex = studyCards.findIndex(card => card.id === currentCard.id);
+    const nextCard = studyCards[currentIndex + 1];
+    
+    if (nextCard) {
+      setCurrentCard(nextCard);
+      setShowAnswer(false);
+    } else {
+      // Session complete
+      setCurrentCard(null);
+      setSessionStarted(false);
+      toast({
+        title: "Session Complete!",
+        description: "You've studied all available cards. Great job!",
+      });
+    }
   };
 
   const startSession = () => {
@@ -342,10 +373,8 @@ export default function AnkiStudy() {
                           </div>
                         )}
                         
-                        <div className="text-xs text-slate-500 space-x-4">
-                          <span>Status: {currentCard.status}</span>
-                          <span>Ease: {(currentCard.easeFactor / 100).toFixed(1)}</span>
-                          <span>Interval: {currentCard.interval} days</span>
+                        <div className="text-xs text-slate-500">
+                          <span>POS: {currentCard.pos}</span>
                         </div>
                       </div>
                     </div>
@@ -365,28 +394,24 @@ export default function AnkiStudy() {
                         <Button
                           onClick={() => handleReview(1)}
                           className="bg-red-600 hover:bg-red-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
                         >
                           Again
                         </Button>
                         <Button
                           onClick={() => handleReview(2)}
                           className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
                         >
                           Hard
                         </Button>
                         <Button
                           onClick={() => handleReview(3)}
                           className="bg-green-600 hover:bg-green-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
                         >
                           Good
                         </Button>
                         <Button
                           onClick={() => handleReview(4)}
                           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3"
-                          disabled={reviewMutation.isPending}
                         >
                           Easy
                         </Button>
