@@ -35,7 +35,37 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return await bcrypt.compare(password, hashedPassword);
 }
 
-// Sample database creation disabled - users start with empty database list
+// Create default Mundo database for new users
+async function createMundoDatabase(userId: string) {
+  try {
+    const sampleFilePath = path.join(process.cwd(), 'sample-mundo-database.json');
+    
+    if (fs.existsSync(sampleFilePath)) {
+      const sampleData = JSON.parse(fs.readFileSync(sampleFilePath, 'utf8'));
+      
+      // Convert wordDatabase to analysis data format
+      const analysisData = Object.values(sampleData.wordDatabase);
+      
+      // Create the Mundo database
+      const database = await storage.createLinguisticDatabase({
+        name: "Mundo",
+        description: "Default Spanish linguistic analysis database",
+        language: "Spanish",
+        originalText: sampleData.inputText,
+        analysisData: analysisData,
+        wordCount: analysisData.length,
+        knownWords: []
+      }, userId);
+      
+      console.log(`Created Mundo database for user ${userId}: ${database.id}`);
+      return database;
+    } else {
+      console.log('Mundo database file not found');
+    }
+  } catch (error) {
+    console.error('Error creating Mundo database:', error);
+  }
+}
 
 export function getSession() {
   if (!process.env.SESSION_SECRET) {
@@ -168,7 +198,8 @@ export async function setupAuth(app: Express) {
         passwordHash,
       });
 
-      // No automatic sample database creation
+      // Create default Mundo database for new user
+      await createMundoDatabase(newUser.id);
 
       // Remove password hash from response
       const { passwordHash: _, ...userWithoutPassword } = newUser;
