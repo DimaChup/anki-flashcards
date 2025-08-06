@@ -252,6 +252,36 @@ export default function CreateDatabase() {
     });
   };
 
+  // Delete database functionality
+  const deleteDatabaseMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      const response = await fetch(`/api/databases/${databaseId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete database');
+      }
+      return response.json();
+    },
+    onSuccess: (result, databaseId) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
+      if (selectedDatabase === databaseId) {
+        setSelectedDatabase(''); // Clear selection if deleted database was selected
+      }
+      showStatus('Database deleted successfully', 'success');
+    },
+    onError: (error: Error) => {
+      showStatus(error.message, 'error');
+    }
+  });
+
+  const handleDeleteDatabase = (databaseId: string, databaseName: string) => {
+    if (window.confirm(`Are you sure you want to delete the database "${databaseName}"?\n\nThis action cannot be undone.`)) {
+      deleteDatabaseMutation.mutate(databaseId);
+    }
+  };
+
   return (
     <>
       <style>{`
@@ -571,21 +601,87 @@ export default function CreateDatabase() {
               Optional Parameters (Overrides Defaults)
             </h2>
             
-            <div className="control-group">
-              <label htmlFor="database-selector">Select Database for Processing:</label>
-              <select 
-                id="database-selector"
-                value={selectedDatabase}
-                onChange={(e) => setSelectedDatabase(e.target.value)}
-                data-testid="select-database"
-              >
-                <option value="">Choose a database...</option>
-                {databases?.map((db: any) => (
-                  <option key={db.id} value={db.id}>
-                    {db.name} ({db.language}, {db.wordCount} words)
-                  </option>
-                ))}
-              </select>
+            <div className="control-group" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <label htmlFor="database-list">Select Database for Processing:</label>
+              <div id="database-list" style={{
+                maxHeight: '200px',
+                overflowY: 'auto',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                backgroundColor: 'var(--bg-primary)',
+                padding: '8px',
+                marginTop: '5px'
+              }}>
+                {databases && databases.length > 0 ? (
+                  databases.map((db: any) => (
+                    <div 
+                      key={db.id} 
+                      className={`database-item ${selectedDatabase === db.id ? 'selected' : ''}`}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        marginBottom: '4px',
+                        borderRadius: '4px',
+                        border: selectedDatabase === db.id ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                        backgroundColor: selectedDatabase === db.id ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                        color: selectedDatabase === db.id ? 'white' : 'var(--text-primary)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => setSelectedDatabase(db.id)}
+                      data-testid={`database-item-${db.id}`}
+                    >
+                      <div style={{ flexGrow: 1 }}>
+                        <div style={{ fontWeight: '500', fontSize: '0.95em' }}>
+                          {db.name}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.8em', 
+                          opacity: '0.8',
+                          color: selectedDatabase === db.id ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)'
+                        }}>
+                          {db.language} • {db.wordCount.toLocaleString()} words
+                          {db.description && ` • ${db.description}`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDatabase(db.id, db.name);
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: 'var(--error-bg)',
+                          color: 'var(--error-text)',
+                          border: '1px solid var(--error-border)',
+                          borderRadius: '4px',
+                          fontSize: '0.8em',
+                          cursor: 'pointer',
+                          marginLeft: '10px',
+                          transition: 'opacity 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                        data-testid={`delete-database-${db.id}`}
+                        title={`Delete database: ${db.name}`}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '20px',
+                    color: 'var(--text-secondary)',
+                    fontStyle: 'italic'
+                  }}>
+                    No databases found. Initialize or upload a database above.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="control-group">
