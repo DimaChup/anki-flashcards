@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, jsonb, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -43,8 +43,9 @@ export const sessions = pgTable(
   {
     sid: varchar("sid").primaryKey(),
     sess: jsonb("sess").notNull(),
-    expire: text("expire").notNull(),
-  }
+    expire: timestamp("expire", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)]
 );
 
 // Users table (required for Replit Auth)
