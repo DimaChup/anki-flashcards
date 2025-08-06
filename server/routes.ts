@@ -1174,7 +1174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/settings/:databaseId', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       let settings = await storage.getAnkiStudySettings(userId, databaseId);
       
@@ -1201,7 +1201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/anki-study/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const settings = { ...req.body, userId };
       
       const created = await storage.createAnkiStudySettings(settings);
@@ -1232,7 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/anki-study/cards/:databaseId/today', isAuthenticated, async (req: any, res) => {
     try {
       const { databaseId } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const cards = await storage.getTodaysStudyCards(userId, databaseId);
       
@@ -1257,7 +1257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize new study cards from selected database words
   app.post('/api/anki-study/cards/initialize', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { databaseId, wordKeys } = req.body;
       
       if (!Array.isArray(wordKeys) || wordKeys.length === 0) {

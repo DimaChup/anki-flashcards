@@ -62,6 +62,8 @@ export default function AnkiStudyPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  const [isInitializing, setIsInitializing] = useState(false);
+  
   // Extract database ID from URL params
   const databaseId = location.split('/anki-study/')[1];
   
@@ -138,6 +140,41 @@ export default function AnkiStudyPage() {
     onError: (error: Error) => {
       toast({
         title: 'Settings Update Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Initialize cards mutation
+  const initializeCardsMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) throw new Error('No database selected');
+      
+      // Get the first 50 words from the database to initialize as cards
+      const response = await apiRequest('GET', `/api/databases/${databaseId}/unique-words?firstInstancesOnly=true`);
+      const words = await response.json();
+      
+      // Take first 50 words
+      const wordKeys = words.slice(0, 50).map((word: any) => word.key);
+      
+      const initResponse = await apiRequest('POST', '/api/anki-study/cards/initialize', {
+        databaseId,
+        wordKeys
+      });
+      return await initResponse.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Cards Initialized!',
+        description: `Created ${data.cards} study cards. You can now start studying!`,
+      });
+      // Refresh the session to show the new cards
+      refetchSession();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Initialization Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -252,9 +289,17 @@ export default function AnkiStudyPage() {
               You don't have any cards due for review today. You can:
             </p>
             <div className="space-y-2">
+              <Button 
+                onClick={() => initializeCardsMutation.mutate()}
+                disabled={initializeCardsMutation.isPending}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                {initializeCardsMutation.isPending ? 'Initializing Cards...' : 'Initialize 50 Study Cards'}
+              </Button>
               <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
                 <Home className="w-4 h-4 mr-2" />
-                Go back and initialize new study cards
+                Go back to Home
               </Button>
             </div>
           </CardContent>
