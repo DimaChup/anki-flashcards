@@ -48,8 +48,8 @@ async function createSampleDatabase(userId: string) {
       
       // Create the sample database with all required fields
       const database = await storage.createLinguisticDatabase({
-        name: "Call Me Ishmael (Spanish Sample)",
-        description: "Sample Spanish text analysis - Call Me Ishmael excerpt with full linguistic analysis",
+        name: "Mundo",
+        description: "Sample Spanish text analysis database with complete linguistic data",
         language: "Spanish",
         originalText: sampleData.inputText,
         analysisData: analysisData,
@@ -57,7 +57,7 @@ async function createSampleDatabase(userId: string) {
         knownWords: []
       }, userId);
       
-      console.log(`Created sample database for user ${userId}: ${database.id}`);
+      console.log(`Created Mundo sample database for user ${userId}: ${database.id}`);
       return database;
     } else {
       console.log('Sample database file not found, skipping sample creation');
