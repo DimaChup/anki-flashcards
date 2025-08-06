@@ -817,9 +817,9 @@ export default function PageViewSection({
           ref={dualPageContainerRef}
           className={`dual-page-container ${isDualPageView ? 'dual-view' : 'single-view'}`}
           style={{
-            minHeight: '60vh',
-            height: '60vh',
-            maxHeight: '60vh',
+            minHeight: '120vh',
+            height: '120vh',
+            maxHeight: '120vh',
             overflow: 'hidden',
             display: 'flex'
           }}

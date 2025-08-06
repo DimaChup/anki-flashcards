@@ -773,9 +773,9 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
       <div 
         className="list-display bg-background border border-border rounded-lg p-4"
         style={{
-          height: '60vh',
-          minHeight: '60vh',
-          maxHeight: '60vh',
+          height: '120vh',
+          minHeight: '120vh',
+          maxHeight: '120vh',
           overflowY: 'auto',
           marginBottom: '24px',
           fontSize: 'clamp(0.75rem, 2vw, 0.95rem)',
