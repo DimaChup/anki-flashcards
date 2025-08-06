@@ -624,11 +624,20 @@ export class DatabaseStorage implements IStorage {
     const knownWords = new Set(database.knownWords || [] as string[]);
     const now = new Date();
     
+    // Debug: Let's see what we have in the analysis data
+    console.log(`Total words in analysis: ${analysisData.length}`);
+    console.log(`Sample entry:`, analysisData[0]);
+    console.log(`Known words count: ${knownWords.size}`);
+    
     // Get all words that have first_inst=true and are not in knownWords
-    const eligibleWords = analysisData
-      .filter(entry => (entry as any).first_inst === true)  // Only first instances (using correct property name)
+    const firstInstWords = analysisData.filter(entry => (entry as any).first_inst === true);
+    console.log(`Words with first_inst=true: ${firstInstWords.length}`);
+    
+    const eligibleWords = firstInstWords
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
       .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
+      
+    console.log(`Eligible words after filtering known words: ${eligibleWords.length}`);
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
