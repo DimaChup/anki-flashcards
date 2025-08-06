@@ -777,27 +777,35 @@ export default function PageViewSection({
         </div>
       </div>
 
-      {/* Controls Container - Exact copy from original page-view.html */}
-      <div className="controls-container">
+      {/* Mobile-Optimized Controls Container */}
+      <div className="controls-container bg-muted p-3 rounded-lg mb-4">
         <div className="control-group highlight-controls">
-          <div className="highlight-row">
+          {/* Mobile-First Layout - Top Row with Main Controls */}
+          <div className="flex flex-wrap gap-2 mb-3 items-center justify-start">
             <button
               onClick={toggleAllHighlights}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
+              className={`px-4 py-2 rounded text-sm font-semibold transition-colors min-h-[48px] ${
                 highlightedPOS.size > 0 ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'
               }`}
             >
               Highlight All
             </button>
             
-            <label className="toggle-label">
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+              <span className="text-sm font-medium">Style:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">BG</span>
+                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${highlightStyle === 'underline' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-xs text-muted-foreground">UL</span>
+              </div>
               <input
                 type="checkbox"
                 checked={highlightStyle === 'underline'}
                 onChange={(e) => setHighlightStyle(e.target.checked ? 'underline' : 'background')}
+                className="sr-only"
               />
-              <span className="toggle-switch"></span>
-              <span className="toggle-text">Style</span>
             </label>
           </div>
           
@@ -898,79 +906,93 @@ export default function PageViewSection({
           </div>
         </div>
 
-        <div className="control-separator"></div>
+          
+          {/* Organized Filter & Control Toggles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+              <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${filterFirstInstance ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs font-medium">Filter 1st</span>
+              <input
+                type="checkbox"
+                checked={filterFirstInstance}
+                onChange={(e) => setFilterFirstInstance(e.target.checked)}
+                className="sr-only"
+              />
+            </label>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+              <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${filterNewWords ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs font-medium">Filter New</span>
+              <input
+                type="checkbox"
+                checked={filterNewWords}
+                onChange={(e) => setFilterNewWords(e.target.checked)}
+                className="sr-only"
+              />
+            </label>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+              <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${showGrammar ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs font-medium">Grammar</span>
+              <input
+                type="checkbox"
+                checked={showGrammar}
+                onChange={(e) => setShowGrammar(e.target.checked)}
+                className="sr-only"
+              />
+            </label>
+            
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+              <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${segmentMode ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs font-medium">Segments</span>
+              <input
+                type="checkbox"
+                checked={segmentMode}
+                onChange={(e) => updateSegmentMode(e.target.checked)}
+                className="sr-only"
+              />
+            </label>
+          </div>
 
-        <div className="control-group filter-toggles">
-          <label className="toggle-label">
-            <input
-              type="checkbox"
-              checked={filterFirstInstance}
-              onChange={(e) => setFilterFirstInstance(e.target.checked)}
-            />
-            <span className="toggle-switch"></span>
-            <span className="toggle-text">Filter 1st</span>
-          </label>
-          
-          <label className="toggle-label">
-            <input
-              type="checkbox"
-              checked={filterNewWords}
-              onChange={(e) => setFilterNewWords(e.target.checked)}
-            />
-            <span className="toggle-switch"></span>
-            <span className="toggle-text">Filter New</span>
-          </label>
-          
-          <label className="toggle-label">
-            <input
-              type="checkbox"
-              checked={showGrammar}
-              onChange={(e) => setShowGrammar(e.target.checked)}
-            />
-            <span className="toggle-switch"></span>
-            <span className="toggle-text">Grammar</span>
-          </label>
-          
-          <label className="toggle-label">
-            <input
-              type="checkbox"
-              checked={segmentMode}
-              onChange={(e) => updateSegmentMode(e.target.checked)}
-            />
-            <span className="toggle-switch"></span>
-            <span className="toggle-text">Segments</span>
-          </label>
-        </div>
-
-        <div className="control-separator"></div>
-
-        <div className="control-group action-controls">
-          <label className="toggle-label" title="Control scope for Add/Clear buttons">
-            <input
-              type="checkbox"
-              checked={scopeMode === 'page'}
-              onChange={(e) => setScopeMode(e.target.checked ? 'page' : 'entire')}
-            />
-            <span className="toggle-switch"></span>
-            <span className="toggle-text">Scope</span>
-          </label>
-          
-          <button
-            onClick={addFirstInstances}
-            disabled={!analysisData?.some(word => word.firstInstance)}
-            className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          >
-            Add First Inst.
-          </button>
-          
-          <button
-            onClick={clearKnownWords}
-            disabled={knownSignaturesSet.size === 0}
-            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          >
-            Clear Known Words
-          </button>
-        </div>
+          {/* Action Controls Row */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded" title="Control scope for Add/Clear buttons">
+              <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${scopeMode === 'page' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </div>
+              <span className="text-xs font-medium">Scope</span>
+              <input
+                type="checkbox"
+                checked={scopeMode === 'page'}
+                onChange={(e) => setScopeMode(e.target.checked ? 'page' : 'entire')}
+                className="sr-only"
+              />
+            </label>
+            
+            <button
+              onClick={addFirstInstances}
+              disabled={!analysisData?.some(word => word.firstInstance)}
+              className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold min-h-[44px]"
+            >
+              Add First Inst.
+            </button>
+            
+            <button
+              onClick={clearKnownWords}
+              disabled={knownSignaturesSet.size === 0}
+              className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold min-h-[44px]"
+            >
+              Clear Known Words
+            </button>
+          </div>
       </div>
 
       {/* Text Display Area */}
