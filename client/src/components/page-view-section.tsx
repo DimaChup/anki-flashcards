@@ -650,7 +650,7 @@ export default function PageViewSection({
           return (
             <>
               <hr style={{ 
-                borderTop: '1px solid hsl(59, 90%, 70%)', // Blue border like original
+                borderTop: '1px solid #3182ce', // Blue separator like original
                 margin: '12px 0',
                 borderBottom: 'none'
               }} />
@@ -660,18 +660,21 @@ export default function PageViewSection({
                   <div key={index} className="idiom-info-block" style={{ 
                     marginBottom: '8px',
                     paddingLeft: '5px',
-                    borderLeft: '2px solid hsl(59, 90%, 70%)' // Blue border like original
+                    borderLeft: '2px solid #3182ce', // Blue border like original
+                    backgroundColor: 'rgba(49, 130, 206, 0.1)' // Light blue background
                   }}>
                     <div style={{ 
                       fontWeight: 'bold',
                       color: 'var(--text-primary)',
-                      marginBottom: '2px'
+                      marginBottom: '2px',
+                      fontSize: '0.9em'
                     }}>
                       {idiomContent.text}
                     </div>
                     <div style={{ 
-                      color: 'var(--text-primary)',
-                      fontStyle: 'italic'
+                      color: 'var(--text-secondary)',
+                      fontStyle: 'italic',
+                      fontSize: '0.85em'
                     }}>
                       {idiomContent.translation}
                     </div>
