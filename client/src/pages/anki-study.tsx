@@ -41,6 +41,7 @@ export default function AnkiStudy() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [studyStarted, setStudyStarted] = useState(false);
   const [viewDeck, setViewDeck] = useState(false);
+  const [newCardsLimit, setNewCardsLimit] = useState(20);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -62,10 +63,14 @@ export default function AnkiStudy() {
   });
 
   // Get cards for the deck (ordered by wordKey to maintain original text order)
-  const { data: cards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
+  const { data: allCards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
     queryKey: ['/api/anki/cards', deck?.id],
     enabled: !!deck?.id && (studyStarted || viewDeck),
   });
+
+  // Filter cards for study session based on newCardsLimit
+  const studyCards = studyStarted ? allCards.slice(0, newCardsLimit) : [];
+  const viewCards = viewDeck ? allCards : [];
 
   // Generate Anki deck mutation
   const generateDeckMutation = useMutation({
@@ -97,8 +102,8 @@ export default function AnkiStudy() {
     },
     onSuccess: () => {
       // Move to next card
-      const currentIndex = cards.findIndex(card => card.id === currentCard?.id);
-      const nextCard = cards[currentIndex + 1];
+      const currentIndex = studyCards.findIndex(card => card.id === currentCard?.id);
+      const nextCard = studyCards[currentIndex + 1];
       
       if (nextCard) {
         setCurrentCard(nextCard);
@@ -107,7 +112,7 @@ export default function AnkiStudy() {
         // Study session complete
         setStudyStarted(false);
         setCurrentCard(null);
-        toast({ title: "Study Session Complete!", description: "Great work! All cards reviewed." });
+        toast({ title: "Study Session Complete!", description: `Great work! You reviewed ${studyCards.length} cards.` });
       }
       
       queryClient.invalidateQueries({ queryKey: ['/api/anki/deck'] });
@@ -123,10 +128,11 @@ export default function AnkiStudy() {
   });
 
   const startStudy = () => {
-    if (cards.length > 0) {
-      setCurrentCard(cards[0]);
+    if (studyCards.length > 0) {
+      setCurrentCard(studyCards[0]);
       setStudyStarted(true);
       setShowAnswer(false);
+      setViewDeck(false); // Hide deck view when starting study
     }
   };
 
@@ -252,6 +258,44 @@ export default function AnkiStudy() {
                       </div>
                     </div>
                     
+                    {/* Study Settings */}
+                    <div className="bg-slate-700/50 p-4 rounded-lg space-y-4">
+                      <h4 className="text-slate-300 font-medium">Study Settings</h4>
+                      <div className="flex items-center gap-4">
+                        <label className="text-slate-300 text-sm">New cards to study:</label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => setNewCardsLimit(Math.max(1, newCardsLimit - 5))}
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
+                            data-testid="button-decrease-cards"
+                          >
+                            -
+                          </Button>
+                          <input
+                            type="number"
+                            value={newCardsLimit}
+                            onChange={(e) => setNewCardsLimit(Math.max(1, Math.min(deck.totalCards, parseInt(e.target.value) || 1)))}
+                            className="w-16 h-8 text-center bg-slate-800 border border-slate-600 text-white rounded text-sm"
+                            min="1"
+                            max={deck.totalCards}
+                            data-testid="input-cards-limit"
+                          />
+                          <Button
+                            onClick={() => setNewCardsLimit(Math.min(deck.totalCards, newCardsLimit + 5))}
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
+                            data-testid="button-increase-cards"
+                          >
+                            +
+                          </Button>
+                          <span className="text-slate-400 text-sm">of {deck.totalCards} total</span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex gap-4">
                       <Button
                         onClick={startStudy}
@@ -260,7 +304,7 @@ export default function AnkiStudy() {
                         data-testid="button-start-study"
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        Start Study Session
+                        Start Study Session ({newCardsLimit} cards)
                       </Button>
                       
                       <Button
@@ -327,14 +371,14 @@ export default function AnkiStudy() {
                   <div className="text-center py-8">
                     <div className="text-slate-300">Loading cards...</div>
                   </div>
-                ) : cards.length === 0 ? (
+                ) : viewCards.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-slate-400">No cards found in this deck</div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="text-sm text-slate-400 mb-4">
-                      Showing {cards.length} cards in text order
+                      Showing {viewCards.length} cards in text order
                     </div>
                     
                     {/* Table for larger screens */}
@@ -352,7 +396,7 @@ export default function AnkiStudy() {
                             </tr>
                           </thead>
                           <tbody>
-                            {cards.map((card, index) => (
+                            {viewCards.map((card, index) => (
                               <tr 
                                 key={card.id} 
                                 className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors"
@@ -391,7 +435,7 @@ export default function AnkiStudy() {
                     
                     {/* Cards for mobile screens */}
                     <div className="md:hidden space-y-4">
-                      {cards.map((card, index) => (
+                      {viewCards.map((card, index) => (
                         <div 
                           key={card.id} 
                           className="bg-slate-700/50 p-4 rounded-lg border border-slate-600"
@@ -440,7 +484,7 @@ export default function AnkiStudy() {
               <CardHeader>
                 <CardTitle className="text-white text-2xl">Study Session</CardTitle>
                 <div className="flex justify-between text-sm text-slate-400">
-                  <span>Card {cards.findIndex(c => c.id === currentCard.id) + 1} of {cards.length}</span>
+                  <span>Card {studyCards.findIndex(c => c.id === currentCard.id) + 1} of {studyCards.length}</span>
                   <span>Position in text: {currentCard.wordKey}</span>
                 </div>
               </CardHeader>
