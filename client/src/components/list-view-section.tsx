@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { usePOSAnalyzer } from "@/hooks/use-pos-analyzer";
 import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
+import FlashcardSection from "./flashcard-section";
 import { 
   List, 
   Download, 
@@ -768,8 +769,17 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
         </div>
       </div>
 
-      {/* Word List Display */}
-      <div className="list-display bg-background border border-border rounded-lg p-4">
+      {/* Word List Display - Scrollable */}
+      <div 
+        className="list-display bg-background border border-border rounded-lg p-4"
+        style={{
+          height: '50vh',
+          maxHeight: '400px',
+          minHeight: '300px',
+          overflowY: 'auto',
+          marginBottom: '24px'
+        }}
+      >
         {isLoading ? (
           <div className="text-center text-muted-foreground py-8">
             Loading words...
@@ -778,6 +788,9 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
           renderBatches()
         )}
       </div>
+
+      {/* Flashcard Section */}
+      {database && <FlashcardSection selectedDatabaseId={database.id} />}
 
       {/* Tooltip - exact copy from original page-view.html */}
       {tooltipData && (
