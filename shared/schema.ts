@@ -185,6 +185,7 @@ export const createBatchSchema = z.object({
   batchSize: z.number().min(5).max(100).default(20), // Words per batch
   startFromBatch: z.number().min(1).default(1), // Which batch to start from
   batchByUnknown: z.boolean().default(true), // Whether to batch by unknown words or simple count
+  newWordsOnly: z.boolean().default(true), // Whether to consider all words as "unknown" (first instances)
 });
 
 export type SpacedRepetitionBatch = typeof spacedRepetitionBatches.$inferSelect;

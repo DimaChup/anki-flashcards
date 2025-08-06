@@ -24,29 +24,30 @@ export class SpacedRepetitionService {
     throw new Error("Use createBatchesFromAnalysisData instead");
   }
 
-  // Create batches from analysis data using the same logic as First Instances list
+  // Create batches from analysis data using the EXACT same logic as First Instances list
   static async createBatchesFromAnalysisData(
     userId: string,
     databaseId: string,
     analysisData: any[],
     batchSize: number = 20,
-    batchByUnknown: boolean = true
+    batchByUnknown: boolean = true,
+    newWordsOnly: boolean = true
   ): Promise<SpacedRepetitionBatch[]> {
-    // Filter to first instances only and sort by position
+    // Filter to first instances only and sort by position (EXACT same as list view)
     const firstInstances = analysisData
       .filter(word => word.firstInstance && word.translation && word.translation.trim())
       .sort((a, b) => a.position - b.position);
 
-    // Create batches using the same logic as First Instances list
+    // Create batches using the EXACT same logic as First Instances list
     const wordBatches: any[][] = [];
     
     if (batchByUnknown) {
-      // Batch by unknown words count (same logic as list view)
+      // Batch by unknown words count (IDENTICAL logic to list view)
       let currentBatch: any[] = [];
       let unknownCount = 0;
       
       for (const word of firstInstances) {
-        const isUnknown = true; // All first instances are considered unknown for learning
+        const isUnknown = newWordsOnly; // Use same logic as list view: if newWordsOnly, all are unknown
         currentBatch.push(word);
         
         if (isUnknown) {

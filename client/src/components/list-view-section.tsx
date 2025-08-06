@@ -790,7 +790,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
       </div>
 
       {/* Flashcard Section */}
-      {database && <FlashcardSection selectedDatabaseId={database.id} batchSize={batchSize} batchByUnknown={batchByUnknown} />}
+      {database && <FlashcardSection selectedDatabaseId={database.id} batchSize={batchSize} batchByUnknown={batchByUnknown} newWordsOnly={newWordsOnly} />}
 
       {/* Tooltip - exact copy from original page-view.html */}
       {tooltipData && (

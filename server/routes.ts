@@ -798,7 +798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData.databaseId,
         database.analysisData as any[],
         validatedData.batchSize,
-        validatedData.batchByUnknown
+        validatedData.batchByUnknown,
+        validatedData.newWordsOnly
       );
       
       res.status(201).json(batches);

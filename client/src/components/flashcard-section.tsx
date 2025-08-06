@@ -51,9 +51,10 @@ interface FlashcardSectionProps {
   selectedDatabaseId: string;
   batchSize: number;
   batchByUnknown: boolean;
+  newWordsOnly: boolean;
 }
 
-export default function FlashcardSection({ selectedDatabaseId, batchSize, batchByUnknown }: FlashcardSectionProps) {
+export default function FlashcardSection({ selectedDatabaseId, batchSize, batchByUnknown, newWordsOnly }: FlashcardSectionProps) {
   const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedBatchNumber, setSelectedBatchNumber] = useState<number>(1);
@@ -98,8 +99,8 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
 
   // Create batches mutation
   const createBatchesMutation = useMutation({
-    mutationFn: async ({ databaseId, batchSize, batchByUnknown }: { databaseId: string; batchSize: number; batchByUnknown: boolean }) => {
-      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize, batchByUnknown });
+    mutationFn: async ({ databaseId, batchSize, batchByUnknown, newWordsOnly }: { databaseId: string; batchSize: number; batchByUnknown: boolean; newWordsOnly: boolean }) => {
+      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize, batchByUnknown, newWordsOnly });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
@@ -143,10 +144,10 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
     }
   };
 
-  // Create batches from first instances using the current batch size and method
+  // Create batches from first instances using the EXACT same settings as First Instances list
   const createBatches = () => {
     if (!selectedDatabaseId) return;
-    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize, batchByUnknown });
+    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize, batchByUnknown, newWordsOnly });
   };
 
   // Activate next batch
