@@ -470,7 +470,17 @@ export class DatabaseStorage implements IStorage {
 
     // Generate cards from first instance words
     const analysisData = database.analysisData as WordEntry[];
-    const firstInstanceWords = analysisData.filter(word => word.firstInstance);
+    const knownWords = new Set(database.knownWords || [] as string[]);
+    
+    const firstInstanceWords = analysisData
+      .filter(word => word.firstInstance) // Only first instances
+      .filter(word => !knownWords.has(word.word)) // Exclude known words
+      .sort((a, b) => {
+        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
+        const numA = parseInt(a.id.toString(), 10);
+        const numB = parseInt(b.id.toString(), 10);
+        return numA - numB;
+      });
 
     const cards: InsertAnkiFlashcard[] = firstInstanceWords.map(word => ({
       userId,
