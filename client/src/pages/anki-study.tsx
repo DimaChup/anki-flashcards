@@ -306,8 +306,10 @@ export default function AnkiStudy() {
                   
                   {/* Question */}
                   <div className="space-y-4">
-                    <div className="text-4xl font-bold text-white mb-4">
-                      {currentCard.word}
+                    <div className="text-4xl font-bold mb-4">
+                      <span className={enablePosColors ? (posColors[currentCard.pos as keyof typeof posColors] || 'text-white') : 'text-white'}>
+                        {currentCard.word}
+                      </span>
                     </div>
                     
                     {currentCard.pos && (
@@ -330,9 +332,7 @@ export default function AnkiStudy() {
                     <div className="border-t border-slate-600 pt-6 mb-6">
                       <div className="text-center space-y-3">
                         <div className="text-2xl font-semibold text-green-400">
-                          {Array.isArray(currentCard.translations) 
-                            ? currentCard.translations.join(', ') 
-                            : (currentCard.translations as string)}
+                          {currentCard.translation}
                         </div>
                         
                         {currentCard.lemma && currentCard.lemma !== currentCard.word && (

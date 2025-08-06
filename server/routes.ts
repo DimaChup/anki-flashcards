@@ -1040,14 +1040,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Database not found" });
       }
       
-      // Get known words list
+      // Get known words list - knownWords is an array of strings
       const knownWords = database.knownWords || [];
-      const knownWordsSet = new Set(knownWords.map((w: any) => w.toLowerCase()));
+      const knownWordsSet = new Set(knownWords.map((word: string) => word.toLowerCase()));
       
       // Filter for first instance words that are NOT in known words
       const studyCards = database.analysisData
         .filter((word: any) => 
-          word.firstInstance && 
+          word.first_inst === true && 
           word.translation && 
           word.translation.trim() &&
           !knownWordsSet.has(word.word.toLowerCase())
