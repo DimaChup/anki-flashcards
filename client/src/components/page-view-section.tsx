@@ -29,7 +29,12 @@ export default function PageViewSection({
   const [highlightStyle, setHighlightStyle] = useState<'underline' | 'background'>('underline');
   const [showGrammar, setShowGrammar] = useState(false);
   const [segmentMode, setSegmentMode] = useState(false);
-  const [currentlyHighlightedSegmentId, setCurrentlyHighlightedSegmentId] = useState<number | null>(null);
+  const [currentlyHighlightedSegmentId, setCurrentlyHighlightedSegmentId] = useState<string | null>(null);
+  const [segmentDisplayState, setSegmentDisplayState] = useState<{
+    id: string | null;
+    keys: string[];
+    index: number;
+  }>({ id: null, keys: [], index: 0 });
   const [scopeMode, setScopeMode] = useState<'entire' | 'page'>('entire');
   
   // Known words state
@@ -119,6 +124,7 @@ export default function PageViewSection({
     
     // Clear any existing segment highlights
     setCurrentlyHighlightedSegmentId(null);
+    setSegmentDisplayState({ id: null, keys: [], index: 0 });
     setSegmentMode(newSegmentMode);
   };
 
@@ -269,8 +275,11 @@ export default function PageViewSection({
         index >= segment.startWordKey && index <= segment.endWordKey
       );
       
-      if (wordSegment && currentlyHighlightedSegmentId === wordSegment.id) {
-        className += " segment-word-highlight";
+      if (wordSegment) {
+        const segmentId = wordSegment.id?.toString() || `${wordSegment.startWordKey}-${wordSegment.endWordKey}`;
+        if (currentlyHighlightedSegmentId === segmentId) {
+          className += " segment-word-highlight";
+        }
       }
     }
     
@@ -305,17 +314,53 @@ export default function PageViewSection({
       }
     }
     
-    // Handle segment hover - like original
+    // Handle segment hover - exactly like original
     const handleSegmentHover = (e: React.MouseEvent, wordIndex: number) => {
       if (segmentMode && selectedDatabase?.segments) {
         const segment = selectedDatabase.segments.find(seg => 
           wordIndex >= seg.startWordKey && wordIndex <= seg.endWordKey
         );
         
-        if (segment && currentlyHighlightedSegmentId !== segment.id) {
-          setCurrentlyHighlightedSegmentId(segment.id);
+        if (segment) {
+          const segmentId = segment.id?.toString() || `${segment.startWordKey}-${segment.endWordKey}`;
+          if (currentlyHighlightedSegmentId !== segmentId) {
+            setCurrentlyHighlightedSegmentId(segmentId);
+            updateRightPaneWithSegment(segment);
+          }
         }
       }
+    };
+
+    // Update right pane with segment translation - exactly like original
+    const updateRightPaneWithSegment = (segment: any) => {
+      if (!segment) {
+        setSegmentDisplayState({ id: null, keys: [], index: 0 });
+        return;
+      }
+
+      const segmentId = segment.id?.toString() || `${segment.startWordKey}-${segment.endWordKey}`;
+      
+      if (segment.translations && typeof segment.translations === 'object' && Object.keys(segment.translations).length > 0) {
+        const keys = Object.keys(segment.translations);
+        setSegmentDisplayState({
+          id: segmentId,
+          keys: keys,
+          index: 0
+        });
+      } else {
+        setSegmentDisplayState({ id: segmentId, keys: [], index: 0 });
+      }
+    };
+
+    // Cycle through segment translations
+    const cycleSegmentTranslation = () => {
+      if (!segmentDisplayState.id || segmentDisplayState.keys.length <= 1) return;
+      
+      const newIndex = (segmentDisplayState.index + 1) % segmentDisplayState.keys.length;
+      setSegmentDisplayState(prev => ({
+        ...prev,
+        index: newIndex
+      }));
     };
 
     return (
@@ -408,6 +453,84 @@ export default function PageViewSection({
     }
     
     return result;
+  };
+
+  // Render segment translations in right pane - exactly like original
+  const renderSegmentTranslations = () => {
+    if (!segmentDisplayState.id) {
+      return (
+        <div className="segment-placeholder">
+          <i style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            Hover over text on the left to see segment translations...
+          </i>
+        </div>
+      );
+    }
+
+    // Find the current segment
+    const segment = selectedDatabase?.segments?.find(seg => {
+      const segmentId = seg.id?.toString() || `${seg.startWordKey}-${seg.endWordKey}`;
+      return segmentId === segmentDisplayState.id;
+    });
+
+    if (!segment) return null;
+
+    const translations = segment.translations;
+    const keys = segmentDisplayState.keys;
+    
+    if (!translations || keys.length === 0) {
+      return (
+        <div className="no-translations">
+          <i style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+            No segment translations available.
+          </i>
+        </div>
+      );
+    }
+
+    const currentKey = keys[segmentDisplayState.index];
+    const currentTranslation = translations[currentKey];
+    const totalTranslations = keys.length;
+
+    return (
+      <div className="segment-translation-content">
+        <div className="translation-block" style={{
+          marginBottom: '12px',
+          paddingLeft: '5px',
+          borderLeft: '2px solid var(--segment-word-highlight-color)'
+        }}>
+          <span className="translation-lang-key" style={{
+            fontWeight: 'bold',
+            color: 'var(--text-primary)'
+          }}>
+            [{currentKey}]
+          </span>{' '}
+          <span style={{ color: 'var(--text-primary)' }}>
+            {currentTranslation}
+          </span>
+          {totalTranslations > 1 && (
+            <span 
+              className="segment-translation-cycle"
+              onClick={cycleSegmentTranslation}
+              style={{
+                display: 'inline-block',
+                marginLeft: '10px',
+                padding: '2px 8px',
+                backgroundColor: 'var(--accent-primary)',
+                color: 'white',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.9em',
+                userSelect: 'none'
+              }}
+              title={`Next Translation (${segmentDisplayState.index + 1}/${totalTranslations})`}
+            >
+              Next &gt;
+            </span>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Render page content (main text display - always in text flow)
@@ -634,8 +757,8 @@ export default function PageViewSection({
             {renderPageContent(filteredWords, (currentPage - 1) * wordsPerPage)}
           </div>
           {isDualPageView && (
-            <div className="text-display-page text-display-right">
-              {renderPageContent(filteredWords, currentPage * wordsPerPage)}
+            <div className={`text-display-page text-display-right ${segmentMode ? 'segment-translation-display' : ''}`}>
+              {segmentMode ? renderSegmentTranslations() : renderPageContent(filteredWords, currentPage * wordsPerPage)}
             </div>
           )}
         </div>

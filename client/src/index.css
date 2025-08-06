@@ -142,11 +142,43 @@
 
   /* Segment & Idiom Highlighting - exact copy from original page-view.html */
   .text-display-page span.segment-word-highlight {
-    text-shadow: var(--segment-text-shadow);
+    text-shadow: 2px 2px 4px var(--segment-word-highlight-color);
   }
 
   .text-display-page span.idiom-word-highlight {
-    text-shadow: var(--idiom-text-shadow);
+    text-shadow: 2px 2px 4px var(--idiom-word-highlight-color);
+  }
+
+  /* Segment translation display styles */
+  .text-display-page.segment-translation-display {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    font-size: 1em;
+    color: var(--text-primary);
+  }
+
+  .segment-translation-display .translation-block {
+    margin-bottom: 12px;
+    padding-left: 5px;
+    border-left: 2px solid var(--segment-word-highlight-color);
+  }
+
+  .segment-translation-cycle {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    user-select: none;
+    margin-left: 10px;
+    transition: background-color 0.2s ease;
+  }
+
+  .segment-translation-cycle:hover {
+    background-color: rgba(74, 144, 226, 0.8);
   }
 
   .known-word {

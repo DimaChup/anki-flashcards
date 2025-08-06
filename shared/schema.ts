@@ -25,12 +25,13 @@ export const wordEntrySchema = z.object({
 
 export type WordEntry = z.infer<typeof wordEntrySchema>;
 
-// Segment schema for text segments
+// Segment schema for text segments - matching original format
 export const segmentSchema = z.object({
-  id: z.number(),
+  id: z.number().optional(),
   startWordKey: z.number(),
   endWordKey: z.number(),
-  translation: z.string(),
+  translations: z.record(z.string()).optional(), // Object with language keys -> translations
+  translation: z.string().optional(), // Single translation fallback
   context: z.string().optional(),
 });
 
