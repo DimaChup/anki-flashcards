@@ -364,31 +364,34 @@ export default function CreateDatabase() {
               borderBottom: '1px solid var(--border-color)',
               paddingBottom: '5px'
             }}>
-              Optional Parameters
+              Optional Parameters (Overrides Defaults)
             </h2>
             
             <div className="control-group">
-              <label htmlFor="language-selector">Language:</label>
-              <input
-                type="text"
-                id="language-selector"
-                placeholder="e.g., Spanish, English, French"
-                value={formData.language}
-                onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-                data-testid="input-language"
-              />
+              <label htmlFor="prompt-selector">Prompt Template:</label>
+              <select id="prompt-selector">
+                <option value="">Loading prompts...</option>
+              </select>
             </div>
             
             <div className="control-group">
-              <label htmlFor="description-input">Description:</label>
-              <textarea
-                id="description-input"
-                placeholder="Optional description of your linguistic database"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                style={{ minHeight: '60px' }}
-                data-testid="textarea-description"
-              />
+              <label htmlFor="model-selector">LLM Model:</label>
+              <select id="model-selector">
+                <option value="gemini-2.0-flash" selected>gemini-2.0-flash (Default)</option>
+                <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest</option>
+              </select>
+            </div>
+            
+            <div className="control-group">
+              <label htmlFor="param-batch-size">Batch Size (Words):</label>
+              <input type="number" id="param-batch-size" min="1" placeholder="e.g., 30" />
+            </div>
+            
+            <div className="control-group">
+              <label htmlFor="param-concurrency">Concurrency:</label>
+              <input type="number" id="param-concurrency" min="1" placeholder="e.g., 5" />
             </div>
           </div>
 
@@ -400,8 +403,48 @@ export default function CreateDatabase() {
               borderBottom: '1px solid var(--border-color)',
               paddingBottom: '5px'
             }}>
-              Actions
+              Actions on Selected File
             </h2>
+
+            <div className="control-group">
+              <button id="btn-check-status">Check Batch Status</button>
+              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected file above)</small>
+            </div>
+            <hr />
+
+            <div className="control-group">
+              <label htmlFor="process-upto-batch">Process Up To Batch:</label>
+              <input type="number" id="process-upto-batch" min="1" placeholder="(optional)" />
+            </div>
+            <div className="control-group">
+              <label htmlFor="process-batches">Process Specific Batches:</label>
+              <input type="text" id="process-batches" placeholder="e.g., 1,2,5 (optional)" />
+            </div>
+            <div className="control-group">
+              <button id="btn-process">Process Unprocessed Batches</button>
+              <small style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>(Uses selected file above)</small>
+            </div>
+            <hr />
+
+            <div className="control-group">
+              <label htmlFor="reprocess-range">Reprocess Word Range:</label>
+              <input type="text" id="reprocess-range" placeholder="e.g., 50-75" />
+              <button id="btn-reprocess">Reprocess Range</button>
+            </div>
+            <hr />
+
+            <div className="control-group">
+              <label htmlFor="clear-batch">Clear Batch #:</label>
+              <input type="number" id="clear-batch" min="1" />
+              <button id="btn-clear-batch">Clear Batch</button>
+            </div>
+            <div className="control-group">
+              <label htmlFor="clear-range">Clear Word Range:</label>
+              <input type="text" id="clear-range" placeholder="e.g., 50-75" />
+              <button id="btn-clear-range">Clear Range</button>
+            </div>
+            
+            <hr />
             
             <div className="control-group">
               <button
