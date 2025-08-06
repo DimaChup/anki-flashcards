@@ -82,10 +82,33 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express server framework
 - **File Processing**: Multer for handling file uploads
 - **Session Management**: Connect-pg-simple for PostgreSQL session storage
+- **Authentication**: Replit OAuth integration with comprehensive environment variable validation
 - **Development Tools**: Replit-specific plugins for development environment integration
+- **Deployment Configuration**: Enhanced error handling and environment variable validation for production deployments
 
 ### Utility Libraries
 - **Date Handling**: date-fns for date manipulation and formatting
 - **Navigation**: Wouter for lightweight routing
 - **Command Interface**: cmdk for command palette functionality
 - **UUID Generation**: nanoid for unique identifier creation
+
+## Deployment Configuration
+
+### Required Environment Variables
+The application requires three critical environment variables for authentication and deployment:
+
+- **REPLIT_DOMAINS**: Comma-separated list of domains where the app is accessible (e.g., `myapp-username.replit.app`)
+- **REPL_ID**: Unique Replit application identifier for OAuth configuration
+- **SESSION_SECRET**: Secure random string for session encryption (32+ characters recommended)
+
+### Error Handling Improvements
+Enhanced authentication module (`server/replitAuth.ts`) with comprehensive environment variable validation:
+- Pre-startup validation of all required environment variables
+- Descriptive error messages for missing configuration
+- Graceful error handling in authentication endpoints
+- Clear deployment guidance in error messages
+
+### Documentation
+- `DEPLOYMENT_SETUP.md`: Complete guide for setting up deployment environment variables
+- `.env.example`: Template file with example environment variable configuration
+- Troubleshooting guides for common deployment issues

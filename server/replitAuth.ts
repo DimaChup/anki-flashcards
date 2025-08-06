@@ -7,21 +7,45 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Validate required environment variables for authentication
+function validateEnvironmentVariables() {
+  const requiredVars = [
+    'REPLIT_DOMAINS',
+    'REPL_ID', 
+    'SESSION_SECRET'
+  ];
+  
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    const errorMessage = `Missing required environment variables for authentication: ${missingVars.join(', ')}.\n` +
+      `Please add these variables to your deployment secrets:\n` +
+      missingVars.map(varName => `- ${varName}`).join('\n');
+    throw new Error(errorMessage);
+  }
 }
+
+// Validate environment variables on module load
+validateEnvironmentVariables();
 
 const getOidcConfig = memoize(
   async () => {
+    if (!process.env.REPL_ID) {
+      throw new Error("REPL_ID environment variable is required for OIDC configuration");
+    }
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      process.env.REPL_ID
     );
   },
   { maxAge: 3600 * 1000 }
 );
 
 export function getSession() {
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET environment variable is required for session management");
+  }
+  
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
@@ -31,7 +55,7 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -81,7 +105,11 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+  if (!process.env.REPLIT_DOMAINS) {
+    throw new Error("REPLIT_DOMAINS environment variable is required for authentication setup");
+  }
+
+  for (const domain of process.env.REPLIT_DOMAINS.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -112,6 +140,10 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
+    if (!process.env.REPL_ID) {
+      return res.status(500).json({ error: "REPL_ID environment variable is required for logout" });
+    }
+    
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
