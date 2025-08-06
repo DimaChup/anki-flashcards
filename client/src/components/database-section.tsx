@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type LinguisticDatabase } from "@shared/schema";
-import { Upload, Plus, Database, CheckCircle, AlertCircle, Circle } from "lucide-react";
+import { Upload, Plus, Database, CheckCircle, AlertCircle, Circle, Trash2 } from "lucide-react";
 
 interface DatabaseSectionProps {
   databases: LinguisticDatabase[];
@@ -14,6 +14,7 @@ interface DatabaseSectionProps {
   selectedDatabaseId: string;
   onDatabaseSelect: (databaseId: string) => void;
   onCreateNew?: () => void;
+  onDeleteDatabase: (databaseId: string, databaseName: string) => void;
 }
 
 export default function DatabaseSection({
@@ -22,6 +23,7 @@ export default function DatabaseSection({
   selectedDatabaseId,
   onDatabaseSelect,
   onCreateNew,
+  onDeleteDatabase,
 }: DatabaseSectionProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,31 +106,67 @@ export default function DatabaseSection({
       style={{ backgroundColor: 'var(--bg-tertiary)' }}
     >
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Label htmlFor="database-select" className="flex items-center gap-2 text-sm font-semibold shrink-0">
+        <div className="flex flex-col gap-2 min-w-0 flex-1">
+          <Label htmlFor="database-list" className="flex items-center gap-2 text-sm font-semibold">
             <Database className="w-4 h-4" />
             Select Database:
           </Label>
-          <Select
-            value={selectedDatabaseId}
-            onValueChange={onDatabaseSelect}
-            disabled={isDatabasesLoading}
+          <div 
+            id="database-list" 
+            className="max-h-40 overflow-y-auto border border-border rounded-md bg-background p-2"
+            data-testid="database-list"
           >
-            <SelectTrigger 
-              id="database-select"
-              className="min-w-[200px] bg-input border-border"
-              data-testid="database-select"
-            >
-              <SelectValue placeholder="Choose a database..." />
-            </SelectTrigger>
-            <SelectContent>
-              {databases.map((database) => (
-                <SelectItem key={database.id} value={database.id}>
-                  {database.name} ({database.language})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {isDatabasesLoading ? (
+              <div className="text-center py-4 text-muted-foreground">Loading databases...</div>
+            ) : databases.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                No databases found. Create or upload one to get started.
+              </div>
+            ) : (
+              databases.map((database) => (
+                <div 
+                  key={database.id}
+                  className={`flex items-center justify-between p-2 mb-1 rounded border cursor-pointer transition-all ${
+                    selectedDatabaseId === database.id 
+                      ? 'bg-primary text-primary-foreground border-primary' 
+                      : 'bg-muted hover:bg-muted/80 border-border'
+                  }`}
+                  onClick={() => onDatabaseSelect(database.id)}
+                  data-testid={`database-item-${database.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {database.name}
+                    </div>
+                    <div className={`text-xs ${
+                      selectedDatabaseId === database.id 
+                        ? 'text-primary-foreground/80' 
+                        : 'text-muted-foreground'
+                    }`}>
+                      {database.language} • {database.wordCount?.toLocaleString() || 0} words
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteDatabase(database.id, database.name);
+                    }}
+                    className={`ml-2 p-1 h-auto ${
+                      selectedDatabaseId === database.id
+                        ? 'text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/80'
+                        : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+                    }`}
+                    data-testid={`delete-database-${database.id}`}
+                    title={`Delete ${database.name}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

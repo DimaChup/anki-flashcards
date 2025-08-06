@@ -6,12 +6,14 @@ import PageViewSection from "@/components/page-view-section";
 import ListViewSection from "@/components/list-view-section";
 import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Languages } from "lucide-react";
 
 export default function Home() {
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string>("");
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: databases, isLoading: isDatabasesLoading } = useQuery<LinguisticDatabase[]>({
     queryKey: ["/api/databases"],
@@ -48,6 +50,43 @@ export default function Home() {
     }
   };
 
+  // Delete database functionality
+  const deleteDatabaseMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      const response = await fetch(`/api/databases/${databaseId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete database');
+      }
+      return response.json();
+    },
+    onSuccess: (result, databaseId) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
+      if (selectedDatabaseId === databaseId) {
+        setSelectedDatabaseId(''); // Clear selection if deleted database was selected
+      }
+      toast({
+        title: "Success",
+        description: "Database deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleDeleteDatabase = (databaseId: string, databaseName: string) => {
+    if (window.confirm(`Are you sure you want to delete the database "${databaseName}"?\n\nThis action cannot be undone.`)) {
+      deleteDatabaseMutation.mutate(databaseId);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="flex justify-center p-5">
@@ -70,6 +109,7 @@ export default function Home() {
             selectedDatabaseId={selectedDatabaseId}
             onDatabaseSelect={setSelectedDatabaseId}
             onCreateNew={() => setLocation('/create')}
+            onDeleteDatabase={handleDeleteDatabase}
             data-testid="database-section"
           />
 
