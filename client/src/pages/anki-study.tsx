@@ -65,11 +65,11 @@ export default function AnkiStudy() {
   // Get cards for the deck (ordered by wordKey to maintain original text order)
   const { data: allCards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
     queryKey: ['/api/anki/cards', deck?.id],
-    enabled: !!deck?.id && (studyStarted || viewDeck),
+    enabled: !!deck?.id,
   });
 
   // Filter cards for study session based on newCardsLimit
-  const studyCards = studyStarted ? allCards.slice(0, newCardsLimit) : [];
+  const studyCards = allCards.slice(0, newCardsLimit);
   const viewCards = viewDeck ? allCards : [];
 
   // Generate Anki deck mutation
@@ -128,8 +128,9 @@ export default function AnkiStudy() {
   });
 
   const startStudy = () => {
-    if (studyCards.length > 0) {
-      setCurrentCard(studyCards[0]);
+    if (allCards.length > 0) {
+      const cardsToStudy = allCards.slice(0, newCardsLimit);
+      setCurrentCard(cardsToStudy[0]);
       setStudyStarted(true);
       setShowAnswer(false);
       setViewDeck(false); // Hide deck view when starting study
