@@ -612,6 +612,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ankiFlashcards.deckId, deckId));
   }
 
+  async resetAnkiDeckProgress(databaseId: string, userId: string): Promise<void> {
+    // Find the deck for this database and user
+    const deck = await this.getAnkiDeckByDatabase(databaseId, userId);
+    if (!deck) return;
+    
+    // Reset all cards in this deck to "new" status, clearing all progress
+    await db.update(ankiFlashcards)
+      .set({
+        status: 'new',
+        easeFactor: 2500, // Reset to default SM-2 value
+        interval: 0,
+        due: new Date(), // Due immediately 
+        repetitions: 0,
+        lapses: 0,
+        lastQuality: null,
+        sessionCycleCount: 0,
+        sessionEasyCount: 0,
+        updatedAt: new Date()
+      })
+      .where(eq(ankiFlashcards.deckId, deck.id));
+      
+    // Update deck stats to reflect all cards are now "new"
+    const totalCards = await db.select().from(ankiFlashcards)
+      .where(eq(ankiFlashcards.deckId, deck.id));
+      
+    await this.updateAnkiDeck(deck.id, {
+      newCards: totalCards.length,
+      learningCards: 0,
+      reviewCards: 0
+    });
+  }
+
   async getSessionCycleCards(deckId: string): Promise<AnkiFlashcard[]> {
     // Get cards that should cycle back in the current session
     // (Hard cards that haven't been marked Easy twice)

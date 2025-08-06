@@ -1284,8 +1284,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Database not found" });
       }
       
+      // Reset all existing cards to "new" status before regenerating
+      await storage.resetAnkiDeckProgress(databaseId, userId);
+      
       const deck = await storage.generateAnkiDeckFromDatabase(databaseId, userId);
-      res.json(deck);
+      res.json({
+        ...deck,
+        message: "Deck regenerated successfully - all progress reset"
+      });
     } catch (error) {
       console.error("Error regenerating Anki deck:", error);
       res.status(500).json({ message: "Failed to regenerate Anki deck" });

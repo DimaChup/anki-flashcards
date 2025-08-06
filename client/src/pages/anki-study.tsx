@@ -167,6 +167,28 @@ export default function AnkiStudy() {
     }
   });
 
+  // Regenerate Anki deck mutation - resets all progress 
+  const regenerateDeckMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      const response = await apiRequest('POST', `/api/anki/regenerate/${databaseId}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Deck Reset!", 
+        description: "All cards reset to new status - progress cleared" 
+      });
+      refetchDeck();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to regenerate deck",
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Review card mutation with session cycling logic
   const reviewCardMutation = useMutation({
     mutationFn: async ({ cardId, rating }: { cardId: string; rating: number }) => {
@@ -621,14 +643,14 @@ export default function AnkiStudy() {
                     </Button>
                     
                     <Button
-                      onClick={() => generateDeckMutation.mutate(selectedDatabase)}
-                      disabled={generateDeckMutation.isPending}
+                      onClick={() => regenerateDeckMutation.mutate(selectedDatabase)}
+                      disabled={regenerateDeckMutation.isPending}
                       variant="outline"
                       className="border-slate-600 text-slate-300 hover:bg-slate-700"
                       data-testid="button-regenerate-deck"
                     >
                       <RotateCcw className="h-4 w-4 mr-2" />
-                      Regenerate Deck
+                      {regenerateDeckMutation.isPending ? 'Resetting...' : 'Regenerate Deck'}
                     </Button>
                   </div>
 
