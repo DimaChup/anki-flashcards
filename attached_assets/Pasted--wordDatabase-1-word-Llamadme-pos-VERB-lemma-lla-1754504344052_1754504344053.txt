@@ -1,0 +1,114 @@
+ "wordDatabase": {
+    "1": {
+      "word": "Llamadme",
+      "pos": "VERB",
+      "lemma": "llamar",
+      "best_translation": "(you) call me",
+      "possible_translations": [
+        "(you) call me",
+        "(you) name me"
+      ],
+      "details": {
+        "Number": "p",
+        "Person": "2",
+        "Reflex": "Yes",
+        "Mood": "Imp",
+        "VerbForm": "Fin",
+        "Voice": "Act"
+      },
+      "freq": "2",
+      "freq_till_now": "1",
+      "first_inst": "true",
+      "lemma_translations": [
+        "to call",
+        "to name",
+        "to summon"
+      ],
+      "most_frequent_lemma": "llamar"
+    },
+    "2": {
+      "word": "Ismael",
+      "pos": "PROPN",
+      "lemma": "Ismael",
+      "best_translation": "Ishmael",
+      "possible_translations": [
+        "Ishmael"
+      ],
+      "details": {},
+      "freq": 2,
+      "freq_till_now": 1,
+      "first_inst": true,
+      "lemma_translations": [
+        "Ishmaell"
+      ],
+      "most_frequent_lemma": "Ismael"
+    },
+    "3": {
+      "word": "llamadme",
+      "pos": "VERB",
+      "lemma": "llamar",
+      "best_translation": "(you) call me",
+      "possible_translations": [
+        "(you) call me",
+        "(you) name me"
+      ],
+      "details": {
+        "Number": "p",
+        "Person": "2",
+        "Reflex": "Yes",
+        "Mood": "Imp",
+        "VerbForm": "Fin",
+        "Voice": "Act"
+      },
+      "freq": "2",
+      "freq_till_now": "2",
+      "first_inst": "false",
+      "lemma_translations": [
+        "to call",
+        "to name",
+        "to summon"
+      ],
+      "most_frequent_lemma": "llamar"
+    },
+    "4": {
+      "word": "Ismael",
+      "pos": "PROPN",
+      "lemma": "Ismael",
+      "best_translation": "Ishmael",
+      "possible_translations": [
+        "Ishmael"
+      ],
+      "details": {},
+      "freq": 2,
+      "freq_till_now": 2,
+      "first_inst": false,
+      "lemma_translations": [
+        "Ishmael"
+      ],
+      "most_frequent_lemma": "Ismael"
+    },
+    "5": {
+      "word": "repetí",
+      "pos": "VERB",
+      "lemma": "repetir",
+      "best_translation": "(I) repeated",
+      "possible_translations": [
+        "(I) repeated"
+      ],
+      "details": {
+        "Mood": "Ind",
+        "Number": "s",
+        "Person": "1",
+        "Tense": "Past",
+        "VerbForm": "Fin",
+        "Voice": "Act"
+      },
+      "freq": 1,
+      "freq_till_now": 1,
+      "first_inst": true,
+      "lemma_translations": [
+        "to repeat"
+      ],
+      "most_frequent_lemma": "repetir"
+    },
+    "6": {
