@@ -121,10 +121,24 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
     },
   });
 
-  // Handle review response
+  // Handle review response and move to next card
   const handleReview = (quality: number) => {
     if (currentCard) {
       reviewMutation.mutate({ cardId: currentCard.id, quality });
+      
+      // Move to next card in the batch
+      const allCards = activeBatchData?.allCards || [];
+      const currentIndex = allCards.findIndex(card => card.id === currentCard.id);
+      const nextIndex = currentIndex + 1;
+      
+      if (nextIndex < allCards.length) {
+        setCurrentCard(allCards[nextIndex]);
+        setShowAnswer(false);
+      } else {
+        // Finished all cards in this batch
+        setCurrentCard(null);
+        setShowAnswer(false);
+      }
     }
   };
 
@@ -140,10 +154,11 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
     activateNextBatchMutation.mutate(selectedDatabaseId);
   };
 
-  // Start reviewing
+  // Start reviewing - use all cards from selected batch, not just due cards
   const startReview = () => {
-    if (dueCards.length > 0) {
-      setCurrentCard(dueCards[0]);
+    const allCards = activeBatchData?.allCards || [];
+    if (allCards.length > 0) {
+      setCurrentCard(allCards[0]);
       setShowAnswer(false);
     }
   };
@@ -261,86 +276,58 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
             )}
           </div>
         ) : (
-          // Dashboard
+          // Dashboard - Show actual words from selected batch
           <div className="space-y-6">
-            {/* Batch Overview */}
-            {stats?.currentBatch ? (
+            {/* Batch Info */}
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+              <h4 className="font-semibold mb-2">📦 Batch {selectedBatchNumber}</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Words from the first instances list in order of appearance
+              </p>
+              <div className="flex items-center justify-between">
+                <span>Words in this batch:</span>
+                <span className="font-semibold">{activeBatchData?.allCards?.length || 0}</span>
+              </div>
+            </div>
+
+            {/* Show words in this batch */}
+            {activeBatchData?.allCards && activeBatchData.allCards.length > 0 ? (
               <div className="space-y-4">
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2">📦 {stats.currentBatch.name}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Learning words {stats.currentBatch.batchNumber * 20 - 19} to {stats.currentBatch.batchNumber * 20} as they appear in your text
-                  </p>
-                  <div className="flex items-center justify-between mb-2">
-                    <span>Progress:</span>
-                    <span className="font-semibold">
-                      {stats.currentBatch.wordsLearned}/{stats.currentBatch.totalWords} words mastered
-                    </span>
-                  </div>
-                  <Progress value={stats.currentBatch.progress} className="w-full" />
-                  
-                  {stats.currentBatch.isReadyForNext && (
-                    <div className="text-center mt-4">
-                      <p className="text-green-600 dark:text-green-400 mb-3 font-semibold">
-                        🎉 Batch completed! Ready for next batch?
-                      </p>
-                      <Button 
-                        onClick={activateNextBatch}
-                        disabled={activateNextBatchMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Start Next Batch
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Statistics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <Target className="h-6 w-6 mx-auto mb-1 text-blue-600" />
-                    <p className="text-lg font-bold">{stats.dueCards}</p>
-                    <p className="text-xs text-gray-600">Due Now</p>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <Clock className="h-6 w-6 mx-auto mb-1 text-green-600" />
-                    <p className="text-lg font-bold">{stats.reviewsToday}</p>
-                    <p className="text-xs text-gray-600">Today</p>
-                  </div>
-                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                    <TrendingUp className="h-6 w-6 mx-auto mb-1 text-purple-600" />
-                    <p className="text-lg font-bold">{stats.totalBatches}</p>
-                    <p className="text-xs text-gray-600">Total Batches</p>
-                  </div>
-                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                    <Star className="h-6 w-6 mx-auto mb-1 text-yellow-600" />
-                    <p className="text-lg font-bold">{stats.completedBatches}</p>
-                    <p className="text-xs text-gray-600">Completed</p>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-4 justify-center">
-                  {stats.dueCards > 0 ? (
-                    <Button 
-                      onClick={startReview} 
-                      size="lg" 
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-                      data-testid="start-review-button"
+                <h5 className="font-medium">Words to Learn in Batch {selectedBatchNumber}:</h5>
+                <div className="grid gap-3 max-h-60 overflow-y-auto">
+                  {activeBatchData.allCards.map((card, index) => (
+                    <div 
+                      key={card.id} 
+                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      onClick={() => {
+                        setCurrentCard(card);
+                        setShowAnswer(false);
+                      }}
                     >
-                      <Brain className="h-5 w-5 mr-2" />
-                      Start Review ({stats.dueCards} cards)
-                    </Button>
-                  ) : (
-                    <div className="text-center py-4">
-                      <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                      <p className="font-semibold">All caught up!</p>
-                      <p className="text-sm text-gray-600">No cards due for review right now.</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
+                        <span className="font-medium text-lg">{card.word}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600">Click to practice</div>
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+                
+                <div className="text-center">
+                  <Button 
+                    onClick={startReview} 
+                    size="lg" 
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                    data-testid="start-review-button"
+                  >
+                    <Brain className="h-5 w-5 mr-2" />
+                    Start Learning Batch {selectedBatchNumber}
+                  </Button>
                 </div>
               </div>
-            ) : (
+            ) : stats && stats.totalBatches === 0 ? (
               <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
                 <Brain className="h-12 w-12 mx-auto mb-4 text-purple-600" />
                 <h4 className="font-semibold mb-2">Create Learning Batches</h4>
@@ -354,6 +341,11 @@ export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectio
                 >
                   {createBatchesMutation.isPending ? "Creating Batches..." : "Create Batches (20 words each)"}
                 </Button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No words found in Batch {selectedBatchNumber}</p>
+                <p className="text-sm text-gray-500 mt-2">This batch might not exist yet.</p>
               </div>
             )}
           </div>
