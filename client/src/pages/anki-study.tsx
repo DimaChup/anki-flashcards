@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, ArrowLeft, Play, RotateCcw } from 'lucide-react';
+import { Brain, ArrowLeft, Play, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import type { LinguisticDatabase } from '@shared/schema';
 
 interface AnkiDeck {
@@ -40,6 +40,7 @@ export default function AnkiStudy() {
   const [currentCard, setCurrentCard] = useState<AnkiCard | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [studyStarted, setStudyStarted] = useState(false);
+  const [viewDeck, setViewDeck] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function AnkiStudy() {
   // Get cards for the deck (ordered by wordKey to maintain original text order)
   const { data: cards = [], isLoading: cardsLoading } = useQuery<AnkiCard[]>({
     queryKey: ['/api/anki/cards', deck?.id],
-    enabled: !!deck?.id && studyStarted,
+    enabled: !!deck?.id && (studyStarted || viewDeck),
   });
 
   // Generate Anki deck mutation
@@ -263,6 +264,17 @@ export default function AnkiStudy() {
                       </Button>
                       
                       <Button
+                        onClick={() => setViewDeck(!viewDeck)}
+                        disabled={deck.totalCards === 0}
+                        variant="outline"
+                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                        data-testid="button-view-deck"
+                      >
+                        {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                        {viewDeck ? 'Hide Deck' : 'View Deck'}
+                      </Button>
+                      
+                      <Button
                         onClick={() => generateDeckMutation.mutate(selectedDatabase)}
                         disabled={generateDeckMutation.isPending}
                         variant="outline"
@@ -292,6 +304,130 @@ export default function AnkiStudy() {
                       This will create flashcards from all first-instance words in your database, 
                       maintaining their original order in the text.
                     </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Deck Viewing Table */}
+          {selectedDatabase && viewDeck && deck && (
+            <Card className="bg-slate-800/80 border-slate-700 backdrop-blur-sm shadow-2xl mt-6">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl flex items-center gap-3">
+                  <Eye className="h-6 w-6 text-blue-400" />
+                  Anki Deck Contents
+                </CardTitle>
+                <p className="text-slate-300">
+                  All flashcards in this deck, ordered by their appearance in the original text
+                </p>
+              </CardHeader>
+              <CardContent>
+                {cardsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-slate-300">Loading cards...</div>
+                  </div>
+                ) : cards.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-slate-400">No cards found in this deck</div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-sm text-slate-400 mb-4">
+                      Showing {cards.length} cards in text order
+                    </div>
+                    
+                    {/* Table for larger screens */}
+                    <div className="hidden md:block">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-600">
+                              <th className="text-left p-3 text-slate-300 font-medium">Position</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Word</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Translation</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">POS</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Status</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Context</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cards.map((card, index) => (
+                              <tr 
+                                key={card.id} 
+                                className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors"
+                                data-testid={`row-card-${index}`}
+                              >
+                                <td className="p-3 text-slate-400 font-mono text-sm" data-testid={`text-position-${index}`}>
+                                  {card.wordKey}
+                                </td>
+                                <td className="p-3 text-white font-semibold" data-testid={`text-word-${index}`}>
+                                  {card.word}
+                                </td>
+                                <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
+                                  {card.translations.join(', ')}
+                                </td>
+                                <td className="p-3 text-blue-400 text-sm" data-testid={`text-pos-${index}`}>
+                                  {card.pos || '-'}
+                                </td>
+                                <td className="p-3" data-testid={`text-status-${index}`}>
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    card.status === 'new' ? 'bg-blue-900 text-blue-300' :
+                                    card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
+                                    'bg-green-900 text-green-300'
+                                  }`}>
+                                    {card.status}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-400 text-sm max-w-md truncate" data-testid={`text-sentence-${index}`}>
+                                  {card.sentence || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    {/* Cards for mobile screens */}
+                    <div className="md:hidden space-y-4">
+                      {cards.map((card, index) => (
+                        <div 
+                          key={card.id} 
+                          className="bg-slate-700/50 p-4 rounded-lg border border-slate-600"
+                          data-testid={`card-mobile-${index}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="text-white font-semibold text-lg" data-testid={`text-mobile-word-${index}`}>
+                              {card.word}
+                            </div>
+                            <div className="text-slate-400 text-sm font-mono" data-testid={`text-mobile-position-${index}`}>
+                              #{card.wordKey}
+                            </div>
+                          </div>
+                          <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
+                            {card.translations.join(', ')}
+                          </div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-blue-400 text-sm" data-testid={`text-mobile-pos-${index}`}>
+                              {card.pos || 'Unknown POS'}
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              card.status === 'new' ? 'bg-blue-900 text-blue-300' :
+                              card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
+                              'bg-green-900 text-green-300'
+                            }`} data-testid={`text-mobile-status-${index}`}>
+                              {card.status}
+                            </span>
+                          </div>
+                          {card.sentence && (
+                            <div className="text-slate-400 text-sm italic border-l-2 border-slate-600 pl-3" data-testid={`text-mobile-sentence-${index}`}>
+                              "{card.sentence}"
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
