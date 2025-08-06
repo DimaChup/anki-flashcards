@@ -318,16 +318,59 @@ export default function PageViewSection({
     );
   };
 
+  // Reconstruct text with punctuation - like original page-view.html
+  const reconstructTextWithPunctuation = (words: WordEntry[], startIndex: number = 0) => {
+    if (!selectedDatabase?.originalText || !words.length) {
+      // Fallback to simple word display
+      return words.slice(startIndex, startIndex + wordsPerPage).map((word, index) => (
+        <span key={startIndex + index}>
+          {renderWordSpan(word, startIndex + index)}
+          {startIndex + index < words.length - 1 && ' '}
+        </span>
+      ));
+    }
+
+    const originalText = selectedDatabase.originalText;
+    const pageWords = words.slice(startIndex, startIndex + wordsPerPage);
+    const result = [];
+    
+    // Simple approach: use word positions to reconstruct text
+    let textPosition = 0;
+    
+    for (let i = 0; i < pageWords.length; i++) {
+      const word = pageWords[i];
+      const wordIndex = startIndex + i;
+      
+      // Find word in original text
+      const wordPosition = originalText.indexOf(word.word, textPosition);
+      
+      if (wordPosition > textPosition) {
+        // Add any punctuation/whitespace before the word
+        const punctuation = originalText.substring(textPosition, wordPosition);
+        if (punctuation.trim()) {
+          result.push(
+            <span key={`punct-${wordIndex}`} className="punctuation">
+              {punctuation}
+            </span>
+          );
+        }
+      }
+      
+      // Add the word span
+      result.push(renderWordSpan(word, wordIndex));
+      
+      // Update position past this word
+      textPosition = wordPosition + word.word.length;
+    }
+    
+    return result;
+  };
+
   // Render page content (main text display - always in text flow)
   const renderPageContent = (words: WordEntry[], startIndex: number = 0) => {
     return (
       <div className="text-display-content">
-        {words.slice(startIndex, startIndex + wordsPerPage).map((word, index) => (
-          <span key={startIndex + index}>
-            {renderWordSpan(word, startIndex + index)}
-            {startIndex + index < words.length - 1 && ' '}
-          </span>
-        ))}
+        {reconstructTextWithPunctuation(words, startIndex)}
       </div>
     );
   };
