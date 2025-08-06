@@ -151,23 +151,17 @@ export default function AnkiStudyPage() {
     mutationFn: async () => {
       if (!databaseId) throw new Error('No database selected');
       
-      // Get the first 50 words from the database to initialize as cards
-      const response = await apiRequest('GET', `/api/databases/${databaseId}/unique-words?firstInstancesOnly=true`);
-      const words = await response.json();
-      
-      // Take first 50 words
-      const wordKeys = words.slice(0, 50).map((word: any) => word.key);
-      
+      // Initialize all eligible words from database (first_inst=true, excluding known words)
       const initResponse = await apiRequest('POST', '/api/anki-study/cards/initialize', {
-        databaseId,
-        wordKeys
+        databaseId
+        // No wordKeys means it will use all eligible words
       });
       return await initResponse.json();
     },
     onSuccess: (data) => {
       toast({
-        title: 'Cards Initialized!',
-        description: `Created ${data.cards} study cards. You can now start studying!`,
+        title: 'Anki Deck Created!',
+        description: `${data.message}`,
       });
       // Refresh the session to show the new cards
       refetchSession();
@@ -295,7 +289,7 @@ export default function AnkiStudyPage() {
                 className="w-full bg-purple-600 hover:bg-purple-700"
               >
                 <Target className="w-4 h-4 mr-2" />
-                {initializeCardsMutation.isPending ? 'Initializing Cards...' : 'Initialize 50 Study Cards'}
+                {initializeCardsMutation.isPending ? 'Creating Anki Deck...' : 'Create Anki Deck from Database'}
               </Button>
               <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/')}>
                 <Home className="w-4 h-4 mr-2" />

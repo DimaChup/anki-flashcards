@@ -545,16 +545,43 @@ export class DatabaseStorage implements IStorage {
   async getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]> {
     const now = new Date();
     
-    // Get settings or use defaults
-    const settings = await this.getAnkiStudySettings(userId, databaseId) || {
-      newCardsPerDay: 20,
-      reviewLimit: 200,
-      learningSteps: "1,10",
-      graduatingInterval: 1,
-      easyInterval: 4
-    };
+    // Get or create study settings
+    let settings = await this.getAnkiStudySettings(userId, databaseId);
+    if (!settings) {
+      settings = await this.createAnkiStudySettings({
+        userId,
+        databaseId,
+        deckName: 'New Deck',
+        newCardsPerDay: 20,
+        reviewLimit: 200,
+        easyBonus: 0.3,
+        intervalModifier: 1.0,
+        maxInterval: 36500,
+        graduatingInterval: 1,
+        easyInterval: 4,
+        startingEase: 2500,
+        learningSteps: "1,10"
+      });
+    }
 
-    // Get due review cards (due <= now)
+    // Check if any cards exist, if not auto-initialize from database
+    const existingCards = await db.select().from(ankiStudyCards)
+      .where(and(
+        eq(ankiStudyCards.userId, userId),
+        eq(ankiStudyCards.databaseId, databaseId)
+      ))
+      .limit(1);
+      
+    if (existingCards.length === 0) {
+      // Auto-initialize cards from database words (first_inst=true, excluding known words)
+      await this.initializeStudyCards(userId, databaseId);
+    }
+
+    // Filter out cards for words that are now in knownWords
+    const database = await this.getLinguisticDatabase(databaseId, userId);
+    const knownWords = new Set(database?.knownWords || []);
+    
+    // Get due review cards (due <= now) that are not in knownWords
     const dueCards = await db.select().from(ankiStudyCards)
       .where(and(
         eq(ankiStudyCards.userId, userId),
@@ -564,8 +591,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(ankiStudyCards.due)
       .limit(settings.reviewLimit || 200);
 
-    // Get new cards if we haven't hit the daily limit
-    const newCardsNeeded = Math.max(0, (settings.newCardsPerDay || 20) - dueCards.filter(c => c.state === 'new').length);
+    // Filter out known words from due cards
+    const filteredDueCards = dueCards.filter(card => !knownWords.has(card.word));
+
+    // Get new cards if we haven't hit the daily limit (also excluding known words)
+    const newCardsNeeded = Math.max(0, (settings.newCardsPerDay || 20) - filteredDueCards.filter(c => c.state === 'new').length);
     
     if (newCardsNeeded > 0) {
       const newCards = await db.select().from(ankiStudyCards)
@@ -576,47 +606,59 @@ export class DatabaseStorage implements IStorage {
         ))
         .limit(newCardsNeeded);
       
-      return [...dueCards, ...newCards];
+      // Filter out known words from new cards
+      const filteredNewCards = newCards.filter(card => !knownWords.has(card.word));
+      
+      return [...filteredDueCards, ...filteredNewCards];
     }
 
-    return dueCards;
+    return filteredDueCards;
   }
 
-  // Initialize new study cards from database words
-  async initializeStudyCards(userId: string, databaseId: string, wordKeys: string[]): Promise<AnkiStudyCard[]> {
+  // Initialize new study cards from database words (based on first_inst=true, excluding known words)
+  async initializeStudyCards(userId: string, databaseId: string, wordKeys?: string[]): Promise<AnkiStudyCard[]> {
     const database = await this.getLinguisticDatabase(databaseId, userId);
     if (!database) return [];
 
     const analysisData = database.analysisData as WordEntry[];
+    const knownWords = new Set(database.knownWords || []);
     const now = new Date();
     
-    const newCards = wordKeys.map(wordKey => {
-      const wordEntry = analysisData.find(entry => entry.id === wordKey);
-      if (!wordEntry) return null;
-
-      return {
-        userId,
-        databaseId,
-        wordKey,
-        word: wordEntry.word,
-        pos: wordEntry.pos,
-        lemma: wordEntry.lemma,
-        translations: [wordEntry.translation],
-        state: 'new' as const,
-        easeFactor: 2500,
-        interval: 0,
-        step: 0,
-        due: now,
-        learningSteps: "1,10",
-        graduatingInterval: 1,
-        easyInterval: 4,
-        reviews: 0,
-        lapses: 0,
-        lastQuality: 0
-      };
-    }).filter(Boolean) as InsertAnkiStudyCard[];
+    // Get all words that have firstInstance=true and are not in knownWords
+    const eligibleWords = analysisData
+      .filter(entry => entry.firstInstance === true)  // Only first instances
+      .filter(entry => !knownWords.has(entry.word)) // Exclude known words
+      .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
+    
+    // If specific wordKeys are provided, filter to those, otherwise use all eligible words
+    const wordsToProcess = wordKeys && wordKeys.length > 0 
+      ? eligibleWords.filter(entry => wordKeys.includes(entry.id.toString()))
+      : eligibleWords;
+    
+    const newCards = wordsToProcess.map(wordEntry => ({
+      userId,
+      databaseId,
+      wordKey: wordEntry.id.toString(),
+      word: wordEntry.word,
+      definition: wordEntry.translation || wordEntry.lemma,
+      context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
+      state: 'new' as const,
+      easeFactor: 2500,
+      interval: 0,
+      step: 0,
+      due: now,
+      reviews: 0,
+      lapses: 0,
+      lastQuality: null
+    })) as InsertAnkiStudyCard[];
 
     if (newCards.length === 0) return [];
+
+    // Remove existing cards for these words to avoid duplicates
+    await db.delete(ankiStudyCards).where(and(
+      eq(ankiStudyCards.userId, userId),
+      eq(ankiStudyCards.databaseId, databaseId)
+    ));
 
     const inserted = await db.insert(ankiStudyCards).values(newCards).returning();
     return inserted;
