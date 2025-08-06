@@ -175,7 +175,7 @@ export default function AnkiStudy() {
                         <SelectValue placeholder="Select a database..." />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-700 border-slate-600">
-                        {databases.map((db: any) => (
+                        {(databases as any[]).map((db: any) => (
                           <SelectItem key={db.id} value={db.id} className="text-white hover:bg-slate-600">
                             {db.name} ({db.language}) - {db.wordCount} words
                           </SelectItem>

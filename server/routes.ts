@@ -828,13 +828,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Database not found" });
       }
 
-      const batches = await SpacedRepetitionService.createBatchesFromAnalysisData(
+      const batches = await SpacedRepetitionService.createBatchesFromFirstInstancesData(
         userId,
         validatedData.databaseId,
         database.analysisData as any[],
+        [],
         validatedData.batchSize,
         validatedData.batchByUnknown,
-        validatedData.newWordsOnly
+        validatedData.newWordsOnly,
+        true
       );
       
       res.status(201).json(batches);
@@ -957,7 +959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get unique words (same endpoint as First Instances List uses)
-      const uniqueWords = await storage.getUniqueWords(databaseId, userId, firstInstancesOnly);
+      const uniqueWords = await storage.getUniqueWords(databaseId, firstInstancesOnly);
       const knownWords = (database.knownWords as string[]) || [];
       
       // Clear existing batches and cards for this database
@@ -1048,7 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deck = await storage.createAnkiDeck({
           userId,
           databaseId,
-          name: `${database.name} Flashcards`,
+          deckName: `${database.name} Flashcards`,
           totalCards: 0,
           newCards: 0,
           learningCards: 0,
@@ -1056,7 +1058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Auto-create cards from first instance words
-        if (database.analysisData) {
+        if (database.analysisData && Array.isArray(database.analysisData)) {
           const firstInstanceWords = database.analysisData.filter((word: any) => 
             word.firstInstance && word.translation && word.translation.trim()
           );
@@ -1065,7 +1067,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
             try {
               await storage.createAnkiCard({
+                userId,
+                databaseId,
                 deckId: deck.id,
+                signature: `${word.word}::${word.pos || 'unknown'}`,
+                wordKey: word.position || 0,
                 word: word.word,
                 translations: Array.isArray(word.translation) ? word.translation : [word.translation],
                 pos: word.pos || null,
@@ -1075,6 +1081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 easeFactor: 2500,
                 interval: 0,
                 repetitions: 0,
+                lapses: 0,
                 due: new Date(),
               });
               createdCount++;
