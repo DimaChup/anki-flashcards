@@ -17,7 +17,7 @@ export default function PageViewSection({
   // State variables matching the original
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [wordsPerPage, setWordsPerPage] = useState(110);
+  const [wordsPerPage, setWordsPerPage] = useState(100);
   const [isDualPageView, setIsDualPageView] = useState(true);
   const [isGridView, setIsGridView] = useState(false);
   const [viewModeBeforeSegments, setViewModeBeforeSegments] = useState(true);
