@@ -379,10 +379,10 @@ export default function PageViewSection({
 
     return (
       <span
-        key={index}
+        key={absoluteIndex}
         className={className}
         style={style}
-        data-key={index}
+        data-key={absoluteIndex}
         data-word={word.word}
         data-pos={word.pos}
         data-signature={signature}
