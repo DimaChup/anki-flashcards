@@ -99,9 +99,7 @@ export interface IStorage {
   // Get cards due for today's study session (reviews + new cards according to limits)
   getTodaysStudyCards(userId: string, databaseId: string): Promise<AnkiStudyCard[]>;
   // Initialize new study cards from database words
-  initializeStudyCards(userId: string, databaseId: string, wordKeys?: string[]): Promise<AnkiStudyCard[]>;
-  // Delete all study cards for a user/database pair
-  deleteAllStudyCards(userId: string, databaseId: string): Promise<number>;
+  initializeStudyCards(userId: string, databaseId: string, wordKeys: string[]): Promise<AnkiStudyCard[]>;
   // Process review with real Anki algorithm
   processStudyCardReview(cardId: string, rating: 1 | 2 | 3 | 4): Promise<AnkiStudyCard | undefined>;
 }
@@ -630,12 +628,7 @@ export class DatabaseStorage implements IStorage {
     const eligibleWords = analysisData
       .filter(entry => entry.firstInstance === true)  // Only first instances
       .filter(entry => !knownWords.has(entry.word)) // Exclude known words
-      .sort((a, b) => {
-        // Sort by numeric order of their database key (1, 2, 3, 5... not alphabetical)
-        const numA = parseInt(a.id.toString(), 10);
-        const numB = parseInt(b.id.toString(), 10);
-        return numA - numB;
-      });
+      .sort((a, b) => Number(a.id) - Number(b.id)); // Sort by word number/order of appearance
     
     // If specific wordKeys are provided, filter to those, otherwise use all eligible words
     const wordsToProcess = wordKeys && wordKeys.length > 0 
@@ -675,18 +668,6 @@ export class DatabaseStorage implements IStorage {
 
     const inserted = await db.insert(ankiStudyCards).values(newCards).returning();
     return inserted;
-  }
-
-  // Delete all study cards for a user/database pair
-  async deleteAllStudyCards(userId: string, databaseId: string): Promise<number> {
-    const deleted = await db.delete(ankiStudyCards)
-      .where(and(
-        eq(ankiStudyCards.userId, userId),
-        eq(ankiStudyCards.databaseId, databaseId)
-      ))
-      .returning();
-    
-    return deleted.length;
   }
 
   // Process review with real Anki algorithm - exactly matching anki.html
