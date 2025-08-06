@@ -99,11 +99,27 @@ export const linguisticDatabases = pgTable("linguistic_databases", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Spaced Repetition Batch Schema (for organized learning)
+export const spacedRepetitionBatches = pgTable("spaced_repetition_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  databaseId: varchar("database_id").notNull(),
+  name: text("name").notNull(),
+  batchNumber: integer("batch_number").notNull(),
+  totalWords: integer("total_words").notNull().default(0),
+  wordsLearned: integer("words_learned").notNull().default(0),
+  isActive: text("is_active").notNull().default('false'), // Currently learning this batch
+  isCompleted: text("is_completed").notNull().default('false'), // Batch completed
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Spaced Repetition Card Schema (Anki-like algorithm)
 export const spacedRepetitionCards = pgTable("spaced_repetition_cards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   databaseId: varchar("database_id").notNull(),
+  batchId: varchar("batch_id").notNull(), // Link to batch
   wordId: text("word_id").notNull(), // Reference to word in analysisData
   word: text("word").notNull(),
   translation: text("translation").notNull(),
@@ -147,6 +163,12 @@ export type LinguisticDatabase = typeof linguisticDatabases.$inferSelect;
 export type UpdateKnownWordsRequest = z.infer<typeof updateKnownWordsSchema>;
 
 // Spaced Repetition schemas
+export const insertSpacedRepetitionBatchSchema = createInsertSchema(spacedRepetitionBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSpacedRepetitionCardSchema = createInsertSchema(spacedRepetitionCards).omit({
   id: true,
   createdAt: true,
@@ -158,6 +180,14 @@ export const reviewCardSchema = z.object({
   quality: z.number().min(0).max(5), // 0=complete failure, 5=perfect recall
 });
 
+export const createBatchSchema = z.object({
+  databaseId: z.string(),
+  batchSize: z.number().min(5).max(100).default(20), // Words per batch
+  startFromBatch: z.number().min(1).default(1), // Which batch to start from
+});
+
+export type SpacedRepetitionBatch = typeof spacedRepetitionBatches.$inferSelect;
+export type InsertSpacedRepetitionBatch = z.infer<typeof insertSpacedRepetitionBatchSchema>;
 export type SpacedRepetitionCard = typeof spacedRepetitionCards.$inferSelect;
 export type InsertSpacedRepetitionCard = z.infer<typeof insertSpacedRepetitionCardSchema>;
 export type ReviewHistory = typeof reviewHistory.$inferSelect;
