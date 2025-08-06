@@ -32,10 +32,23 @@ export default function AnkiStudy() {
   const [excludeKnownWords, setExcludeKnownWords] = useState(true);
   const [newWordsPerDay, setNewWordsPerDay] = useState(20);
   
-  // Anki algorithm state
-  const [cardProgress, setCardProgress] = useState<{[cardId: string]: number}>({});
-  const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
-  const [currentQueue, setCurrentQueue] = useState<StudyCard[]>([]);
+  // Anki SRS state
+  const [studyQueue, setStudyQueue] = useState<StudyCard[]>([]);
+  const [cardSRS, setCardSRS] = useState<{[cardId: string]: {
+    status: 'new' | 'learning' | 'review';
+    interval: number; // in days
+    easeFactor: number;
+    due: Date;
+  }}>({});
+  
+  // SRS Constants matching anki.html
+  const SRS_DEFAULTS = {
+    EASE_FACTOR: 2.5,
+    INTERVAL_MODIFIERS: { AGAIN: 0, HARD: 1.2, GOOD: 1.0, EASY: 1.3 },
+    EASE_MODIFIERS: { AGAIN: -0.20, HARD: -0.15, GOOD: 0, EASY: 0.15 },
+    LEARNING_STEPS: [1, 10], // in minutes
+    GRADUATING_INTERVAL: 1, // in days
+  };
 
   // POS color mapping
   const posColors: Record<string, string> = {
@@ -83,15 +96,27 @@ export default function AnkiStudy() {
   }, [excludeKnownWords, selectedDatabase, sessionStarted, refetch]);
 
   const studyCards: StudyCard[] = studyData?.cards || [];
-  const currentCard = currentQueue[currentCardIndex];
+  const currentCard = studyQueue[0]; // Always take first card from queue
 
   const startSession = () => {
     if (studyCards.length > 0) {
-      // Initialize the study queue with limited new words per day
+      const now = new Date();
+      
+      // Initialize SRS data for new cards
+      const initialSRS: {[cardId: string]: any} = {};
       const limitedCards = studyCards.slice(0, newWordsPerDay);
-      setCurrentQueue([...limitedCards]);
-      setCardProgress({});
-      setCompletedCards(new Set());
+      
+      limitedCards.forEach(card => {
+        initialSRS[card.id] = {
+          status: 'new',
+          interval: 0,
+          easeFactor: SRS_DEFAULTS.EASE_FACTOR,
+          due: now
+        };
+      });
+      
+      setCardSRS(initialSRS);
+      setStudyQueue([...limitedCards]);
       setSessionStarted(true);
       setCurrentCardIndex(0);
       setShowAnswer(false);
@@ -104,57 +129,63 @@ export default function AnkiStudy() {
     }
   };
 
-  // Anki algorithm for rating cards
-  const rateCard = (difficulty: 'again' | 'hard' | 'good' | 'easy') => {
+  // Real Anki SRS algorithm from anki.html
+  const processReview = (rating: 1 | 2 | 3 | 4) => {
     if (!currentCard) return;
     
     const cardId = currentCard.id;
-    const currentProgress = cardProgress[cardId] || 0;
+    const srs = cardSRS[cardId];
+    if (!srs) return;
     
-    let newProgress = currentProgress;
-    let shouldRepeat = true;
+    const now = new Date();
+    const ratingMap = { 1: 'AGAIN', 2: 'HARD', 3: 'GOOD', 4: 'EASY' } as const;
+    const ratingName = ratingMap[rating];
     
-    switch (difficulty) {
-      case 'again':
-        newProgress = 0; // Reset progress
-        break;
-      case 'hard':
-        newProgress = Math.max(0, currentProgress);
-        break;
-      case 'good':
-        newProgress = currentProgress + 1;
-        if (newProgress >= 2) { // Need to get "good" twice to complete
-          shouldRepeat = false;
-          setCompletedCards(prev => new Set([...prev, cardId]));
-        }
-        break;
-      case 'easy':
-        newProgress = 2; // Skip to completed
-        shouldRepeat = false;
-        setCompletedCards(prev => new Set([...prev, cardId]));
-        break;
-    }
+    // Update ease factor
+    const newEaseFactor = Math.max(1.3, srs.easeFactor + SRS_DEFAULTS.EASE_MODIFIERS[ratingName]);
     
-    // Update progress
-    setCardProgress(prev => ({ ...prev, [cardId]: newProgress }));
+    let newInterval: number;
+    let newStatus: 'new' | 'learning' | 'review';
     
-    // Move to next card or add current card back to queue if not completed
-    let newQueue = [...currentQueue];
-    let nextIndex = currentCardIndex;
-    
-    if (shouldRepeat && difficulty !== 'easy') {
-      // Add card back to the queue (spaced repetition)
-      const insertPosition = Math.min(currentCardIndex + 3, newQueue.length);
-      newQueue.splice(insertPosition, 0, currentCard);
+    if (ratingName === 'AGAIN') {
+      // Failed card goes to learning
+      newStatus = 'learning';
+      newInterval = SRS_DEFAULTS.LEARNING_STEPS[0] / (24 * 60); // Convert minutes to days
     } else {
-      // Remove completed card from queue
-      newQueue.splice(currentCardIndex, 1);
-      if (currentCardIndex >= newQueue.length) {
-        nextIndex = 0;
+      if (srs.status === 'new' || srs.status === 'learning') {
+        // Graduate to review
+        newStatus = 'review';
+        newInterval = SRS_DEFAULTS.GRADUATING_INTERVAL;
+      } else {
+        // Existing review card
+        newStatus = 'review';
+        newInterval = srs.interval * newEaseFactor * SRS_DEFAULTS.INTERVAL_MODIFIERS[ratingName];
       }
     }
     
-    setCurrentQueue(newQueue);
+    const newDue = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
+    
+    // Update card SRS data
+    const updatedSRS = {
+      ...cardSRS,
+      [cardId]: {
+        status: newStatus,
+        interval: newInterval,
+        easeFactor: newEaseFactor,
+        due: newDue
+      }
+    };
+    setCardSRS(updatedSRS);
+    
+    // Remove current card from queue
+    const newQueue = studyQueue.slice(1);
+    
+    // If card is still due (learning cards), add it back to queue
+    if (newDue <= now) {
+      newQueue.push(currentCard);
+    }
+    
+    setStudyQueue(newQueue);
     
     // Check if session is complete
     if (newQueue.length === 0) {
@@ -162,13 +193,11 @@ export default function AnkiStudy() {
       setCurrentCardIndex(0);
       toast({
         title: "Session Complete!",
-        description: `You've mastered ${completedCards.size + (shouldRepeat ? 0 : 1)} cards. Great job!`,
+        description: "You've finished all cards for this session. Great job!",
       });
       return;
     }
     
-    // Move to next card
-    setCurrentCardIndex(nextIndex >= newQueue.length ? 0 : nextIndex);
     setShowAnswer(false);
   };
 
@@ -307,14 +336,15 @@ export default function AnkiStudy() {
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex gap-2">
                       <Badge variant="outline" className="border-slate-600 text-slate-300">
-                        {currentCardIndex + 1} / {currentQueue.length}
+                        Cards Left: {studyQueue.length}
                       </Badge>
-                      <Badge variant="outline" className="border-green-600 text-green-300">
-                        Completed: {completedCards.size}
-                      </Badge>
-                      {currentCard && cardProgress[currentCard.id] > 0 && (
-                        <Badge variant="outline" className="border-yellow-600 text-yellow-300">
-                          Progress: {cardProgress[currentCard.id]}/2
+                      {currentCard && cardSRS[currentCard.id] && (
+                        <Badge variant="outline" className={
+                          cardSRS[currentCard.id].status === 'new' ? "border-blue-600 text-blue-300" :
+                          cardSRS[currentCard.id].status === 'learning' ? "border-yellow-600 text-yellow-300" :
+                          "border-green-600 text-green-300"
+                        }>
+                          {cardSRS[currentCard.id].status.toUpperCase()}
                         </Badge>
                       )}
                     </div>
@@ -382,36 +412,36 @@ export default function AnkiStudy() {
                     ) : (
                       <div className="grid grid-cols-2 gap-3">
                         <Button
-                          onClick={() => rateCard('again')}
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-sm"
+                          onClick={() => processReview(1)}
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 text-sm flex flex-col"
                           data-testid="again-btn"
                         >
                           Again
-                          <div className="text-xs opacity-75">Reset</div>
+                          <div className="text-xs opacity-75">1 min</div>
                         </Button>
                         <Button
-                          onClick={() => rateCard('hard')}
-                          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 text-sm"
+                          onClick={() => processReview(2)}
+                          className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 text-sm flex flex-col"
                           data-testid="hard-btn"
                         >
                           Hard
-                          <div className="text-xs opacity-75">Difficult</div>
+                          <div className="text-xs opacity-75">×1.2</div>
                         </Button>
                         <Button
-                          onClick={() => rateCard('good')}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-sm"
+                          onClick={() => processReview(3)}
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 text-sm flex flex-col"
                           data-testid="good-btn"
                         >
                           Good
-                          <div className="text-xs opacity-75">2x to complete</div>
+                          <div className="text-xs opacity-75">×1.0</div>
                         </Button>
                         <Button
-                          onClick={() => rateCard('easy')}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-sm"
+                          onClick={() => processReview(4)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-sm flex flex-col"
                           data-testid="easy-btn"
                         >
                           Easy
-                          <div className="text-xs opacity-75">Master</div>
+                          <div className="text-xs opacity-75">×1.3</div>
                         </Button>
                       </div>
                     )}
