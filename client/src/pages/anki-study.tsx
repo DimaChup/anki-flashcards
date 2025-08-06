@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
+import { Brain } from 'lucide-react';
 import type { AnkiStudyDeck, AnkiFlashcard } from '@shared/schema';
 
 export default function AnkiStudy() {
