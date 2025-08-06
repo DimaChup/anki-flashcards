@@ -769,15 +769,17 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
         </div>
       </div>
 
-      {/* Word List Display - Scrollable */}
+      {/* Word List Display - Fixed Height */}
       <div 
         className="list-display bg-background border border-border rounded-lg p-4"
         style={{
-          height: '50vh',
-          maxHeight: '400px',
-          minHeight: '300px',
+          height: '60vh',
+          minHeight: '60vh',
+          maxHeight: '60vh',
           overflowY: 'auto',
-          marginBottom: '24px'
+          marginBottom: '24px',
+          fontSize: 'clamp(0.75rem, 2vw, 0.95rem)',
+          lineHeight: '1.3'
         }}
       >
         {isLoading ? (

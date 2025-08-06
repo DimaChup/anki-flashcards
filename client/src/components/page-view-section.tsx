@@ -816,12 +816,40 @@ export default function PageViewSection({
         <div
           ref={dualPageContainerRef}
           className={`dual-page-container ${isDualPageView ? 'dual-view' : 'single-view'}`}
+          style={{
+            minHeight: '60vh',
+            height: '60vh',
+            maxHeight: '60vh',
+            overflow: 'hidden',
+            display: 'flex'
+          }}
         >
-          <div className="text-display-page text-display-left">
+          <div 
+            className="text-display-page text-display-left"
+            style={{
+              height: '100%',
+              overflow: 'auto',
+              fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
+              lineHeight: '1.4',
+              padding: '1rem',
+              flex: isDualPageView ? '1' : '1'
+            }}
+          >
             {renderPageContent(filteredWords, (currentPage - 1) * wordsPerPage)}
           </div>
           {isDualPageView && (
-            <div className={`text-display-page text-display-right ${segmentMode ? 'segment-translation-display' : ''}`}>
+            <div 
+              className={`text-display-page text-display-right ${segmentMode ? 'segment-translation-display' : ''}`}
+              style={{
+                height: '100%',
+                overflow: 'auto',
+                fontSize: 'clamp(0.8rem, 2.5vw, 1.1rem)',
+                lineHeight: '1.4',
+                padding: '1rem',
+                flex: '1',
+                borderLeft: '1px solid hsl(var(--border))'
+              }}
+            >
               {segmentMode ? renderSegmentTranslations() : renderPageContent(filteredWords, currentPage * wordsPerPage)}
             </div>
           )}

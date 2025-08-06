@@ -103,6 +103,38 @@
 }
 
 @layer components {
+  /* Fixed height containers to prevent layout jumping */
+  .page-view-section .dual-page-container {
+    contain: layout;
+    overflow: hidden;
+  }
+  
+  .list-view-section .list-display {
+    contain: layout;
+    overflow-anchor: none;
+  }
+  
+  .text-display-page {
+    contain: layout style;
+    scroll-behavior: smooth;
+  }
+  
+  /* Responsive typography */
+  .text-display-page {
+    font-size: clamp(0.8rem, 2.5vw, 1.1rem);
+    line-height: 1.4;
+  }
+  
+  .text-display-page .word-span {
+    font-size: inherit;
+  }
+  
+  /* Flashcard responsive text */
+  .flashcard-content {
+    font-size: clamp(0.85rem, 2.2vw, 1rem);
+    line-height: 1.5;
+  }
+
   /* Word Span Highlighting */
   .word-span {
     @apply cursor-pointer inline-block px-1 py-0.5 mx-0.5 rounded-sm transition-all duration-150;

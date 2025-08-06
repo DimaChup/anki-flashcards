@@ -189,7 +189,7 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
   }
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6" style={{ minHeight: '500px' }}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="h-6 w-6 text-purple-600" />
@@ -199,7 +199,14 @@ export default function FlashcardSection({ selectedDatabaseId, batchSize, batchB
           Learn vocabulary using scientifically-proven spaced repetition, organized by word appearance in your text
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent 
+        className="space-y-6" 
+        style={{
+          minHeight: '400px',
+          fontSize: 'clamp(0.85rem, 2.2vw, 1rem)',
+          lineHeight: '1.5'
+        }}
+      >
         {/* Batch Selector */}
         {stats && stats.totalBatches > 0 && (
           <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
