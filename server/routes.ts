@@ -1260,15 +1260,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { databaseId, wordKeys } = req.body;
       
-      if (!Array.isArray(wordKeys) || wordKeys.length === 0) {
-        return res.status(400).json({ message: 'wordKeys must be a non-empty array' });
+      if (!databaseId) {
+        return res.status(400).json({ message: 'Database ID is required' });
       }
       
+      // Initialize cards (if no wordKeys provided, it will use all eligible words from database)
       const cards = await storage.initializeStudyCards(userId, databaseId, wordKeys);
+      
       res.status(201).json({
-        message: `Initialized ${cards.length} study cards`,
+        message: `Initialized ${cards.length} study cards from database words (first instances, excluding known words)`,
         cards: cards.length,
-        initialized: cards
+        details: `Created Anki deck with words in order of appearance, automatically filtering out known words`
       });
     } catch (error) {
       console.error('Error initializing study cards:', error);

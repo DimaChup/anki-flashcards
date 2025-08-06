@@ -551,7 +551,7 @@ export class DatabaseStorage implements IStorage {
       settings = await this.createAnkiStudySettings({
         userId,
         databaseId,
-        deckName: 'New Deck',
+        // deckName not part of settings schema
         newCardsPerDay: 20,
         reviewLimit: 200,
         easyBonus: 0.3,
@@ -579,7 +579,7 @@ export class DatabaseStorage implements IStorage {
 
     // Filter out cards for words that are now in knownWords
     const database = await this.getLinguisticDatabase(databaseId, userId);
-    const knownWords = new Set(database?.knownWords || []);
+    const knownWords = new Set(database?.knownWords || [] as string[]);
     
     // Get due review cards (due <= now) that are not in knownWords
     const dueCards = await db.select().from(ankiStudyCards)
@@ -621,7 +621,7 @@ export class DatabaseStorage implements IStorage {
     if (!database) return [];
 
     const analysisData = database.analysisData as WordEntry[];
-    const knownWords = new Set(database.knownWords || []);
+    const knownWords = new Set(database.knownWords || [] as string[]);
     const now = new Date();
     
     // Get all words that have firstInstance=true and are not in knownWords
@@ -642,6 +642,7 @@ export class DatabaseStorage implements IStorage {
       word: wordEntry.word,
       definition: wordEntry.translation || wordEntry.lemma,
       context: wordEntry.sentence || `POS: ${wordEntry.pos}`,
+      pos: wordEntry.pos, // Add POS field
       state: 'new' as const,
       easeFactor: 2500,
       interval: 0,
