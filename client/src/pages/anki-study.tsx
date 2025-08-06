@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { Brain, ArrowLeft, Play, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { Brain, ArrowLeft, Play, RotateCcw, Eye, EyeOff, Filter } from 'lucide-react';
 import type { LinguisticDatabase } from '@shared/schema';
 
 interface AnkiDeck {
@@ -42,6 +42,7 @@ export default function AnkiStudy() {
   const [studyStarted, setStudyStarted] = useState(false);
   const [viewDeck, setViewDeck] = useState(false);
   const [newCardsLimit, setNewCardsLimit] = useState(20);
+  const [hideKnownWords, setHideKnownWords] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -68,9 +69,20 @@ export default function AnkiStudy() {
     enabled: !!deck?.id,
   });
 
+  // Get known words from the database
+  const { data: databaseData } = useQuery({
+    queryKey: ['/api/databases', selectedDatabase],
+    enabled: !!selectedDatabase,
+  });
+
+  // Filter cards based on known words toggle
+  const filteredCards = hideKnownWords && databaseData?.knownWords 
+    ? allCards.filter(card => !databaseData.knownWords.includes(card.word.toLowerCase()))
+    : allCards;
+
   // Filter cards for study session based on newCardsLimit
-  const studyCards = allCards.slice(0, newCardsLimit);
-  const viewCards = viewDeck ? allCards : [];
+  const studyCards = filteredCards.slice(0, newCardsLimit);
+  const viewCards = viewDeck ? filteredCards : [];
 
   // Generate Anki deck mutation
   const generateDeckMutation = useMutation({
@@ -128,8 +140,8 @@ export default function AnkiStudy() {
   });
 
   const startStudy = () => {
-    if (allCards.length > 0) {
-      const cardsToStudy = allCards.slice(0, newCardsLimit);
+    if (filteredCards.length > 0) {
+      const cardsToStudy = filteredCards.slice(0, newCardsLimit);
       setCurrentCard(cardsToStudy[0]);
       setStudyStarted(true);
       setShowAnswer(false);
@@ -277,14 +289,14 @@ export default function AnkiStudy() {
                           <input
                             type="number"
                             value={newCardsLimit}
-                            onChange={(e) => setNewCardsLimit(Math.max(1, Math.min(deck.totalCards, parseInt(e.target.value) || 1)))}
+                            onChange={(e) => setNewCardsLimit(Math.max(1, Math.min(filteredCards.length, parseInt(e.target.value) || 1)))}
                             className="w-16 h-8 text-center bg-slate-800 border border-slate-600 text-white rounded text-sm"
                             min="1"
-                            max={deck.totalCards}
+                            max={filteredCards.length}
                             data-testid="input-cards-limit"
                           />
                           <Button
-                            onClick={() => setNewCardsLimit(Math.min(deck.totalCards, newCardsLimit + 5))}
+                            onClick={() => setNewCardsLimit(Math.min(filteredCards.length, newCardsLimit + 5))}
                             variant="outline"
                             size="sm"
                             className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
@@ -292,7 +304,14 @@ export default function AnkiStudy() {
                           >
                             +
                           </Button>
-                          <span className="text-slate-400 text-sm">of {deck.totalCards} total</span>
+                          <span className="text-slate-400 text-sm">
+                            of {filteredCards.length} available
+                            {hideKnownWords && databaseData?.knownWords && (
+                              <span className="ml-1 text-orange-400">
+                                ({deck.totalCards - filteredCards.length} known words hidden)
+                              </span>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -300,12 +319,12 @@ export default function AnkiStudy() {
                     <div className="flex gap-4">
                       <Button
                         onClick={startStudy}
-                        disabled={deck.totalCards === 0 || cardsLoading}
+                        disabled={filteredCards.length === 0 || cardsLoading}
                         className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                         data-testid="button-start-study"
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        Start Study Session ({newCardsLimit} cards)
+                        Start Study Session ({Math.min(newCardsLimit, filteredCards.length)} cards)
                       </Button>
                     </div>
                   </div>
@@ -440,28 +459,54 @@ export default function AnkiStudy() {
                 <CardTitle className="text-white text-xl">Deck Controls</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4">
-                  <Button
-                    onClick={() => setViewDeck(!viewDeck)}
-                    disabled={deck.totalCards === 0}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                    data-testid="button-view-deck"
-                  >
-                    {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                    {viewDeck ? 'Hide Deck' : 'View Deck'}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => generateDeckMutation.mutate(selectedDatabase)}
-                    disabled={generateDeckMutation.isPending}
-                    variant="outline"
-                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                    data-testid="button-regenerate-deck"
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Regenerate Deck
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={() => setViewDeck(!viewDeck)}
+                      disabled={deck.totalCards === 0}
+                      variant="outline"
+                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                      data-testid="button-view-deck"
+                    >
+                      {viewDeck ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                      {viewDeck ? 'Hide Deck' : 'View Deck'}
+                    </Button>
+                    
+                    <Button
+                      onClick={() => generateDeckMutation.mutate(selectedDatabase)}
+                      disabled={generateDeckMutation.isPending}
+                      variant="outline"
+                      className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                      data-testid="button-regenerate-deck"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Regenerate Deck
+                    </Button>
+                  </div>
+
+                  {/* Filter Toggle */}
+                  {databaseData?.knownWords && databaseData.knownWords.length > 0 && (
+                    <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
+                      <Filter className="h-4 w-4 text-orange-400" />
+                      <span className="text-slate-300 text-sm">Filter Options:</span>
+                      <Button
+                        onClick={() => setHideKnownWords(!hideKnownWords)}
+                        variant="outline"
+                        size="sm"
+                        className={`border-slate-600 text-sm ${
+                          hideKnownWords 
+                            ? 'bg-orange-600 text-white border-orange-600' 
+                            : 'text-slate-300 hover:bg-slate-700'
+                        }`}
+                        data-testid="button-hide-known-words"
+                      >
+                        {hideKnownWords ? 'Show Known Words' : 'Hide Known Words'}
+                      </Button>
+                      <span className="text-slate-400 text-xs">
+                        {databaseData.knownWords.length} known words in database
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
