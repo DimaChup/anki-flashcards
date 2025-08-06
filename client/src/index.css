@@ -35,6 +35,10 @@
   --translation-border-segment: var(--segment-word-highlight-color);
   --translation-border-idiom: var(--idiom-word-highlight-color);
 
+  /* Segment highlighting styles - exact copy from original */
+  --segment-text-shadow: 0 0 4px var(--segment-word-highlight-color), 0 0 6px var(--segment-word-highlight-color);
+  --idiom-text-shadow: 0 0 5px var(--idiom-word-highlight-color), 0 0 8px var(--idiom-word-highlight-color);
+
   /* Highlight Colors (using HSL for easy alpha modification) */
   --hl-verb-hue: 340; --hl-verb-sat: 80%; --hl-verb-light: 80%;
   --hl-noun-hue: 205; --hl-noun-sat: 80%; --hl-noun-light: 75%;
@@ -134,6 +138,15 @@
   .highlight-other {
     background-color: hsla(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light), var(--hl-base-alpha));
     color: var(--hl-text);
+  }
+
+  /* Segment & Idiom Highlighting - exact copy from original page-view.html */
+  .text-display-page span.segment-word-highlight {
+    text-shadow: var(--segment-text-shadow);
+  }
+
+  .text-display-page span.idiom-word-highlight {
+    text-shadow: var(--idiom-text-shadow);
   }
 
   .known-word {

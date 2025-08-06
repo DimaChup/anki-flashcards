@@ -29,6 +29,7 @@ export default function PageViewSection({
   const [highlightStyle, setHighlightStyle] = useState<'underline' | 'background'>('underline');
   const [showGrammar, setShowGrammar] = useState(false);
   const [segmentMode, setSegmentMode] = useState(false);
+  const [currentlyHighlightedSegmentId, setCurrentlyHighlightedSegmentId] = useState<number | null>(null);
   const [scopeMode, setScopeMode] = useState<'entire' | 'page'>('entire');
   
   // Known words state
@@ -101,18 +102,23 @@ export default function PageViewSection({
     }
   };
 
-  // Update segment mode and handle view mode
+  // Update segment mode and handle view mode - exactly like original
   const updateSegmentMode = (newSegmentMode: boolean) => {
-    if (newSegmentMode && !segmentMode) {
+    const wasSegmentModeActive = segmentMode;
+    
+    if (newSegmentMode && !wasSegmentModeActive) {
       // Entering segment mode
       setViewModeBeforeSegments(isDualPageView);
       if (isDualPageView) {
         setIsDualPageView(false);
       }
-    } else if (!newSegmentMode && segmentMode) {
+    } else if (!newSegmentMode && wasSegmentModeActive) {
       // Exiting segment mode
       setIsDualPageView(viewModeBeforeSegments);
     }
+    
+    // Clear any existing segment highlights
+    setCurrentlyHighlightedSegmentId(null);
     setSegmentMode(newSegmentMode);
   };
 
@@ -257,6 +263,17 @@ export default function PageViewSection({
     let className = "word-span";
     let style: React.CSSProperties = {};
     
+    // Segment highlighting - takes priority like original
+    if (segmentMode && selectedDatabase?.segments) {
+      const wordSegment = selectedDatabase.segments.find(segment => 
+        index >= segment.startWordKey && index <= segment.endWordKey
+      );
+      
+      if (wordSegment && currentlyHighlightedSegmentId === wordSegment.id) {
+        className += " segment-word-highlight";
+      }
+    }
+    
     // Apply first instance filter fading (like original)
     if (filterFirstInstance && !isFirstInstance) {
       style.opacity = '0.3'; // Fade non-first instances
@@ -288,6 +305,19 @@ export default function PageViewSection({
       }
     }
     
+    // Handle segment hover - like original
+    const handleSegmentHover = (e: React.MouseEvent, wordIndex: number) => {
+      if (segmentMode && selectedDatabase?.segments) {
+        const segment = selectedDatabase.segments.find(seg => 
+          wordIndex >= seg.startWordKey && wordIndex <= seg.endWordKey
+        );
+        
+        if (segment && currentlyHighlightedSegmentId !== segment.id) {
+          setCurrentlyHighlightedSegmentId(segment.id);
+        }
+      }
+    };
+
     return (
       <span
         key={index}
@@ -299,7 +329,10 @@ export default function PageViewSection({
         data-signature={signature}
         data-first-instance={word.firstInstance ? 'true' : 'false'}
         onClick={() => handleWordClick(word, index)}
-        onMouseEnter={(e) => handleWordHover(e, word)}
+        onMouseEnter={(e) => {
+          handleWordHover(e, word);
+          handleSegmentHover(e, index);
+        }}
         onMouseLeave={handleWordMouseOut}
         onMouseMove={handleMouseMove}
         onContextMenu={(e) => handleWordRightClick(e, word, index)}

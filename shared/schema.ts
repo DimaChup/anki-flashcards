@@ -25,6 +25,17 @@ export const wordEntrySchema = z.object({
 
 export type WordEntry = z.infer<typeof wordEntrySchema>;
 
+// Segment schema for text segments
+export const segmentSchema = z.object({
+  id: z.number(),
+  startWordKey: z.number(),
+  endWordKey: z.number(),
+  translation: z.string(),
+  context: z.string().optional(),
+});
+
+export type Segment = z.infer<typeof segmentSchema>;
+
 // Database schema for linguistic analysis databases
 export const linguisticDatabases = pgTable("linguistic_databases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -35,6 +46,7 @@ export const linguisticDatabases = pgTable("linguistic_databases", {
   wordCount: integer("word_count").notNull().default(0),
   analysisData: jsonb("analysis_data").notNull(), // Array of WordEntry objects
   knownWords: jsonb("known_words").notNull().default('[]'), // Array of known word strings
+  segments: jsonb("segments").default('[]'), // Array of Segment objects
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
