@@ -1,0 +1,328 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Brain, Target, Clock, TrendingUp, Star, CheckCircle, XCircle, RotateCcw, Zap } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { SpacedRepetitionCard } from '@shared/schema';
+
+interface BatchLearningStats {
+  totalBatches: number;
+  completedBatches: number;
+  currentBatch: {
+    id: string;
+    name: string;
+    batchNumber: number;
+    totalWords: number;
+    wordsLearned: number;
+    progress: number;
+    isReadyForNext: boolean;
+  } | null;
+  totalCards: number;
+  dueCards: number;
+  newCards: number;
+  learningCards: number;
+  matureCards: number;
+  reviewsToday: number;
+  batchProgress: number;
+  allBatches: Array<{
+    id: string;
+    name: string;
+    batchNumber: number;
+    totalWords: number;
+    wordsLearned: number;
+    progress: number;
+    isActive: boolean;
+    isCompleted: boolean;
+  }>;
+}
+
+interface ActiveBatchData {
+  activeBatch: any;
+  dueCards: SpacedRepetitionCard[];
+  allCards: SpacedRepetitionCard[];
+}
+
+interface FlashcardSectionProps {
+  selectedDatabaseId: string;
+}
+
+export default function FlashcardSection({ selectedDatabaseId }: FlashcardSectionProps) {
+  const [currentCard, setCurrentCard] = useState<SpacedRepetitionCard | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Get batch learning statistics
+  const { data: stats, isLoading: statsLoading } = useQuery<BatchLearningStats>({
+    queryKey: ['/api/spaced-repetition/batch-stats', selectedDatabaseId],
+    enabled: !!selectedDatabaseId,
+  });
+
+  // Get active batch and cards
+  const { 
+    data: activeBatchData, 
+    isLoading: cardsLoading, 
+    refetch: refetchCards 
+  } = useQuery<ActiveBatchData>({
+    queryKey: ['/api/spaced-repetition/active-batch', selectedDatabaseId],
+    enabled: !!selectedDatabaseId,
+  });
+
+  const dueCards = activeBatchData?.dueCards || [];
+
+  // Review card mutation
+  const reviewMutation = useMutation({
+    mutationFn: async ({ cardId, quality }: { cardId: string; quality: number }) => {
+      return apiRequest('POST', '/api/spaced-repetition/review', { cardId, quality });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
+      setShowAnswer(false);
+      setCurrentCard(null);
+      toast({ title: "Card reviewed!", description: "Your progress has been saved." });
+    },
+  });
+
+  // Create batches mutation
+  const createBatchesMutation = useMutation({
+    mutationFn: async ({ databaseId, batchSize }: { databaseId: string; batchSize: number }) => {
+      return apiRequest('POST', '/api/spaced-repetition/create-batches', { databaseId, batchSize });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      toast({ title: "Batches created!", description: "Your learning batches are ready to use." });
+    },
+  });
+
+  // Activate next batch mutation
+  const activateNextBatchMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      return apiRequest('POST', `/api/spaced-repetition/activate-next/${databaseId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/batch-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/spaced-repetition/active-batch'] });
+      setCurrentCard(null);
+      setShowAnswer(false);
+      toast({ title: "Next batch activated!", description: "You can now start learning new words." });
+    },
+  });
+
+  // Handle review response
+  const handleReview = (quality: number) => {
+    if (currentCard) {
+      reviewMutation.mutate({ cardId: currentCard.id, quality });
+    }
+  };
+
+  // Create batches from first instances
+  const createBatches = async (batchSize: number = 20) => {
+    if (!selectedDatabaseId) return;
+    createBatchesMutation.mutate({ databaseId: selectedDatabaseId, batchSize });
+  };
+
+  // Activate next batch
+  const activateNextBatch = () => {
+    if (!selectedDatabaseId) return;
+    activateNextBatchMutation.mutate(selectedDatabaseId);
+  };
+
+  // Start reviewing
+  const startReview = () => {
+    if (dueCards.length > 0) {
+      setCurrentCard(dueCards[0]);
+      setShowAnswer(false);
+    }
+  };
+
+  const qualityButtons = [
+    { quality: 0, label: "Again", color: "bg-red-500", icon: XCircle },
+    { quality: 1, label: "Hard", color: "bg-orange-500", icon: RotateCcw },
+    { quality: 3, label: "Good", color: "bg-blue-500", icon: CheckCircle },
+    { quality: 4, label: "Easy", color: "bg-green-500", icon: Zap },
+    { quality: 5, label: "Perfect", color: "bg-purple-500", icon: Star },
+  ];
+
+  if (!selectedDatabaseId) {
+    return null;
+  }
+
+  if (statsLoading || cardsLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="mt-4">Loading flashcard data...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Brain className="h-6 w-6 text-purple-600" />
+          Batch-Based Flashcard Learning
+        </CardTitle>
+        <CardDescription>
+          Learn vocabulary using scientifically-proven spaced repetition, organized by word appearance in your text
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {currentCard ? (
+          // Review Session
+          <div className="space-y-6">
+            <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+              <h3 className="text-2xl font-bold mb-2">{currentCard.word}</h3>
+              <p className="text-sm text-gray-600">
+                Interval: {currentCard.interval} days | Repetitions: {currentCard.repetitions} | 
+                Ease: {(currentCard.easeFactor / 1000).toFixed(1)}
+              </p>
+            </div>
+            
+            {!showAnswer ? (
+              <div className="text-center">
+                <p className="text-lg mb-6">Think of the translation...</p>
+                <Button 
+                  onClick={() => setShowAnswer(true)}
+                  size="lg"
+                  data-testid="show-answer-button"
+                >
+                  Show Answer
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="text-xl font-semibold">{currentCard.translation}</p>
+                </div>
+                
+                <div className="text-center">
+                  <p className="mb-4">How well did you know this word?</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {qualityButtons.map(({ quality, label, color, icon: Icon }) => (
+                      <Button
+                        key={quality}
+                        onClick={() => handleReview(quality)}
+                        className={`${color} hover:opacity-80 text-white`}
+                        disabled={reviewMutation.isPending}
+                        data-testid={`quality-${quality}-button`}
+                      >
+                        <Icon className="h-4 w-4 mr-2" />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Dashboard
+          <div className="space-y-6">
+            {/* Batch Overview */}
+            {stats?.currentBatch ? (
+              <div className="space-y-4">
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">📦 {stats.currentBatch.name}</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Learning words {stats.currentBatch.batchNumber * 20 - 19} to {stats.currentBatch.batchNumber * 20} as they appear in your text
+                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <span>Progress:</span>
+                    <span className="font-semibold">
+                      {stats.currentBatch.wordsLearned}/{stats.currentBatch.totalWords} words mastered
+                    </span>
+                  </div>
+                  <Progress value={stats.currentBatch.progress} className="w-full" />
+                  
+                  {stats.currentBatch.isReadyForNext && (
+                    <div className="text-center mt-4">
+                      <p className="text-green-600 dark:text-green-400 mb-3 font-semibold">
+                        🎉 Batch completed! Ready for next batch?
+                      </p>
+                      <Button 
+                        onClick={activateNextBatch}
+                        disabled={activateNextBatchMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Start Next Batch
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Statistics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <Target className="h-6 w-6 mx-auto mb-1 text-blue-600" />
+                    <p className="text-lg font-bold">{stats.dueCards}</p>
+                    <p className="text-xs text-gray-600">Due Now</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <Clock className="h-6 w-6 mx-auto mb-1 text-green-600" />
+                    <p className="text-lg font-bold">{stats.reviewsToday}</p>
+                    <p className="text-xs text-gray-600">Today</p>
+                  </div>
+                  <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <TrendingUp className="h-6 w-6 mx-auto mb-1 text-purple-600" />
+                    <p className="text-lg font-bold">{stats.totalBatches}</p>
+                    <p className="text-xs text-gray-600">Total Batches</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <Star className="h-6 w-6 mx-auto mb-1 text-yellow-600" />
+                    <p className="text-lg font-bold">{stats.completedBatches}</p>
+                    <p className="text-xs text-gray-600">Completed</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 justify-center">
+                  {stats.dueCards > 0 ? (
+                    <Button 
+                      onClick={startReview} 
+                      size="lg" 
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                      data-testid="start-review-button"
+                    >
+                      <Brain className="h-5 w-5 mr-2" />
+                      Start Review ({stats.dueCards} cards)
+                    </Button>
+                  ) : (
+                    <div className="text-center py-4">
+                      <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                      <p className="font-semibold">All caught up!</p>
+                      <p className="text-sm text-gray-600">No cards due for review right now.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                <Brain className="h-12 w-12 mx-auto mb-4 text-purple-600" />
+                <h4 className="font-semibold mb-2">Create Learning Batches</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Organize words from your database into learning batches based on their first appearance in the text
+                </p>
+                <Button 
+                  onClick={() => createBatches(20)}
+                  disabled={createBatchesMutation.isPending}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  {createBatchesMutation.isPending ? "Creating Batches..." : "Create Batches (20 words each)"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

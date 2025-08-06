@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
+import FlashcardSection from "./flashcard-section";
 
 interface PageViewSectionProps {
   selectedDatabase: LinguisticDatabase | null;
@@ -1020,6 +1021,9 @@ export default function PageViewSection({
           </div>
         </div>
       )}
+
+      {/* Flashcard Section */}
+      <FlashcardSection selectedDatabaseId={selectedDatabase.id} />
     </div>
   );
 }
