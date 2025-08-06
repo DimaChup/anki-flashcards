@@ -1047,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter for first instance words that are NOT in known words
       const studyCards = database.analysisData
         .filter((word: any) => 
-          word.first_inst === true && 
+          word.firstInstance === true && 
           word.translation && 
           word.translation.trim() &&
           !knownWordsSet.has(word.word.toLowerCase())
