@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
@@ -70,15 +70,35 @@ export default function AnkiStudy() {
   });
 
   // Get known words from the database
-  const { data: databaseData } = useQuery({
+  const { data: databaseData } = useQuery<LinguisticDatabase>({
     queryKey: ['/api/databases', selectedDatabase],
     enabled: !!selectedDatabase,
   });
 
   // Filter cards based on known words toggle
-  const filteredCards = hideKnownWords && databaseData?.knownWords 
-    ? allCards.filter(card => !databaseData.knownWords.includes(card.word.toLowerCase()))
-    : allCards;
+  const filteredCards = React.useMemo(() => {
+    if (!hideKnownWords || !databaseData?.knownWords || !Array.isArray(databaseData.knownWords)) {
+      return allCards;
+    }
+    
+    const knownWordsSet = new Set(databaseData.knownWords.map(w => w.toLowerCase()));
+    const filtered = allCards.filter(card => {
+      const cardWordLower = card.word.toLowerCase();
+      const isKnown = knownWordsSet.has(cardWordLower);
+      return !isKnown;
+    });
+    
+    console.log('Filter Debug:', {
+      hideKnownWords,
+      totalCards: allCards.length,
+      filteredCards: filtered.length,
+      knownWordsCount: databaseData.knownWords.length,
+      sampleKnownWords: databaseData.knownWords.slice(0, 5),
+      sampleCardWords: allCards.slice(0, 5).map(c => c.word)
+    });
+    
+    return filtered;
+  }, [hideKnownWords, databaseData?.knownWords, allCards]);
 
   // Filter cards for study session based on newCardsLimit
   const studyCards = filteredCards.slice(0, newCardsLimit);
