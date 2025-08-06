@@ -47,8 +47,8 @@ export default function Landing() {
           </h1>
           
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-            Unlock the power of AI-driven linguistic analysis with our cutting-edge platform. 
-            Upload texts, analyze language patterns, and gain deep insights with professional-grade tools.
+            Your personal linguistic analysis workspace. Each user gets their own private account with 
+            isolated databases, word lists, and analysis data. Start building your personal library today.
           </p>
           
           <div className="flex items-center justify-center gap-4">
@@ -98,30 +98,30 @@ export default function Landing() {
         {/* Use Cases Section */}
         <div className="text-center mb-20">
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Perfect for Researchers & Educators
+            Your Personal Linguistic Workspace
           </h2>
           <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Whether you're conducting linguistic research, teaching language courses, 
-            or analyzing multilingual content, our platform provides the tools you need.
+            Each user gets their own secure account with private databases, personalized word tracking, 
+            and isolated analysis data. Perfect for researchers, educators, and language learners.
           </p>
           
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-6 bg-card rounded-xl border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">Academic Research</h3>
+              <h3 className="text-xl font-semibold mb-3">Personal Database Library</h3>
               <p className="text-muted-foreground">
-                Analyze literary texts, conduct corpus linguistics studies, and explore language patterns with precision.
+                Each user maintains their own private collection of linguistic databases that nobody else can access.
               </p>
             </div>
             <div className="p-6 bg-card rounded-xl border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">Language Education</h3>
+              <h3 className="text-xl font-semibold mb-3">Individual Word Tracking</h3>
               <p className="text-muted-foreground">
-                Create learning materials, track student progress, and provide detailed language insights.
+                Track your personal learning progress with known words lists that are unique to your account.
               </p>
             </div>
             <div className="p-6 bg-card rounded-xl border shadow-sm">
-              <h3 className="text-xl font-semibold mb-3">Content Analysis</h3>
+              <h3 className="text-xl font-semibold mb-3">Secure Data Isolation</h3>
               <p className="text-muted-foreground">
-                Process multilingual documents, extract key insights, and perform comprehensive text analysis.
+                Your texts, analysis data, and word lists are completely private and isolated from other users.
               </p>
             </div>
           </div>
@@ -130,10 +130,10 @@ export default function Landing() {
         {/* CTA Section */}
         <div className="text-center bg-primary/5 rounded-2xl p-12">
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Ready to Transform Your Text Analysis?
+            Create Your Personal Account Today
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Join researchers and educators worldwide who trust our platform for their linguistic analysis needs.
+            Join users worldwide who have their own private linguistic analysis workspace with secure data isolation.
           </p>
           <Button 
             onClick={handleLogin}

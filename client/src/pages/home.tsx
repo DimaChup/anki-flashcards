@@ -106,7 +106,7 @@ export default function Home() {
           <header className="flex items-center justify-between mb-4">
             <h1 className="flex items-center gap-3 text-3xl font-bold">
               <Languages className="w-8 h-8" />
-              POS Languages Analysis - Combined View
+              My Personal Linguistic Databases
             </h1>
             <div className="flex items-center gap-3">
               <button

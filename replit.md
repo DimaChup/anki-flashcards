@@ -4,7 +4,7 @@
 
 A full-stack linguistic analysis application built with React and Express that allows users to upload, analyze, and explore linguistic data. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. Now enhanced with AI processing capabilities via Google Gemini API integration and a professional control panel for database creation and batch processing.
 
-**Monetization Ready**: The application is architected as a multi-tenant SaaS platform with subscription tiers (Free, Pro, Enterprise), user management, and usage-based billing capabilities.
+**Personal Account System**: The application now operates as a multi-tenant platform where each user gets their own private account with complete data isolation. Users can only access their own databases, word lists, and analysis data through secure authentication.
 
 ## User Preferences
 
@@ -31,15 +31,13 @@ Preferred communication style: Simple, everyday language.
 - **Current Implementation**: PostgreSQL database with Drizzle ORM for persistent storage
 - **Schema Design**: Comprehensive database schema with linguistic databases, prompt templates, processing configurations, job tracking, and subscription management
 - **Database Provider**: Neon Database (PostgreSQL) with connection pooling and automatic migrations
-- **Multi-Tenant Architecture**: User-isolated data with subscription management and usage tracking
+- **Multi-Tenant Architecture**: Complete user data isolation - each person has their own private databases, word lists, and learning progress that other users cannot access
 - **Data Models**: 
-  - **User Subscriptions**: Plan management (Free/Pro/Enterprise), usage limits, Stripe integration
-  - **Linguistic databases**: User-owned databases with metadata and analysis data
-  - **Word entries**: POS tags, translations, frequency data, and contextual information
-  - **Known words tracking**: User learning progress per database
-  - **Prompt templates**: System and user-created templates with premium features
-  - **Processing configurations**: Batch AI processing with model selection and parameters
-  - **Processing jobs**: Real-time tracking of AI analysis status and results
+  - **User Accounts**: Each person gets their own account through Replit Auth with secure login
+  - **Personal Databases**: Each database belongs to one user only (linked by user_id)
+  - **Individual Word Lists**: Known words tracking is personal to each user's databases
+  - **Private Analysis Data**: POS tags, translations, and analysis results are user-specific
+  - **Isolated Learning Progress**: Each user tracks their own vocabulary learning separately
 
 ### Component Architecture
 - **Modular Design**: Separate components for database management, page view, and list view
