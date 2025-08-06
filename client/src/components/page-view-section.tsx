@@ -386,7 +386,11 @@ export default function PageViewSection({
       <span
         key={absoluteIndex}
         className={className}
-        style={style}
+        style={{
+          ...style,
+          position: 'relative', // Required for absolute positioned grammar superscript
+          display: 'inline'
+        }}
         data-key={absoluteIndex}
         data-word={word.word}
         data-pos={word.pos}
@@ -410,7 +414,29 @@ export default function PageViewSection({
       >
         {word.word}
         {showGrammar && word.contextualInfo && (
-          <sup className="grammar-details">
+          <sup 
+            className="grammar-details"
+            style={{
+              position: 'absolute',
+              right: '0.1em',
+              top: '-0.5em',
+              left: 'auto',
+              transform: 'none',
+              fontSize: '0.6em',
+              fontWeight: 'bold',
+              lineHeight: '1',
+              pointerEvents: 'none',
+              zIndex: 1,
+              color: isHighlighted && highlightStyle === 'background' 
+                ? '#FF0000' // Bright red for background mode
+                : (() => {
+                    const group = posButtonGroups.find(g => g.tags.includes(word.pos));
+                    return group 
+                      ? `hsl(var(${group.hueVar}), var(${group.satVar}), var(${group.lightVar}))`
+                      : `hsl(var(--hl-other-hue), var(--hl-other-sat), var(--hl-other-light))`;
+                  })()
+            }}
+          >
             {[
               word.contextualInfo.gender,
               word.contextualInfo.number
