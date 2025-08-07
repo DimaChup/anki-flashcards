@@ -1242,6 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 : (Array.isArray(word.translation) ? word.translation : [word.translation]),
               pos: word.pos || null,
               lemma: word.lemma || null,
+              lemmaTranslations: word.lemma_translations && Array.isArray(word.lemma_translations) ? word.lemma_translations : null,
               sentence: word.sentence || null,
               status: 'new',
               easeFactor: 2500,
