@@ -192,7 +192,7 @@ export const ankiFlashcards = pgTable("anki_flashcards", {
   // Back side of card  
   pos: text("pos"),
   lemma: text("lemma"),
-  translations: jsonb("translations").default('[]'), // Array of translations
+  translations: text("translations").default(''), // Comma-separated translations
   sentence: text("sentence"), // Context sentence
   // SRS fields based on Anki SM-2 algorithm
   status: text("status").notNull().default('new'), // new, learning, review

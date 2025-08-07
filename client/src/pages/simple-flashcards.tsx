@@ -162,14 +162,7 @@ export default function SimpleFlashcards() {
                 <div className="border-t pt-6">
                   <div className="text-center space-y-3">
                     <div className="text-2xl font-semibold text-green-600">
-                      {Array.isArray(currentCard.translations) 
-                        ? currentCard.translations.join(', ')
-                        : (typeof currentCard.translations === 'string' 
-                          ? (currentCard.translations.startsWith('[') 
-                            ? JSON.parse(currentCard.translations).join(', ')
-                            : currentCard.translations)
-                          : currentCard.translations)
-                      }
+                      {currentCard.translations}
                     </div>
                   </div>
                 </div>
