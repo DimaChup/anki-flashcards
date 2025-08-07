@@ -1083,10 +1083,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               // Get translations from possible_translations, best_translation, or translation
               let translations: string[] = [];
-              if (word.possible_translations && Array.isArray(word.possible_translations)) {
-                translations = word.possible_translations;
+              if (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) {
+                translations = [...word.possible_translations]; // Create a copy of the array
+                console.log(`Auto-deck: Using possible_translations for ${word.word}:`, translations);
               } else if (word.best_translation) {
                 translations = [word.best_translation];
+                console.log(`Auto-deck: Using best_translation for ${word.word}:`, translations);
               } else if (Array.isArray(word.translation)) {
                 translations = word.translation;
               } else if (word.translation) {
@@ -1274,10 +1276,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             // Get translations from possible_translations, best_translation, or translation
             let translations: string[] = [];
-            if (word.possible_translations && Array.isArray(word.possible_translations)) {
-              translations = word.possible_translations;
+            if (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) {
+              translations = [...word.possible_translations]; // Create a copy of the array
+              console.log(`Using possible_translations for ${word.word}:`, translations);
             } else if (word.best_translation) {
               translations = [word.best_translation];
+              console.log(`Using best_translation for ${word.word}:`, translations);
             } else if (Array.isArray(word.translation)) {
               translations = word.translation;
             } else if (word.translation) {
