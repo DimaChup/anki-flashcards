@@ -566,6 +566,11 @@ export default function AnkiStudy() {
                       <div className="text-lg md:text-xl text-green-400 break-words" data-testid="text-card-translations">
                         {currentCard.translations.join(', ')}
                       </div>
+                      {currentCard.lemma && (
+                        <div className="text-sm text-blue-300">
+                          <span className="font-medium">Lemma:</span> {currentCard.lemma}
+                        </div>
+                      )}
                       {currentCard.pos && (
                         <div className="text-sm text-slate-400">
                           <span className="font-medium">POS:</span> {currentCard.pos}
