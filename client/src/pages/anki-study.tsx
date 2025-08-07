@@ -23,7 +23,6 @@ interface AnkiCard {
   id: string;
   word: string;
   translations: string[];
-  lemmaTranslations: string[];
   pos: string;
   lemma: string;
   sentence: string;
@@ -570,11 +569,6 @@ export default function AnkiStudy() {
                       {currentCard.lemma && (
                         <div className="text-sm text-blue-300">
                           <span className="font-medium">Lemma:</span> {currentCard.lemma}
-                        </div>
-                      )}
-                      {currentCard.lemmaTranslations && currentCard.lemmaTranslations.length > 0 && (
-                        <div className="text-sm text-purple-300">
-                          <span className="font-medium">Lemma Translations:</span> {currentCard.lemmaTranslations.join(', ')}
                         </div>
                       )}
                       {currentCard.pos && (
