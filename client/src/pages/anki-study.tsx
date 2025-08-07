@@ -176,8 +176,8 @@ export default function AnkiStudy() {
     onSuccess: () => {
       // Invalidate ALL relevant caches to show updated card statuses
       queryClient.invalidateQueries({ queryKey: ['/api/anki/deck', selectedDatabase] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', selectedDatabase] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', deck?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue', deck?.id] });
       
       toast({ 
         title: "Deck Reset!", 
@@ -221,8 +221,8 @@ export default function AnkiStudy() {
       
       // Invalidate queries to refresh deck view and study queue
       queryClient.invalidateQueries({ queryKey: ['/api/anki/deck', selectedDatabase] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', selectedDatabase] });
-      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/cards', deck?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/anki/study-queue', deck?.id] });
     },
     onError: (error: any) => {
       toast({ 
