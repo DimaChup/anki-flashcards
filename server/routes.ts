@@ -1080,7 +1080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   : (Array.isArray(word.translation) ? word.translation : [word.translation]),
                 pos: word.pos || null,
                 lemma: word.lemma || null,
-                lemmaTranslations: word.lemma_translations && Array.isArray(word.lemma_translations) ? word.lemma_translations : null,
+                lemmaTranslations: word.lemma_translations && Array.isArray(word.lemma_translations) ? word.lemma_translations : [],
                 sentence: word.sentence || null,
                 status: 'new',
                 easeFactor: 2500,
@@ -1235,6 +1235,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let createdCount = 0;
         for (const word of firstInstanceWords) {
           try {
+            // Debug log to check data structure
+            if (word.word === 'Llamadme') {
+              console.log('Debug word data:', JSON.stringify(word, null, 2));
+            }
+            
             await storage.createAnkiCard({
               userId,
               databaseId,
@@ -1247,7 +1252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 : (Array.isArray(word.translation) ? word.translation : [word.translation]),
               pos: word.pos || null,
               lemma: word.lemma || null,
-              lemmaTranslations: word.lemma_translations && Array.isArray(word.lemma_translations) ? word.lemma_translations : null,
+              lemmaTranslations: word.lemma_translations && Array.isArray(word.lemma_translations) ? word.lemma_translations : [],
               sentence: word.sentence || null,
               status: 'new',
               easeFactor: 2500,
