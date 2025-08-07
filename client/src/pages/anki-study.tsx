@@ -757,7 +757,10 @@ export default function AnkiStudy() {
                                   {card.word}
                                 </td>
                                 <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
-                                  {card.translations.join(', ')}
+                                  {Array.isArray(card.translations) 
+                                    ? card.translations.join(', ')
+                                    : (typeof card.translations === 'string' ? JSON.parse(card.translations).join(', ') : card.translations)
+                                  }
                                 </td>
                                 <td className="p-3 text-blue-400 text-sm" data-testid={`text-pos-${index}`}>
                                   {card.pos || '-'}
@@ -798,7 +801,10 @@ export default function AnkiStudy() {
                             </div>
                           </div>
                           <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
-                            {card.translations.join(', ')}
+                            {Array.isArray(card.translations) 
+                              ? card.translations.join(', ')
+                              : (typeof card.translations === 'string' ? JSON.parse(card.translations).join(', ') : card.translations)
+                            }
                           </div>
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-blue-400 text-sm" data-testid={`text-mobile-pos-${index}`}>
