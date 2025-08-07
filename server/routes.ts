@@ -237,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           segments: jsonData.segments || []
         };
 
-        // Transform each word entry
+        // Transform each word entry - preserve ALL rich data
         Object.entries(jsonData.wordDatabase).forEach(([id, wordData]: [string, any]) => {
           const transformedWord: WordEntry = {
             id: id,
@@ -255,7 +255,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               person: wordData.details?.Person,
             },
             position: parseInt(id),
-            sentence: wordData.sentence || `Context for word: ${wordData.word}`
+            sentence: wordData.sentence || `Context for word: ${wordData.word}`,
+            // Preserve rich JSON structure
+            bestTranslation: wordData.best_translation,
+            possibleTranslations: wordData.possible_translations || [],
+            lemmaTranslations: wordData.lemma_translations || [],
+            mostFrequentLemma: wordData.most_frequent_lemma,
+            frequencyTillNow: wordData.freq_till_now,
+            details: wordData.details || {},
+            rawData: wordData // Store complete original data
           };
           
           (transformedData.analysisData as WordEntry[]).push(transformedWord);

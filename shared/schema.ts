@@ -3,13 +3,13 @@ import { pgTable, text, varchar, jsonb, integer, timestamp, index } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Word entry in the linguistic database
+// Word entry in the linguistic database - enhanced to preserve rich JSON structure
 export const wordEntrySchema = z.object({
   id: z.string(),
   word: z.string(),
   lemma: z.string(),
   pos: z.string(),
-  translation: z.string(),
+  translation: z.string(), // Primary translation (best_translation)
   frequency: z.number(),
   firstInstance: z.boolean(),
   contextualInfo: z.object({
@@ -21,6 +21,15 @@ export const wordEntrySchema = z.object({
   }).optional(),
   position: z.number(), // Position in the original text
   sentence: z.string(),
+  // Enhanced fields to preserve rich JSON structure
+  bestTranslation: z.string().optional(), // best_translation field
+  possibleTranslations: z.array(z.string()).optional(), // possible_translations array
+  lemmaTranslations: z.array(z.string()).optional(), // lemma_translations array
+  mostFrequentLemma: z.string().optional(), // most_frequent_lemma field
+  frequencyTillNow: z.string().optional(), // freq_till_now field
+  details: z.record(z.string()).optional(), // Full details object with all linguistic info
+  // Support for TBD fields during processing
+  rawData: z.record(z.any()).optional(), // Store original raw data structure
 });
 
 export type WordEntry = z.infer<typeof wordEntrySchema>;
