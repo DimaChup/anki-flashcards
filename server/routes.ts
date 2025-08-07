@@ -1118,8 +1118,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deckId = req.params.deckId;
       const status = req.query.status as string;
       
+      // Verify user owns this deck
+      const deck = await storage.getAnkiDeck(deckId, userId);
+      if (!deck) {
+        return res.status(404).json({ message: "Deck not found" });
+      }
+      
       const cards = await storage.getAnkiCards(deckId, status);
-      res.json(cards);
+      
+      // Add time tracking information to each card
+      const cardsWithTimings = cards.map(card => ({
+        ...card,
+        timeInfo: storage.getTimeUntilDue(card)
+      }));
+      
+      res.json(cardsWithTimings);
     } catch (error) {
       console.error("Error fetching Anki cards:", error);
       res.status(500).json({ message: "Failed to fetch Anki cards" });

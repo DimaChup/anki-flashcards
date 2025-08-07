@@ -2,9 +2,11 @@
 
 ## Overview
 
-A full-stack linguistic analysis application built with React and Express that allows users to upload, analyze, and explore linguistic data. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. Now enhanced with AI processing capabilities via Google Gemini API integration and a professional control panel for database creation and batch processing.
+A cutting-edge multilingual learning platform that dynamically adapts to user learning styles through intelligent technology and personalized interactions. The application provides comprehensive tools for Part-of-Speech (POS) analysis, featuring text highlighting, word frequency analysis, and known word management. Enhanced with AI processing capabilities via Google Gemini API integration and a professional control panel for database creation and batch processing.
 
-**Personal Account System**: The application now operates as a multi-tenant platform where each user gets their own private account with complete data isolation. Users can only access their own databases, word lists, and analysis data through secure authentication.
+**Advanced Spaced Repetition System**: The application now features a complete Anki-style flashcard system implementing the authentic SM-2 spaced repetition algorithm with proper time-based scheduling, ease factor calculations, and interval progressions. Cards are scheduled based on user performance with minimum time intervals enforced before review eligibility.
+
+**Personal Account System**: Multi-tenant platform where each user gets their own private account with complete data isolation. Users can only access their own databases, word lists, analysis data, and Anki study decks through secure authentication.
 
 ## User Preferences
 

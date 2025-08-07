@@ -88,6 +88,7 @@ export interface IStorage {
   
   // Session-based study operations for proper Anki flow
   getStudyQueue(deckId: string, newCardLimit: number, reviewLimit: number): Promise<AnkiFlashcard[]>;
+  getTimeUntilDue(card: AnkiFlashcard): { timeString: string, isOverdue: boolean, dueDate: Date };
   resetSessionCounts(deckId: string): Promise<void>;
   getSessionCycleCards(deckId: string): Promise<AnkiFlashcard[]>;
 }
@@ -424,7 +425,7 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  // Proper SM-2 spaced repetition algorithm with session cycling
+  // Proper SM-2 spaced repetition algorithm with time-based scheduling
   async reviewAnkiCard(review: AnkiReview): Promise<AnkiFlashcard | undefined> {
     const card = await db.select().from(ankiFlashcards).where(eq(ankiFlashcards.id, review.cardId)).limit(1);
     if (!card[0]) return undefined;
@@ -432,13 +433,15 @@ export class DatabaseStorage implements IStorage {
     const currentCard = card[0];
     const now = new Date();
     
-    // SM-2 Algorithm Constants
+    // SM-2 Algorithm Constants (faithful to original research)
     const SM2_CONSTANTS = {
-      MIN_EASE_FACTOR: 1300, // 1.3 * 1000
-      INITIAL_EASE_FACTOR: 2500, // 2.5 * 1000
-      LEARNING_STEPS: [1, 10], // minutes for new cards
-      GRADUATING_INTERVAL: 1, // days
-      EASE_BONUSES: { 1: -200, 2: -150, 3: 0, 4: 150 }, // Rating effects on ease factor
+      MIN_EASE_FACTOR: 1300, // 1.3 minimum (prevents "ease hell")
+      INITIAL_EASE_FACTOR: 2500, // 2.5 starting ease factor
+      LEARNING_STEPS_MINUTES: [1, 10], // Learning phase: 1min, 10min
+      GRADUATING_INTERVAL_DAYS: 1, // First review interval (days)
+      EASY_BONUS_MULTIPLIER: 1.3, // Easy button gets 30% bonus
+      HARD_PENALTY_MULTIPLIER: 1.2, // Hard button gets 20% penalty (instead of full ease)
+      LAPSE_MULTIPLIER: 0.1, // Failed cards get 10% of previous interval
     };
 
     let newEaseFactor = currentCard.easeFactor;
@@ -448,6 +451,7 @@ export class DatabaseStorage implements IStorage {
     let newLapses = currentCard.lapses;
     let newSessionCycleCount = (currentCard.sessionCycleCount || 0);
     let newSessionEasyCount = (currentCard.sessionEasyCount || 0);
+    let dueDate = new Date(now);
 
     // Handle session cycling for Hard cards
     if (review.rating === 2) { // Hard - cycle back in session
@@ -456,69 +460,110 @@ export class DatabaseStorage implements IStorage {
       newSessionEasyCount += 1;
     }
 
-    // Apply SM-2 algorithm based on card state and rating
-    if (review.rating === 1) { // Again - reset to learning
-      newStatus = 'learning';
-      newInterval = 0; // Reset interval
-      newRepetitions = 0;
-      newLapses += 1;
-      newEaseFactor = Math.max(SM2_CONSTANTS.MIN_EASE_FACTOR, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[1]);
-      newSessionCycleCount = 1; // Will appear again in session
+    // Original SM-2 ease factor calculation: EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02))
+    // Simplified for 4-button system (1=Again, 2=Hard, 3=Good, 4=Easy)
+    const easeAdjustments = {
+      1: -0.20, // Again: -0.20 (equivalent to q=0 in original)
+      2: -0.15, // Hard: -0.15 (equivalent to q=2 in original)
+      3: 0.0,   // Good: no change (equivalent to q=3 in original)
+      4: 0.15   // Easy: +0.15 (equivalent to q=5 in original)
+    };
 
-    } else if (currentCard.status === 'new') { // New card progression
-      if (review.rating >= 3) { // Good/Easy - graduate to review
-        newStatus = 'review';
-        newInterval = SM2_CONSTANTS.GRADUATING_INTERVAL;
-        newRepetitions = 1;
-        if (review.rating === 4) { // Easy bonus
-          newInterval = 4; // Easy new cards get longer first interval
-          newEaseFactor = Math.min(2500 + 300, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[4]);
-        }
-      } else { // Hard - stay in learning
+    // Apply ease factor adjustment (except for new/learning cards on first few reviews)
+    if (currentCard.status === 'review' || (currentCard.status === 'learning' && review.rating === 1)) {
+      newEaseFactor = Math.max(
+        SM2_CONSTANTS.MIN_EASE_FACTOR,
+        newEaseFactor + (easeAdjustments[review.rating] * 1000)
+      );
+    }
+
+    // SM-2 Algorithm Implementation
+    if (review.rating === 1) { // Again - Failed recall
+      newStatus = 'learning';
+      newLapses += 1;
+      newRepetitions = 0;
+      
+      // Lapsed cards: 10% of previous interval or 1 day minimum
+      if (currentCard.status === 'review') {
+        newInterval = Math.max(1, Math.round(currentCard.interval * SM2_CONSTANTS.LAPSE_MULTIPLIER));
+      } else {
+        newInterval = 0; // Back to learning steps
+      }
+      
+      newSessionCycleCount = 1; // Will cycle back in session
+      dueDate = new Date(now.getTime() + (SM2_CONSTANTS.LEARNING_STEPS_MINUTES[0] * 60 * 1000)); // 1 minute
+
+    } else if (currentCard.status === 'new') { // New card
+      if (review.rating === 2) { // Hard - enter learning
         newStatus = 'learning';
         newInterval = 0;
-        newEaseFactor = Math.max(SM2_CONSTANTS.MIN_EASE_FACTOR, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[2]);
+        dueDate = new Date(now.getTime() + (SM2_CONSTANTS.LEARNING_STEPS_MINUTES[0] * 60 * 1000)); // 1 minute
+        
+      } else { // Good/Easy - graduate immediately
+        newStatus = 'review';
+        newRepetitions = 1;
+        
+        if (review.rating === 4) { // Easy - longer first interval
+          newInterval = Math.round(SM2_CONSTANTS.GRADUATING_INTERVAL_DAYS * SM2_CONSTANTS.EASY_BONUS_MULTIPLIER * 3); // ~4 days
+          newEaseFactor = Math.min(2800, newEaseFactor + 150); // Bonus ease
+        } else { // Good
+          newInterval = SM2_CONSTANTS.GRADUATING_INTERVAL_DAYS; // 1 day
+        }
+        
+        dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
       }
 
-    } else if (currentCard.status === 'learning') { // Learning card progression
-      if (review.rating >= 3) { // Good/Easy - graduate
-        newStatus = 'review';
-        newInterval = SM2_CONSTANTS.GRADUATING_INTERVAL;
-        newRepetitions = 1;
-        if (review.rating === 4) { // Easy bonus
-          newInterval = 4;
-          newEaseFactor = Math.min(2500 + 300, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[4]);
+    } else if (currentCard.status === 'learning') { // Learning card
+      if (review.rating === 2) { // Hard - repeat current step
+        newInterval = 0;
+        dueDate = new Date(now.getTime() + (SM2_CONSTANTS.LEARNING_STEPS_MINUTES[0] * 60 * 1000)); // 1 minute
+        
+      } else { // Good/Easy - advance or graduate
+        if (review.rating === 4) { // Easy - graduate immediately
+          newStatus = 'review';
+          newRepetitions = 1;
+          newInterval = Math.round(SM2_CONSTANTS.GRADUATING_INTERVAL_DAYS * SM2_CONSTANTS.EASY_BONUS_MULTIPLIER * 3); // ~4 days
+          newEaseFactor = Math.min(2800, newEaseFactor + 150);
+          dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
+          
+        } else { // Good - graduate to review
+          newStatus = 'review';
+          newRepetitions = 1;
+          newInterval = SM2_CONSTANTS.GRADUATING_INTERVAL_DAYS; // 1 day
+          dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
         }
-      } else { // Hard - continue learning
-        newEaseFactor = Math.max(SM2_CONSTANTS.MIN_EASE_FACTOR, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[2]);
       }
 
     } else { // Review card - apply full SM-2 algorithm
       newRepetitions += 1;
       
-      // Calculate new interval using SM-2 formula
+      // Original SM-2 interval calculation
       if (newRepetitions === 1) {
-        newInterval = 1;
+        newInterval = 1; // First review: 1 day
       } else if (newRepetitions === 2) {
-        newInterval = 6;
+        newInterval = 6; // Second review: 6 days
       } else {
-        // Standard SM-2: I(n) = I(n-1) * EF
-        const easeFactor = newEaseFactor / 1000; // Convert back to decimal
-        newInterval = Math.max(1, Math.round(currentCard.interval * easeFactor));
+        // SM-2 formula: I(n) = I(n-1) × EF
+        const easeFactor = newEaseFactor / 1000; // Convert to decimal (e.g., 2500 → 2.5)
+        newInterval = Math.round(currentCard.interval * easeFactor);
       }
-
-      // Apply rating modifiers
+      
+      // Apply rating-specific modifiers
       if (review.rating === 2) { // Hard
-        newInterval = Math.max(1, Math.round(newInterval * 1.2));
-        newEaseFactor = Math.max(SM2_CONSTANTS.MIN_EASE_FACTOR, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[2]);
-      } else if (review.rating === 4) { // Easy
-        newInterval = Math.round(newInterval * 1.3);
-        newEaseFactor = Math.min(2500 + 300, newEaseFactor + SM2_CONSTANTS.EASE_BONUSES[4]);
+        newInterval = Math.max(1, Math.round(newInterval * SM2_CONSTANTS.HARD_PENALTY_MULTIPLIER));
+        // Ensure minimum increase of 1 day
+        newInterval = Math.max(currentCard.interval + 1, newInterval);
+        
+      } else if (review.rating === 4) { // Easy  
+        newInterval = Math.round(newInterval * SM2_CONSTANTS.EASY_BONUS_MULTIPLIER);
       }
+      
+      // Ensure minimum progression (at least 1 day longer than previous)
+      newInterval = Math.max(currentCard.interval + 1, newInterval);
+      
+      // Calculate due date
+      dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
     }
-
-    // Calculate due date
-    const dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
 
     // Update the card with all new values
     const updatedCard = await this.updateAnkiCard(review.cardId, {
@@ -528,9 +573,9 @@ export class DatabaseStorage implements IStorage {
       due: dueDate,
       repetitions: newRepetitions,
       lapses: newLapses,
+      lastQuality: review.rating,
       sessionCycleCount: newSessionCycleCount,
-      sessionEasyCount: newSessionEasyCount,
-      lastQuality: review.rating
+      sessionEasyCount: newSessionEasyCount
     });
 
     // Update deck statistics after card review to reflect real-time changes
@@ -607,44 +652,79 @@ export class DatabaseStorage implements IStorage {
     return deck;
   }
 
-  // Session-based study operations for proper Anki flow
+  // Session-based study operations for proper Anki flow with time-based scheduling
   async getStudyQueue(deckId: string, newCardLimit: number, reviewLimit: number): Promise<AnkiFlashcard[]> {
     const now = new Date();
     
-    // Get due review cards (prioritized by Anki algorithm)
+    // Get review cards that are due (including overdue) - highest priority
     const reviewCards = await db.select().from(ankiFlashcards)
       .where(and(
         eq(ankiFlashcards.deckId, deckId),
         eq(ankiFlashcards.status, 'review'),
         lte(ankiFlashcards.due, now)
       ))
-      .limit(reviewLimit)
-      .orderBy(ankiFlashcards.due); // Oldest due cards first
-
-    // Get learning cards (also due for review)  
+      .orderBy(ankiFlashcards.due) // Oldest due dates first
+      .limit(reviewLimit);
+    
+    // Get learning cards that are due (including overdue) - medium priority
     const learningCards = await db.select().from(ankiFlashcards)
       .where(and(
         eq(ankiFlashcards.deckId, deckId),
         eq(ankiFlashcards.status, 'learning'),
         lte(ankiFlashcards.due, now)
       ))
-      .limit(reviewLimit)
-      .orderBy(ankiFlashcards.due);
-
-    // Get new cards up to the NEW CARD LIMIT ONLY, ordered by position in text
-    const newCards = await db.select().from(ankiFlashcards)
+      .orderBy(ankiFlashcards.due); // Oldest due dates first
+    
+    // Get new cards only if there's capacity after due cards - lowest priority
+    const dueCount = reviewCards.length + learningCards.length;
+    const availableForNew = Math.max(0, newCardLimit - Math.max(0, dueCount - reviewLimit));
+    
+    const newCards = availableForNew > 0 ? await db.select().from(ankiFlashcards)
       .where(and(
         eq(ankiFlashcards.deckId, deckId),
         eq(ankiFlashcards.status, 'new')
       ))
-      .limit(newCardLimit) // Strict limit on new cards
-      .orderBy(ankiFlashcards.wordKey); // Maintain original text order
-
-    // For study queue, maintain text order for new cards (don't shuffle)
-    // Reviews come first (due cards), then new cards in text order
-    const priorityCards = [...reviewCards, ...learningCards];
+      .orderBy(ankiFlashcards.wordKey) // Maintain text order for new cards
+      .limit(availableForNew) : [];
     
-    return [...priorityCards, ...newCards];
+    // Anki priority: Review cards first (most important), then learning, then new
+    return [...reviewCards, ...learningCards, ...newCards];
+  }
+
+  // Get time until next review for a card (for UI display)
+  getTimeUntilDue(card: AnkiFlashcard): { timeString: string, isOverdue: boolean, dueDate: Date } {
+    const now = new Date();
+    const dueDate = new Date(card.due);
+    const timeDiff = dueDate.getTime() - now.getTime();
+    const isOverdue = timeDiff < 0;
+    
+    if (isOverdue) {
+      const overdueDiff = Math.abs(timeDiff);
+      const days = Math.floor(overdueDiff / (24 * 60 * 60 * 1000));
+      const hours = Math.floor((overdueDiff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      
+      if (days > 0) {
+        return { timeString: `${days}d overdue`, isOverdue: true, dueDate };
+      } else if (hours > 0) {
+        return { timeString: `${hours}h overdue`, isOverdue: true, dueDate };
+      } else {
+        return { timeString: `Overdue`, isOverdue: true, dueDate };
+      }
+    } else {
+      const days = Math.floor(timeDiff / (24 * 60 * 60 * 1000));
+      const hours = Math.floor((timeDiff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      const minutes = Math.floor((timeDiff % (60 * 60 * 1000)) / (60 * 1000));
+      
+      if (days > 0) {
+        return { timeString: `${days}d`, isOverdue: false, dueDate };
+      } else if (hours > 0) {
+        return { timeString: `${hours}h`, isOverdue: false, dueDate };
+      } else if (minutes > 0) {
+        return { timeString: `${minutes}m`, isOverdue: false, dueDate };
+      } else {
+        return { timeString: `Now`, isOverdue: false, dueDate };
+      }
+    }
   }
 
   async resetSessionCounts(deckId: string): Promise<void> {

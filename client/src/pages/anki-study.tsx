@@ -555,7 +555,9 @@ export default function AnkiStudy() {
                         <Play className="h-4 w-4 mr-2" />
                         {studyQueueLoading 
                           ? 'Loading study queue...' 
-                          : `Start Study Session (${filteredStudyQueue.length} cards due)`
+                          : filteredStudyQueue.length > 0 
+                            ? `Start Study Session (${filteredStudyQueue.length} cards ready)`
+                            : 'No cards due for review'
                         }
                       </Button>
                     </div>
@@ -635,7 +637,14 @@ export default function AnkiStudy() {
                         </div>
                       )}
                       
-                      {/* Rating Buttons - iPhone XR Optimized */}
+                      {/* SM-2 Algorithm Info */}
+                      <div className="text-xs text-slate-400 text-center bg-slate-800/50 p-2 rounded">
+                        Ease: {((currentCard.easeFactor || 2500) / 1000).toFixed(1)}x | 
+                        Interval: {currentCard.interval || 0}d | 
+                        Repetitions: {currentCard.repetitions || 0}
+                      </div>
+                      
+                      {/* Rating Buttons - iPhone XR Optimized with SM-2 Labels */}
                       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:flex md:gap-3 justify-center mt-3 sm:mt-4 md:mt-6">
                         <Button
                           onClick={() => handleCardReview(1)}
@@ -644,31 +653,43 @@ export default function AnkiStudy() {
                           className="min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-again"
                         >
-                          Again
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold">Again</span>
+                            <span className="text-xs opacity-75">Restart</span>
+                          </div>
                         </Button>
                         <Button
                           onClick={() => handleCardReview(2)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-yellow-600 hover:bg-yellow-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
+                          className="bg-orange-600 hover:bg-orange-700 text-white min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-hard"
                         >
-                          Hard
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold">Hard</span>
+                            <span className="text-xs opacity-75">1.2x</span>
+                          </div>
                         </Button>
                         <Button
                           onClick={() => handleCardReview(3)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
+                          className="bg-green-600 hover:bg-green-700 text-white min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-good"
                         >
-                          Good
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold">Good</span>
+                            <span className="text-xs opacity-75">Normal</span>
+                          </div>
                         </Button>
                         <Button
                           onClick={() => handleCardReview(4)}
                           disabled={reviewCardMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700 min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
+                          className="bg-blue-600 hover:bg-blue-700 text-white min-h-[52px] sm:min-h-[50px] text-sm md:text-base font-semibold"
                           data-testid="button-easy"
                         >
-                          Easy
+                          <div className="flex flex-col items-center">
+                            <span className="font-bold">Easy</span>
+                            <span className="text-xs opacity-75">1.3x</span>
+                          </div>
                         </Button>
                       </div>
                     </div>
