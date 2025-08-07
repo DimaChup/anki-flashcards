@@ -159,46 +159,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             try {
               if (code === 0) {
-                // Read the initialized JSON file
+                // Read the initialized JSON file created by Python script
                 const { readFileSync } = await import('fs');
-                const initializedData = JSON.parse(readFileSync(outputJsonFile, 'utf8'));
+                const pythonData = JSON.parse(readFileSync(outputJsonFile, 'utf8'));
                 
-                // Convert from Python format to our database format
-                const analysisData: any[] = [];
-                const wordDatabase = initializedData.wordDatabase || {};
+                // Don't convert - use the Python format directly for processing
+                // But still create a database entry for tracking
+                const wordDatabase = pythonData.wordDatabase || {};
+                const wordCount = Object.keys(wordDatabase).length;
                 
-                Object.keys(wordDatabase).forEach(key => {
-                  const wordData = wordDatabase[key];
-                  analysisData.push({
-                    id: key,
-                    word: wordData.word,
-                    pos: wordData.pos || 'TBD',
-                    lemma: wordData.lemma || wordData.word.toLowerCase(),
-                    position: parseInt(key),
-                    sentence: `Context for word: ${wordData.word}`,
-                    frequency: wordData.frequency || 1,
-                    translation: 'TBD',
-                    firstInstance: wordData.first_inst || true,
-                    contextualInfo: {}
-                  });
-                });
-                
-                // Sort by position to maintain order
-                analysisData.sort((a, b) => a.position - b.position);
-                
-                // Create database with properly initialized data
+                // Create minimal database entry for UI purposes
                 const transformedData = {
                   name: databaseName,
-                  description: `Initialized from text input - ${analysisData.length} words found`,
+                  description: `Initialized from text input - ${wordCount} words found`,
                   language: "Unknown", // Will be determined during processing
-                  originalText: initializedData.inputText || inputText,
-                  wordCount: analysisData.length,
-                  analysisData: analysisData,
-                  knownWords: initializedData.knownWords || [],
-                  segments: initializedData.segments || []
+                  originalText: pythonData.inputText || inputText,
+                  wordCount: wordCount,
+                  analysisData: [], // Keep empty - processing will fill this
+                  knownWords: [],
+                  segments: pythonData.segments || []
                 };
 
                 const database = await storage.createLinguisticDatabase(transformedData, userId);
+                
+                // Save the Python format to /tmp for processing
+                const processingFile = `/tmp/database_${database.id}.json`;
+                const { writeFileSync } = await import('fs');
+                writeFileSync(processingFile, JSON.stringify(pythonData, null, 2), 'utf8');
                 
                 // Automatically create associated Anki deck
                 try {
@@ -210,10 +197,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log("Initialization complete:", {
                   message: "File initialized and database created successfully",
                   database,
-                  wordCount: analysisData.length
+                  wordCount,
+                  processingFile
                 });
                 
-                resolve({ database, wordCount: analysisData.length });
+                resolve({ database, wordCount, processingFile });
               } else {
                 console.error("✗ Python initialization failed!");
                 console.error("Error output:", stderr);
