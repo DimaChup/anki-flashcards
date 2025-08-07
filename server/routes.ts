@@ -1844,6 +1844,22 @@ Take your time, be super careful, no cutting corners.`,
     }
   });
 
+  // Get specific file content from /tmp
+  app.get("/api/files/:filename", isAuthenticated, async (req: any, res) => {
+    try {
+      const { readFile } = await import('fs/promises');
+      const filename = req.params.filename;
+      const filepath = `/tmp/${filename}`;
+      
+      const content = await readFile(filepath, 'utf-8');
+      res.setHeader('Content-Type', 'text/plain');
+      res.send(content);
+    } catch (error) {
+      console.error("Error reading file:", error);
+      res.status(404).json({ message: "File not found" });
+    }
+  });
+
   // Upload text file for Python terminal
   app.post("/api/python-terminal/upload", isAuthenticated, upload.single('textFile'), async (req: any, res) => {
     try {
