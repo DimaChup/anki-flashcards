@@ -470,6 +470,36 @@ export default function CreateDatabase() {
               </select>
             </div>
             
+            {/* Show JSON file location for selected database */}
+            {selectedDatabase && databases && (
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '10px', 
+                backgroundColor: 'var(--bg-primary)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '6px',
+                fontSize: '0.85em'
+              }}>
+                <div style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                  <strong>Selected Database JSON Locations:</strong>
+                </div>
+                {(() => {
+                  const selectedDb = databases.find((db: any) => db.id === selectedDatabase);
+                  if (selectedDb) {
+                    return (
+                      <div style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                        <div>• Processing File: <code style={{ backgroundColor: 'var(--bg-tertiary)', padding: '2px 4px', borderRadius: '3px' }}>/tmp/database_{selectedDb.id}.json</code></div>
+                        <div style={{ marginTop: '5px' }}>• Database: <span style={{ color: 'var(--accent-primary)' }}>{selectedDb.name}</span></div>
+                        <div>• Words: <span style={{ color: 'var(--accent-primary)' }}>{selectedDb.wordCount?.toLocaleString() || 0}</span></div>
+                        <div>• Language: <span style={{ color: 'var(--accent-primary)' }}>{selectedDb.language}</span></div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
+            
             <hr style={{ margin: '10px 0' }} />
             
             <div className="control-group">
@@ -721,7 +751,9 @@ export default function CreateDatabase() {
                     <>
                       Available Databases: {databases.length}
                       {'\n'}
-                      {databases.map((db: any) => `- ${db.name} (${db.wordCount} words)`).join('\n')}
+                      {databases.map((db: any) => 
+                        `- ${db.name} (${db.wordCount} words)\n  JSON: /tmp/database_${db.id}.json`
+                      ).join('\n')}
                       {'\n\n'}
                     </>
                   )}
