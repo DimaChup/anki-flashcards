@@ -724,33 +724,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize file processing - equivalent to Python script --initialize-only
-  app.post("/api/initialize-file", async (req, res) => {
+  app.post("/api/initialize-file", isAuthenticated, async (req: any, res) => {
     try {
       const { inputText, fileName } = req.body;
+      const userId = req.user.id;
       
       if (!inputText || !fileName) {
         return res.status(400).json({ message: "Input text and file name are required" });
       }
 
-      // Create the initialization data structure matching Python script output
-      const initializationResult = {
-        inputText: inputText,
-        fileName: fileName,
-        wordDatabase: {},
-        segments: [],
-        idioms: [],
-        knownWords: [],
-        metadata: {
-          totalWords: 0,
-          processedAt: new Date().toISOString(),
-          status: "initialized"
-        }
-      };
-
-      // Tokenize the text using JavaScript regex (similar to Python script)
-      // TOKEN_REGEX = r"([\p{L}'']+)|(\s+)|(\n+)|([^\p{L}\s\n'']+)"
+      // Tokenize the text and create analysis data array
       const tokenRegex = /([\p{L}'']+)|(\s+)|(\n+)|([^\p{L}\s\n'']+)/gu;
       let currentWordIndex = 0;
+      const analysisData: any[] = [];
       let match;
 
       console.log(`Starting tokenization for "${fileName}"...`);
@@ -762,30 +748,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (isWord) {
           currentWordIndex++;
           
-          // Create placeholder entry for every word (matching Python script logic)
-          initializationResult.wordDatabase[currentWordIndex] = {
-            word: tokenText, // Store original case
+          // Create word entry matching our database schema
+          analysisData.push({
+            id: currentWordIndex.toString(),
+            word: tokenText,
+            lemma: tokenText.toLowerCase(), // Default lemma
             pos: "TBD",
-            lemma: "TBD", 
-            best_translation: "TBD",
-            possible_translations: [],
-            details: {},
-            freq: "TBD",
-            freq_till_now: "TBD",
-            first_inst: "TBD",
-            lemma_translations: [],
-            most_frequent_lemma: "TBD"
-          };
+            translation: "TBD",
+            frequency: 1, // Default frequency
+            firstInstance: true, // Will be calculated properly later
+            contextualInfo: {
+              gender: undefined,
+              number: undefined,
+              tense: undefined,
+              mood: undefined,
+              person: undefined
+            },
+            position: currentWordIndex,
+            sentence: `Context for word: ${tokenText}` // Default context
+          });
         }
       }
 
-      initializationResult.metadata.totalWords = currentWordIndex;
+      // Create the linguistic database
+      const databaseData = {
+        name: fileName,
+        description: `Initialized from text input - ${currentWordIndex} words found`,
+        language: "Unknown", // Can be detected later
+        originalText: inputText,
+        wordCount: currentWordIndex,
+        analysisData: analysisData,
+        knownWords: [],
+        segments: []
+      };
+
+      const database = await storage.createLinguisticDatabase(databaseData, userId);
+      
+      // Automatically create associated Anki deck
+      try {
+        await storage.generateAnkiDeckFromDatabase(database.id, userId);
+      } catch (error) {
+        console.error("Failed to create Anki deck:", error);
+        // Don't fail the database creation if Anki deck creation fails
+      }
 
       console.log(`File initialization complete: ${currentWordIndex} words found in "${fileName}"`);
       
-      res.status(200).json({
-        message: "File initialized successfully",
-        data: initializationResult,
+      res.status(201).json({
+        message: "File initialized and database created successfully",
+        database: database,
         wordCount: currentWordIndex
       });
 

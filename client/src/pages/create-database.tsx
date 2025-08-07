@@ -142,7 +142,13 @@ export default function CreateDatabase() {
       return response.json();
     },
     onSuccess: (result) => {
-      showStatus(`File initialized successfully! Found ${result.wordCount} words. Ready for further processing.`, 'success');
+      // Refresh the databases list to show the new database
+      queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
+      
+      // Auto-select the newly created database
+      setSelectedDatabase(result.database.id);
+      
+      showStatus(`✓ Database "${result.database.name}" created successfully! Found ${result.wordCount} words.`, 'success');
       
       // Show detailed results in console for debugging
       console.log('Initialization complete:', result);
@@ -150,14 +156,6 @@ export default function CreateDatabase() {
       // Clear the initialize form
       setInitializeText('');
       setInitializeFilename('');
-      
-      // Display the initialized data structure info
-      const dataInfo = result.data;
-      showStatus(
-        `✓ Initialized "${dataInfo.fileName}" with ${result.wordCount} words. ` +
-        `Data structure ready for processing with Python script.`, 
-        'success'
-      );
     },
     onError: (error: Error) => {
       showStatus(error.message, 'error');
