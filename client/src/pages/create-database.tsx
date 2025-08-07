@@ -162,6 +162,38 @@ export default function CreateDatabase() {
     }
   });
 
+  // Quick Processing functionality - equivalent to Python script --resume-from with Spanish prompt
+  const quickProcessingMutation = useMutation({
+    mutationFn: async (databaseId: string) => {
+      const response = await fetch('/api/quick-processing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ databaseId })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to start quick processing');
+      }
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/processing-jobs'] });
+      showStatus(`✓ Quick processing started for Spanish analysis! Job ID: ${result.jobId}`, 'success');
+      console.log('Quick processing started:', result);
+    },
+    onError: (error: Error) => {
+      showStatus(error.message, 'error');
+    }
+  });
+
+  const handleQuickProcessing = () => {
+    if (!selectedDatabase) {
+      showStatus('Please select a database for quick processing', 'error');
+      return;
+    }
+    quickProcessingMutation.mutate(selectedDatabase);
+  };
+
   const handleInitializeFile = () => {
     if (!initializeText.trim()) {
       showStatus('Please enter text to initialize a new database', 'error');
@@ -578,6 +610,26 @@ export default function CreateDatabase() {
             }}>
               Actions on Selected File
             </h2>
+
+            <div className="control-group">
+              <button 
+                id="btn-quick-processing"
+                onClick={handleQuickProcessing}
+                disabled={quickProcessingMutation.isPending || !selectedDatabase}
+                data-testid="button-quick-processing"
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  marginBottom: '10px'
+                }}
+              >
+                {quickProcessingMutation.isPending ? 'Starting Quick Processing...' : 'Quick Processing'}
+              </button>
+              <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '5px' }}>
+                Equivalent to: <code>python process_llm.py --resume-from [selected_database] --model gemini-2.5-flash</code>
+              </small>
+            </div>
 
             <div className="control-group">
               <button 

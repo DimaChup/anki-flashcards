@@ -806,6 +806,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick Processing - equivalent to Python script --resume-from with specific prompt
+  app.post("/api/quick-processing", isAuthenticated, async (req: any, res) => {
+    try {
+      const { databaseId } = req.body;
+      const userId = req.user.id;
+      
+      if (!databaseId) {
+        return res.status(400).json({ message: "Database ID is required" });
+      }
+
+      // Get the database
+      const database = await storage.getLinguisticDatabase(databaseId, userId);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+
+      // Check if Spanish prompt template exists, if not create it
+      let spanishPrompt = await storage.getPromptTemplateByName("Spanish Analysis - Quick Processing");
+      if (!spanishPrompt) {
+        const spanishPromptData = {
+          name: "Spanish Analysis - Quick Processing",
+          description: "Comprehensive Spanish text analysis with translation, POS tagging, and idiom identification",
+          template: `Analyze the following text segment and complete the provided JSON structure following the specific instruction order. **CRITICAL:** The output MUST be ONLY the completed JSON object, perfectly formatted, with no additional text, explanations, markdown formatting (like \`\`\`json), or invisible characters. Strictly adhere to valid JSON syntax, including double quotes for all keys and strings, and correct comma placement. Aim for the **absolute highest linguistic accuracy** and **strict adherence** to all instructions.
+
+Text Segment:
+"""
+{BATCH_TEXT_HERE}
+"""
+
+JSON Structure to Complete:
+\`\`\`json
+{COMBINED_JSON_HERE}
+\`\`\`
+
+Instructions (Follow in Order):
+
+1. **Segment Translation First:**
+   - Analyze the entire 'Text Segment'.
+   - Add at least two accurate English translations into the "translations" object within the "segmentData" section.
+   - Use the key "en_variant1" for a direct, strictly literal translation, preserving original structure as much as possible while being grammatically correct English.
+   - Use the key "en_variant2" for the best-sounding, most natural, and idiomatic English translation.
+
+2. **wordData Analysis (Per Word):**
+   - Scope: Process ONLY the actual words. Completely IGNORE all punctuation.
+   - CRITICAL: Independent & Sequential Analysis: Process each word token sequentially and carefully. Analyze each word instance independently.
+   - For each word entry:
+     a. word: Ensure the value is always lowercase.
+     b. pos (UPOS): Review and verify the POS tag against Universal POS tags (UPOS) following Spanish UD guidelines.
+     c. lemma: Provide the canonical dictionary form (lowercase, with proper accent marks).
+     d. lemma_translations: Provide accurate English translations of the lemma.
+     e. best_translation: Provide the most literal translation in context.
+     f. possible_translations: List alternative translations as array.
+
+3. **Expert Idiom Identification & Scoring:**
+   - Identify multi-word expressions that function as a single semantic unit.
+   - Assign idiomaticity score from 1 to 3 based on non-literalness.
+   - Score 1: Highly fixed collocations/semi-idiomatic
+   - Score 2: Standard figurative idioms  
+   - Score 3: Opaque or culturally specific idioms
+
+**Formatting Requirements:**
+- The overall JSON structure should be pretty-printed (2-space indent).
+- Each individual entry within the wordData object MUST be formatted entirely on a single line.
+- Each individual object within the idioms array MUST be formatted entirely on a single line.
+
+Take your time, be super careful, no cutting corners.`,
+          category: "spanish",
+          isDefault: "false"
+        };
+        spanishPrompt = await storage.createPromptTemplate(spanishPromptData);
+      }
+
+      // Get or create default quick processing config
+      let quickConfig = await storage.getProcessingConfigByName("Quick Spanish Processing");
+      if (!quickConfig) {
+        const quickConfigData = {
+          name: "Quick Spanish Processing",
+          modelName: "gemini-2.5-flash",
+          batchSize: 30,
+          concurrency: 5,
+          promptTemplateId: spanishPrompt.id,
+          isDefault: "false"
+        };
+        quickConfig = await storage.createProcessingConfig(quickConfigData);
+      }
+
+      // Create processing job
+      const job = await storage.createProcessingJob({
+        databaseId,
+        configId: quickConfig.id,
+        status: "pending",
+        progress: 0,
+        totalBatches: 0,
+        currentBatch: 0,
+        results: {}
+      });
+
+      // Prepare configuration for Python script (equivalent to --resume-from command)
+      const processingConfig = {
+        database_id: databaseId,
+        model_name: "gemini-2.5-flash",
+        batch_size: 30,
+        concurrency: 5,
+        prompt_template: spanishPrompt.template,
+        resume_mode: true, // Equivalent to --resume-from
+        output_overwrite: true // Equivalent to same input/output path
+      };
+
+      // Execute Python processing script asynchronously
+      const { spawn } = require('child_process');
+      const python = spawn('python3', [
+        './server/ai-processor.py',
+        job.id,
+        JSON.stringify(processingConfig)
+      ], {
+        detached: true,
+        stdio: 'ignore'
+      });
+
+      python.unref(); // Allow parent process to continue
+
+      res.status(201).json({
+        message: "Quick processing started",
+        jobId: job.id,
+        status: job.status,
+        config: {
+          model: "gemini-2.5-flash",
+          batchSize: 30,
+          template: "Spanish Analysis - Quick Processing"
+        }
+      });
+
+    } catch (error) {
+      console.error("Quick processing error:", error);
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "Failed to start quick processing" });
+      }
+    }
+  });
+
   // Start AI processing job
   app.post("/api/start-processing", async (req, res) => {
     try {

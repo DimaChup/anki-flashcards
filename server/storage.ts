@@ -54,6 +54,7 @@ export interface IStorage {
 
   // Prompt Templates CRUD operations
   getPromptTemplate(id: string): Promise<PromptTemplate | undefined>;
+  getPromptTemplateByName(name: string): Promise<PromptTemplate | undefined>;
   getAllPromptTemplates(): Promise<PromptTemplate[]>;
   createPromptTemplate(template: InsertPromptTemplate): Promise<PromptTemplate>;
   updatePromptTemplate(id: string, template: Partial<InsertPromptTemplate>): Promise<PromptTemplate | undefined>;
@@ -61,6 +62,7 @@ export interface IStorage {
 
   // Processing Configs CRUD operations
   getProcessingConfig(id: string): Promise<ProcessingConfig | undefined>;
+  getProcessingConfigByName(name: string): Promise<ProcessingConfig | undefined>;
   getAllProcessingConfigs(): Promise<ProcessingConfig[]>;
   createProcessingConfig(config: InsertProcessingConfig): Promise<ProcessingConfig>;
   updateProcessingConfig(id: string, config: Partial<InsertProcessingConfig>): Promise<ProcessingConfig | undefined>;
@@ -249,6 +251,11 @@ export class DatabaseStorage implements IStorage {
     return template || undefined;
   }
 
+  async getPromptTemplateByName(name: string): Promise<PromptTemplate | undefined> {
+    const [template] = await db.select().from(promptTemplates).where(eq(promptTemplates.name, name));
+    return template || undefined;
+  }
+
   async getAllPromptTemplates(): Promise<PromptTemplate[]> {
     return await db.select().from(promptTemplates).orderBy(desc(promptTemplates.createdAt));
   }
@@ -274,6 +281,11 @@ export class DatabaseStorage implements IStorage {
   // Processing Configs
   async getProcessingConfig(id: string): Promise<ProcessingConfig | undefined> {
     const [config] = await db.select().from(processingConfigs).where(eq(processingConfigs.id, id));
+    return config || undefined;
+  }
+
+  async getProcessingConfigByName(name: string): Promise<ProcessingConfig | undefined> {
+    const [config] = await db.select().from(processingConfigs).where(eq(processingConfigs.name, name));
     return config || undefined;
   }
 
