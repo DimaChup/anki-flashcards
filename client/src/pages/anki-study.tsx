@@ -433,7 +433,7 @@ export default function AnkiStudy() {
                         <label className="text-slate-300 text-sm">New cards to study:</label>
                         <div className="flex items-center gap-2">
                           <Button
-                            onClick={() => setNewCardsLimit(Math.max(1, newCardsLimit - 5))}
+                            onClick={() => setNewCardsLimit(Math.max(1, newCardsLimit - 1))}
                             variant="outline"
                             size="sm"
                             className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
@@ -451,7 +451,7 @@ export default function AnkiStudy() {
                             data-testid="input-cards-limit"
                           />
                           <Button
-                            onClick={() => setNewCardsLimit(Math.min(filteredViewCards.length, newCardsLimit + 5))}
+                            onClick={() => setNewCardsLimit(Math.min(filteredViewCards.length, newCardsLimit + 1))}
                             variant="outline"
                             size="sm"
                             className="border-slate-600 text-slate-300 hover:bg-slate-700 h-8 w-8 p-0"
