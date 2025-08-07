@@ -1829,6 +1829,118 @@ Take your time, be super careful, no cutting corners.`,
     }
   });
 
+  // ==================== PYTHON TERMINAL API ====================
+  
+  // Get list of uploaded text files
+  app.get("/api/python-terminal/files", isAuthenticated, async (req: any, res) => {
+    try {
+      const { readdir } = await import('fs/promises');
+      const files = await readdir('/tmp');
+      const textFiles = files.filter(file => file.endsWith('.txt')).sort();
+      res.json(textFiles);
+    } catch (error) {
+      console.error("Error reading /tmp directory:", error);
+      res.status(500).json({ message: "Failed to read files" });
+    }
+  });
+
+  // Upload text file for Python terminal
+  app.post("/api/python-terminal/upload", isAuthenticated, upload.single('textFile'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { writeFileSync } = await import('fs');
+      const filename = req.file.originalname;
+      const filepath = `/tmp/${filename}`;
+      
+      // Write the uploaded file to /tmp directory
+      writeFileSync(filepath, req.file.buffer);
+      
+      res.json({ 
+        message: "File uploaded successfully",
+        filename: filename,
+        path: filepath
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  // Run Python command in terminal
+  app.post("/api/python-terminal/run", isAuthenticated, async (req: any, res) => {
+    try {
+      const { command } = req.body;
+      
+      if (!command || typeof command !== 'string') {
+        return res.status(400).json({ message: "Command is required" });
+      }
+
+      // Set up server-sent events for streaming output
+      res.writeHead(200, {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      });
+
+      const { spawn } = await import('child_process');
+      
+      // Parse the command into program and arguments
+      const commandParts = command.trim().split(/\s+/);
+      const program = commandParts[0];
+      const args = commandParts.slice(1);
+      
+      console.log(`Running command: ${program} ${args.join(' ')}`);
+      
+      const process = spawn(program, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: '.'  // Run from project root
+      });
+
+      // Stream stdout
+      process.stdout.on('data', (data) => {
+        const output = data.toString();
+        console.log('STDOUT:', output);
+        res.write(output);
+      });
+
+      // Stream stderr
+      process.stderr.on('data', (data) => {
+        const output = data.toString();
+        console.log('STDERR:', output);
+        res.write(`ERROR: ${output}`);
+      });
+
+      // Handle process completion
+      process.on('close', (code) => {
+        console.log(`Process exited with code ${code}`);
+        res.write(`\n--- Process completed with exit code: ${code} ---\n`);
+        res.end();
+      });
+
+      // Handle process errors
+      process.on('error', (error) => {
+        console.error('Process error:', error);
+        res.write(`\nERROR: Failed to start process - ${error.message}\n`);
+        res.end();
+      });
+
+      // Handle client disconnect
+      req.on('close', () => {
+        console.log('Client disconnected, killing process');
+        process.kill();
+      });
+
+    } catch (error) {
+      console.error("Error running command:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to run command" });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

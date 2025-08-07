@@ -111,7 +111,7 @@ export default function Home() {
               <span className="hidden sm:inline">My Personal Linguistic Databases</span>
               <span className="sm:hidden text-base">My Databases</span>
             </h1>
-            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 md:gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 md:gap-3">
               <button
                 onClick={() => setLocation('/anki-study')}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
@@ -119,6 +119,14 @@ export default function Home() {
               >
                 <span className="hidden sm:inline">🧠 Anki Study</span>
                 <span className="sm:hidden">🧠 Study</span>
+              </button>
+              <button
+                onClick={() => setLocation('/python-terminal')}
+                className="bg-green-600 hover:bg-green-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
+                data-testid="python-terminal-button"
+              >
+                <span className="hidden sm:inline">🐍 Python Terminal</span>
+                <span className="sm:hidden">🐍 Terminal</span>
               </button>
               <button
                 onClick={() => setLocation('/pricing')}
