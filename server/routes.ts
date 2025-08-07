@@ -1219,7 +1219,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get first-instance words from the database, maintaining order
       if (database.analysisData && Array.isArray(database.analysisData)) {
         const firstInstanceWords = database.analysisData
-          .filter((word: any) => word.firstInstance && word.translation && word.translation.trim())
+          .filter((word: any) => {
+            // Check for both possible_translations and translation fields
+            const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
+                                   (word.translation && word.translation.trim());
+            return word.firstInstance && hasTranslations;
+          })
           .sort((a: any, b: any) => (a.position || 0) - (b.position || 0)); // Sort by position to maintain text order
         
         let createdCount = 0;
@@ -1232,7 +1237,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               signature: `${word.word}::${word.pos || 'unknown'}`,
               wordKey: word.position || createdCount, // Use position from text or fallback to index
               word: word.word,
-              translations: Array.isArray(word.translation) ? word.translation : [word.translation],
+              translations: word.possible_translations && Array.isArray(word.possible_translations) 
+                ? word.possible_translations 
+                : (Array.isArray(word.translation) ? word.translation : [word.translation]),
               pos: word.pos || null,
               lemma: word.lemma || null,
               sentence: word.sentence || null,
