@@ -75,6 +75,7 @@ export interface IStorage {
   deleteProcessingJob(id: string): Promise<boolean>;
 
   // Anki Study System operations
+  calculateDeckStatistics(deckId: string): Promise<{totalCards: number, newCards: number, learningCards: number, reviewCards: number}>;
   getAnkiDeckByDatabase(databaseId: string, userId?: string): Promise<AnkiStudyDeck | undefined>;
   createAnkiDeck(deck: InsertAnkiStudyDeck): Promise<AnkiStudyDeck>;
   updateAnkiDeck(deckId: string, updates: Partial<InsertAnkiStudyDeck>): Promise<AnkiStudyDeck | undefined>;
@@ -331,6 +332,20 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  // Calculate real-time deck statistics from actual card data
+  async calculateDeckStatistics(deckId: string): Promise<{totalCards: number, newCards: number, learningCards: number, reviewCards: number}> {
+    const cards = await db.select().from(ankiFlashcards).where(eq(ankiFlashcards.deckId, deckId));
+    
+    const stats = {
+      totalCards: cards.length,
+      newCards: cards.filter(c => c.status === 'new').length,
+      learningCards: cards.filter(c => c.status === 'learning').length,
+      reviewCards: cards.filter(c => c.status === 'review').length
+    };
+    
+    return stats;
+  }
+
   // Anki Study System implementation
   async getAnkiDeckByDatabase(databaseId: string, userId?: string): Promise<AnkiStudyDeck | undefined> {
     const conditions = userId 
@@ -338,6 +353,26 @@ export class DatabaseStorage implements IStorage {
       : eq(ankiStudyDecks.databaseId, databaseId);
     
     const [deck] = await db.select().from(ankiStudyDecks).where(conditions);
+    
+    // Update deck statistics with real-time data if deck exists
+    if (deck) {
+      const stats = await this.calculateDeckStatistics(deck.id);
+      
+      // Update the deck with current statistics
+      const [updatedDeck] = await db.update(ankiStudyDecks)
+        .set({
+          totalCards: stats.totalCards,
+          newCards: stats.newCards,
+          learningCards: stats.learningCards,
+          reviewCards: stats.reviewCards,
+          updatedAt: new Date()
+        })
+        .where(eq(ankiStudyDecks.id, deck.id))
+        .returning();
+      
+      return updatedDeck || deck;
+    }
+    
     return deck || undefined;
   }
 
@@ -486,7 +521,7 @@ export class DatabaseStorage implements IStorage {
     const dueDate = new Date(now.getTime() + (newInterval * 24 * 60 * 60 * 1000));
 
     // Update the card with all new values
-    return await this.updateAnkiCard(review.cardId, {
+    const updatedCard = await this.updateAnkiCard(review.cardId, {
       status: newStatus,
       easeFactor: newEaseFactor,
       interval: newInterval,
@@ -497,6 +532,19 @@ export class DatabaseStorage implements IStorage {
       sessionEasyCount: newSessionEasyCount,
       lastQuality: review.rating
     });
+
+    // Update deck statistics after card review to reflect real-time changes
+    if (updatedCard) {
+      const stats = await this.calculateDeckStatistics(updatedCard.deckId);
+      await this.updateAnkiDeck(updatedCard.deckId, {
+        totalCards: stats.totalCards,
+        newCards: stats.newCards,
+        learningCards: stats.learningCards,
+        reviewCards: stats.reviewCards
+      });
+    }
+
+    return updatedCard;
   }
 
   async generateAnkiDeckFromDatabase(databaseId: string, userId: string): Promise<AnkiStudyDeck> {
