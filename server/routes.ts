@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize database from text (matching original script behavior)
+  // Initialize database from text using Python script --initialize-only
   app.post("/api/databases/initialize", isAuthenticated, async (req: any, res) => {
     try {
       const { mode, inputText, filename } = req.body;
@@ -116,31 +116,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid request. Expected mode: 'initialize' and inputText." });
       }
 
-      // Create database structure exactly like original script
-      const transformedData = {
-        name: filename || `Database_${Date.now()}`,
-        description: `Initialized from text input on ${new Date().toLocaleDateString()}`,
-        language: "Spanish", // Default to Spanish based on original behavior
-        originalText: inputText, // Store the original input text
-        wordCount: inputText.split(/\s+/).filter((word: string) => word.trim()).length,
-        analysisData: [], // Empty - to be filled by AI processing later
-        knownWords: [], // Empty initially
-        segments: [] // Empty initially
-      };
-
       const userId = req.user.id;
-      const database = await storage.createLinguisticDatabase(transformedData, userId);
+      const databaseName = filename || `Database_${Date.now()}`;
       
-      // Automatically create associated Anki deck
+      // Create a temporary input text file for the Python script
+      const { writeFileSync, unlinkSync } = await import('fs');
+      const tempInputFile = `/tmp/input_${Date.now()}.txt`;
+      const outputJsonFile = `/tmp/initialized_${Date.now()}.json`;
+      
       try {
-        await storage.generateAnkiDeckFromDatabase(database.id, userId);
+        // Write input text to temporary file
+        writeFileSync(tempInputFile, inputText, 'utf8');
+        
+        // Run Python initialization script
+        const { spawn } = await import('child_process');
+        
+        const python = spawn('python', [
+          './server/process_llm.py',
+          '--initialize-only',
+          '--input', tempInputFile,
+          '--output', outputJsonFile
+        ], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        python.stdout.on('data', (data) => {
+          stdout += data.toString();
+          console.log('Python stdout:', data.toString());
+        });
+
+        python.stderr.on('data', (data) => {
+          stderr += data.toString();
+          console.log('Python stderr:', data.toString());
+        });
+
+        await new Promise((resolve, reject) => {
+          python.on('close', async (code) => {
+            console.log(`Python initialization process exited with code ${code}`);
+            
+            try {
+              if (code === 0) {
+                // Read the initialized JSON file
+                const { readFileSync } = await import('fs');
+                const initializedData = JSON.parse(readFileSync(outputJsonFile, 'utf8'));
+                
+                // Convert from Python format to our database format
+                const analysisData: any[] = [];
+                const wordDatabase = initializedData.wordDatabase || {};
+                
+                Object.keys(wordDatabase).forEach(key => {
+                  const wordData = wordDatabase[key];
+                  analysisData.push({
+                    id: key,
+                    word: wordData.word,
+                    pos: wordData.pos || 'TBD',
+                    lemma: wordData.lemma || wordData.word.toLowerCase(),
+                    position: parseInt(key),
+                    sentence: `Context for word: ${wordData.word}`,
+                    frequency: wordData.frequency || 1,
+                    translation: 'TBD',
+                    firstInstance: wordData.first_inst || true,
+                    contextualInfo: {}
+                  });
+                });
+                
+                // Sort by position to maintain order
+                analysisData.sort((a, b) => a.position - b.position);
+                
+                // Create database with properly initialized data
+                const transformedData = {
+                  name: databaseName,
+                  description: `Initialized from text input - ${analysisData.length} words found`,
+                  language: "Unknown", // Will be determined during processing
+                  originalText: initializedData.inputText || inputText,
+                  wordCount: analysisData.length,
+                  analysisData: analysisData,
+                  knownWords: initializedData.knownWords || [],
+                  segments: initializedData.segments || []
+                };
+
+                const database = await storage.createLinguisticDatabase(transformedData, userId);
+                
+                // Automatically create associated Anki deck
+                try {
+                  await storage.generateAnkiDeckFromDatabase(database.id, userId);
+                } catch (error) {
+                  console.error("Failed to create Anki deck:", error);
+                }
+                
+                console.log("Initialization complete:", {
+                  message: "File initialized and database created successfully",
+                  database,
+                  wordCount: analysisData.length
+                });
+                
+                resolve({ database, wordCount: analysisData.length });
+              } else {
+                console.error("✗ Python initialization failed!");
+                console.error("Error output:", stderr);
+                reject(new Error(`Python script failed with code ${code}: ${stderr}`));
+              }
+            } catch (error) {
+              console.error("Error processing Python initialization result:", error);
+              reject(error);
+            } finally {
+              // Clean up temporary files
+              try {
+                unlinkSync(tempInputFile);
+                unlinkSync(outputJsonFile);
+              } catch (cleanupError) {
+                console.error("Error cleaning up temporary files:", cleanupError);
+              }
+            }
+          });
+
+          python.on('error', (error) => {
+            console.error("Failed to start Python process:", error);
+            reject(error);
+          });
+        });
+
+        const result = await new Promise((resolve, reject) => {
+          python.on('close', resolve);
+          python.on('error', reject);
+        });
+
+        res.status(201).json(result);
+        
       } catch (error) {
-        console.error("Failed to create Anki deck:", error);
-        // Don't fail the database creation if Anki deck creation fails
+        // Clean up temp file on error
+        try {
+          unlinkSync(tempInputFile);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
+        throw error;
       }
       
-      res.status(201).json(database);
     } catch (error) {
+      console.error("Initialization error:", error);
       if (error instanceof Error) {
         res.status(400).json({ message: error.message });
       } else {
