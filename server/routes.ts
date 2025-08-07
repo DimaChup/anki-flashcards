@@ -12,8 +12,11 @@ import {
   reviewCardSchema,
   createBatchSchema,
   ankiReviewSchema,
+  ankiStudyDecks,
   type WordEntry 
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { SpacedRepetitionService } from "./spacedRepetition";
 import multer from "multer";
 
@@ -1118,10 +1121,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deckId = req.params.deckId;
       const status = req.query.status as string;
       
-      // Verify user owns this deck
-      const deck = await storage.getAnkiDeck(deckId, userId);
-      if (!deck) {
-        return res.status(404).json({ message: "Deck not found" });
+      // Get the deck to verify access and get database info
+      const allDecks = await storage.getStudyQueue(deckId, 1000, 1000); // Get large batch to check deck exists
+      if (allDecks.length === 0) {
+        // Try to find the deck by ID through the database
+        const deckQuery = await db.select().from(ankiStudyDecks).where(eq(ankiStudyDecks.id, deckId));
+        if (deckQuery.length === 0 || deckQuery[0].userId !== userId) {
+          return res.status(404).json({ message: "Deck not found" });
+        }
       }
       
       const cards = await storage.getAnkiCards(deckId, status);
