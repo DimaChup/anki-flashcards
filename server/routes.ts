@@ -828,7 +828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const spanishPromptData = {
           name: "Spanish Analysis - Quick Processing",
           description: "Comprehensive Spanish text analysis with translation, POS tagging, and idiom identification",
-          template: `Analyze the following text segment and complete the provided JSON structure following the specific instruction order. **CRITICAL:** The output MUST be ONLY the completed JSON object, perfectly formatted, with no additional text, explanations, markdown formatting (like \`\`\`json), or invisible characters. Strictly adhere to valid JSON syntax, including double quotes for all keys and strings, and correct comma placement. Aim for the **absolute highest linguistic accuracy** and **strict adherence** to all instructions.
+          template: `Analyze the following text segment and complete the provided JSON structure following the specific instruction order. **CRITICAL:** The output MUST be ONLY the completed JSON object, perfectly formatted, with no additional text, explanations, markdown formatting (like \`\`\`json), or invisible characters. Strictly adhere to valid JSON syntax, including double quotes for all keys and strings, and correct comma placement. Aim for the **absolute highest linguistic accuracy** and **strict adherence to Universal Dependencies (UD) standards** for Spanish as detailed below. **Execute ALL instructions thoroughly, sequentially, and meticulously; do not cut corners. Prioritize accuracy and completeness over speed. Take the necessary time to ensure every detail is correct.** The output will be parsed programmatically.
 
 Text Segment:
 """
@@ -838,39 +838,55 @@ Text Segment:
 JSON Structure to Complete:
 \`\`\`json
 {COMBINED_JSON_HERE}
-\`\`\`
-
 Instructions (Follow in Order):
 
-1. **Segment Translation First:**
-   - Analyze the entire 'Text Segment'.
-   - Add at least two accurate English translations into the "translations" object within the "segmentData" section.
-   - Use the key "en_variant1" for a direct, strictly literal translation, preserving original structure as much as possible while being grammatically correct English.
-   - Use the key "en_variant2" for the best-sounding, most natural, and idiomatic English translation.
+Segment Translation First:
 
-2. **wordData Analysis (Per Word):**
-   - Scope: Process ONLY the actual words. Completely IGNORE all punctuation.
-   - CRITICAL: Independent & Sequential Analysis: Process each word token sequentially and carefully. Analyze each word instance independently.
-   - For each word entry:
-     a. word: Ensure the value is always lowercase.
-     b. pos (UPOS): Review and verify the POS tag against Universal POS tags (UPOS) following Spanish UD guidelines.
-     c. lemma: Provide the canonical dictionary form (lowercase, with proper accent marks).
-     d. lemma_translations: Provide accurate English translations of the lemma.
-     e. best_translation: Provide the most literal translation in context.
-     f. possible_translations: List alternative translations as array.
+Analyze the entire 'Text Segment'.
+Add at least two accurate English translations into the "translations" object within the "segmentData" section (using the segment ID provided in the input JSON structure).
+Use the key "en_variant1" for a direct, strictly literal translation, preserving original structure as much as possible while being grammatically correct English. Represent each word very closely to its core dictionary meaning in context. Ignore punctuation when translating.
+Use the key "en_variant2" for the best-sounding, most natural, and idiomatic English translation, focusing on flow, capturing intended meaning, and using standard English punctuation.
+You may add other variants if necessary.
+wordData Analysis (Per Word):
 
-3. **Expert Idiom Identification & Scoring:**
-   - Identify multi-word expressions that function as a single semantic unit.
-   - Assign idiomaticity score from 1 to 3 based on non-literalness.
-   - Score 1: Highly fixed collocations/semi-idiomatic
-   - Score 2: Standard figurative idioms  
-   - Score 3: Opaque or culturally specific idioms
+Scope: Process ONLY the actual words. Completely IGNORE all punctuation. Ensure the final wordData object contains NO entries for punctuation.
+Input Keys: Use the keys provided in {COMBINED_JSON_HERE} that correspond to words. Skip/ignore any keys potentially intended for punctuation.
+CRITICAL: Independent & Sequential Analysis: Process each word token sequentially and carefully. Analyze each word instance independently. Do not assume a word's pos or lemma is the same as a previous instance of the identical word form within this text segment. Context determines the function and base form (e.g., que PRON vs. que SCONJ; se PRON vs. sé VERB). Always check the specific context for each token.
+For each word entry: a. word: Ensure the value is always lowercase. b. pos (UPOS): CRITICAL POS Verification & Correction: Review the provided 'pos' tag (if not "TBD"). Rigorously verify this tag against the specific sentence context and standard Universal POS tags (UPOS) following Spanish UD guidelines [https://universaldependencies.org/es/index.html]. Correct the 'pos' tag ONLY if the provided tag is definitively incorrect according to UD standards and the context. Pay extreme attention to common Spanish ambiguities: * VERB vs. AUX: Meticulously apply standard UD distinctions (e.g., modal 'poder'+inf=AUX; 'ser'/'estar' as copula=AUX; 'haber' in perfect tenses=AUX; 'haber' for existence ('hay')=VERB). * PRON vs. DET vs. SCONJ (especially for 'que', 'cuyo'). * ADP vs. ADV (e.g., 'bajo'). * PART (e.g., 'no'). * Ensure PROPN is used correctly for proper nouns. Use the standard UD tag set: (NOUN, VERB, ADJ, ADP, PROPN, DET, CCONJ, PRON, ADV, AUX, SCONJ, NUM, PART, INTJ, X, SPACE). c. lemma (Lowercase & Orthographically Precise): CRITICAL: Lemma Accuracy is Paramount. Accurately fill in the lemma field with the precise, orthographically correct canonical base/dictionary form according to standard Spanish morphological analysis. The lemma MUST always be strictly lowercase. CRITICAL: Include required accent marks (diacritics) where they are part of the standard lemma's spelling (e.g., lemma of pronoun él is él, lemma of verb sé [I know] is saber, lemma of adverb más [more] is más, lemma of noun capitán is capitán). Do not omit necessary diacritics from the lemma. For contractions (e.g., 'del', 'al'), the lemma MUST be the lowercase canonical base form of the primary grammatical component (the preposition: 'de', 'a'). For pronouns, assign the standard canonical lemma used in Spanish UD conventions (typically the nominative singular or a specific reflexive form like 'se'). d. lemma_translations: Provide context-independent English translations for the precise, lowercase lemma from step 2c. Include a reasonable range of common meanings. CRITICAL: ONLY verbs should start with "to ". e. possible_translations: Provide context-independent English translations for the specific word form (word). Include a reasonable range of common alternative meanings. Store temporarily. f. best_translation (Strict Literal): Analyze context within the source 'Text Segment'. Select the single best literal translation from the list in 2e, prioritizing a core dictionary meaning of the word itself in that specific context. CRITICAL: Do not incorporate idiom meanings or translate the word's function in a way that deviates significantly from its core meaning (e.g., use "of" for 'de' indicating authorship; use "(I) had" for 'tenía' indicating age; translate components of idioms literally unless the component itself has no sensible literal meaning in context). g. Implied Subject: Use bracket notation (e.g., (I), (he/she/it)) at the start of best_translation for verbs where subject is implied by conjugation. Use (he/she/it) if gender is ambiguous from form alone. h. Format possible_translations: Populate the field using the list from 2e. Ensure best_translation (literal form) is included. Use bracket notation format "(pronoun) translation1, translation2" where applicable. best_translation capitalization should follow English rules (e.g., "Herman", but "of"). i. details (Strict UD Features): Adhere closely to standard UD features/values for Spanish ([https://universaldependencies.org/es/feat/]). * CRITICAL: Strings Only: ALL feature values MUST be strings (e.g., "1", "s", "Past") and NOT numbers or bare letters. * Appropriateness: Apply features ONLY where appropriate for the UPOS tag per UD guidelines. * Pronoun Case: MUST include Case (e.g., "Acc", "Dat", "Nom", "Obl") for PRON where applicable. * Contractions (del/al): The ADP entry (pos="ADP", lemma="de"/"a") MUST have details as {} or only contain features appropriate for the ADP itself (NO Gender/Number). * CRITICAL: Person Ambiguity: For verb forms ambiguous in person (e.g., imperfect 'ía'/'aba'), list ALL possible persons as a comma-separated string (e.g., Person="1,3"). * CRITICAL: Attached Clitics: For verbs with attached clitics (e.g., 'resistirme'), the VERB entry's details MUST include the clitic's features per UD guidelines (e.g., Reflex="Yes", Person="1", PronType="Prs"). Do not create separate entries for clitics. * CRITICAL EXCEPTION (Format): For Gender and Number values, MUST USE the single letters: m/f/n for Gender, s/p for Number. DO NOT USE Masc/Fem/Sing/Plur. Use standard UD value names (as strings) for all other features. * Leave details as {} if no standard UD features apply. j. Preserved Fields: Do NOT change pre-filled freq, freq_till_now, first_inst.
+Expert Idiom Identification & Scoring:
 
-**Formatting Requirements:**
-- The overall JSON structure should be pretty-printed (2-space indent).
-- Each individual entry within the wordData object MUST be formatted entirely on a single line.
-- Each individual object within the idioms array MUST be formatted entirely on a single line.
+Identify multi-word expressions that function as a single semantic unit, where the meaning is non-literal, figurative, or highly conventionalized. Assign an idiomaticity score from 1 to 3 based on the criteria below.
+CRITICAL: Exclude proper named entities (like 'Puerto Montt', 'Polo Sur') unless the name itself is part of a separate established idiomatic expression. CRITICAL: Be conservative. Do not identify highly compositional phrases (e.g., 'mediados de diciembre', 'aeropuerto de Hamburgo') where the meaning is directly derived from the sum of the parts, even if common.
+Assign scores as follows:
+Score 1 (Highly Fixed Collocations / Semi-Idiomatic): Use for very common, structurally rigid phrases where the meaning is mostly literal or easily inferable, but has a degree of conventionalization or slight semantic shift, functioning as a fixed unit. These are common but still warrant capturing due to their fixed nature. (Examples: 'a bordo', 'de nuevo', 'pese a', 'tener en cuenta', 'sala de embarque', 'bolso de mano', 'cada vez mayor'). Use this score sparingly and only for truly fixed combinations that meet this criterion.
+Score 2 (Standard Figurative Idioms): Use for common idioms where the overall meaning is clearly non-literal and cannot be directly derived from the individual word meanings, but the metaphorical connection might be somewhat understandable or the idiom is widely known. (Examples: 'tomar el pelo', 'dar la lata', 'ser pan comido', 'costar un ojo de la cara').
+Score 3 (Opaque or Culturally Specific Idioms): Use for idioms where the meaning is highly opaque, figurative, and very difficult or impossible to guess from the literal meanings of the words. These may be less common, more culturally bound, or represent the "most difficult" level of idiomatic expression. (Examples: 'no tener pelos en la lengua', 'estar en Babia', 'irse por los cerros de Úbeda', 'buscar tres pies al gato').
+For each valid idiom found: Add object to "idioms" array. Required fields: id, startWordKey, endWordKey (pointing to words), text (exact phrase), meaning, translation (idiomatic English, use "/"), idiomaticity_score (1-3 based on non-literalness).
+If none found, use [].
+MANDATORY Self-Correction Checklist: Perform a final, sequential pass through your generated data before generating the final JSON. Meticulously review against ALL points below. Correct any deviations rigorously. Do not skip checks.
 
+JSON Validity & Formatting: Valid JSON? Overall indent okay? CRITICAL: Are wordData entries and idioms objects each entirely on a single line?
+Punctuation Exclusion (Instr 2 Scope): Confirm: wordData contains ONLY words? ZERO punctuation entries?
+Lowercase word (Instr 2a): Confirm: All word values lowercase?
+Lemma Correctness (Instr 2c): CRITICAL Double-Check: Re-verify EVERY lemma against standard Spanish morphological analysis (canonical dictionary form). Confirm: Is every lemma strictly lowercase? Is orthography (including ALL required accent marks like in él, más, sé, capitán) perfect? Adherence must be absolute.
+Contraction Lemmatization (Instr 2c): Verify: Lemma for del=de? Lemma for al=a? Is it the lemma of the primary component?
+Pronoun Lemmatization (Instr 2c): Verify: Is the lemma for each PRON the standard canonical form per Spanish UD conventions (e.g., 'yo', 'él', 'se')?
+Independent Analysis (Instr 2): Verify: Was each word instance analyzed independently for pos and lemma based on its context?
+UPOS Tag Accuracy (Instr 2b): Verify: Standard UPOS used accurately? AUX/VERB distinction correct? Specific Rules Followed (no=PART, Quantifiers=ADJ)?
+lemma_translations Format (Instr 2d): Verify: ONLY verbs start with "to "?
+best_translation Literalness (Instr 2f): Verify: Strictly literal (core dictionary meaning)? Separated from idiom meaning? Components of idioms translated literally?
+details - String Values (Instr 2i): Confirm: ALL values within details are STRINGS?
+details - Gender/Number Format (Instr 2i EXCEPTION): CRITICAL Verify: m/f/n and s/p format used EXCLUSIVELY? Masc/Fem/Sing/Plur ABSENT?
+details - Feature Appropriateness (Instr 2i): Verify: Features appropriate for POS? del/al details empty/minimal? Case on PRON correct?
+details - Person Ambiguity (Instr 2i): Verify: Ambiguous persons listed (e.g., "1,3")?
+details - Clitic Features (Instr 2i): Verify: Clitic features correctly added to main VERB entry?
+Idiom Identification & Scoring (Instr 3): Verify: Only true idioms/set phrases? Proper names excluded? Compositional phrases excluded? List complete for text? Scores reflect non-literalness (per NEW definitions)? Conservative approach used?
+Final Sanity Check: Reread the entire generated JSON one last time. Is every single field accurate according to all preceding instructions? Is the linguistic analysis sound? Is the formatting perfect? Confirm thoroughness has been prioritized.
+Formatting Requirements:
+
+The overall JSON structure should be pretty-printed (e.g., 2-space indent).
+CRITICAL: Each individual entry within the wordData object (e.g., "1033": { ... }) MUST be formatted entirely on a single line.
+CRITICAL: Each individual object within the idioms array ({ ... }) MUST be formatted entirely on a single line.
 Take your time, be super careful, no cutting corners.`,
           category: "spanish",
           isDefault: "false"
@@ -922,7 +938,21 @@ Take your time, be super careful, no cutting corners.`,
         JSON.stringify(processingConfig)
       ], {
         detached: true,
-        stdio: 'ignore'
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, GEMINI_API_KEY: process.env.GEMINI_API_KEY }
+      });
+
+      // Log any output for debugging
+      python.stdout?.on('data', (data) => {
+        console.log(`Python stdout: ${data}`);
+      });
+      
+      python.stderr?.on('data', (data) => {
+        console.error(`Python stderr: ${data}`);
+      });
+
+      python.on('close', (code) => {
+        console.log(`Python process exited with code ${code}`);
       });
 
       python.unref(); // Allow parent process to continue
