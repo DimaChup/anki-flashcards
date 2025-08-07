@@ -263,6 +263,9 @@ def main():
     parser.add_argument('--initialize-only', action='store_true', help='Only initialize the database structure without processing')
     parser.add_argument('--input', type=str, help='Input text file path')
     parser.add_argument('--output', type=str, help='Output JSON file path')
+    parser.add_argument('--resume-from', type=str, help='Resume processing from existing JSON file')
+    parser.add_argument('--model', type=str, default=DEFAULT_GEMINI_MODEL_NAME, help='Gemini model to use for processing')
+    parser.add_argument('--prompt', type=str, help='Path to prompt template file')
     
     args = parser.parse_args()
     
@@ -304,8 +307,101 @@ def main():
             exit_with_error(f"Input file not found: {args.input}")
         except Exception as e:
             exit_with_error(f"Initialization failed: {e}")
+    elif args.resume_from:
+        # Resume mode - load existing JSON and process with LLM
+        if not args.output:
+            exit_with_error("--output is required for resume mode")
+        if not args.prompt:
+            exit_with_error("--prompt is required for resume mode")
+            
+        try:
+            # Load existing JSON file
+            print(f"Loading existing data from: {args.resume_from}")
+            with open(args.resume_from, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Restore global state
+            global global_database, global_segment_database, global_idiom_database, global_known_words
+            global_database = data.get('wordDatabase', {})
+            global_segment_database = data.get('segments', [])
+            global_idiom_database = data.get('idioms', [])
+            global_known_words = data.get('knownWords', [])
+            
+            # Convert string keys back to integers for global_database
+            global_database = {int(k): v for k, v in global_database.items()}
+            
+            print(f"Loaded {len(global_database)} words from existing database")
+            
+            # Load prompt template
+            with open(args.prompt, 'r', encoding='utf-8') as f:
+                prompt_template = f.read().strip()
+            
+            # Configure Gemini
+            genai.configure(api_key=os.getenv('GEMINI_API_KEY', LLM_API_KEY))
+            model = genai.GenerativeModel(
+                model_name=args.model,
+                generation_config=GENERATION_CONFIG,
+                safety_settings=SAFETY_SETTINGS
+            )
+            
+            print(f"Starting AI processing with model: {args.model}")
+            print(f"Using prompt template: {os.path.basename(args.prompt)}")
+            
+            # Process words that have TBD values
+            processed_count = 0
+            words_with_tbd = []
+            
+            for word_pos, word_data in global_database.items():
+                if any(value == "TBD" for value in word_data.values() if isinstance(value, str)):
+                    words_with_tbd.append((word_pos, word_data))
+            
+            print(f"Found {len(words_with_tbd)} words with TBD values to process")
+            
+            for word_pos, word_data in words_with_tbd:
+                try:
+                    # Create prompt for this word
+                    word = word_data.get('word', '')
+                    prompt = prompt_template.replace('[WORD]', word)
+                    
+                    print(f"Processing word '{word}' (position {word_pos})...")
+                    
+                    # Call Gemini API
+                    response = model.generate_content(prompt)
+                    
+                    if response.text:
+                        # Parse JSON response
+                        ai_data = json.loads(response.text)
+                        
+                        # Update word data with AI results
+                        for key, value in ai_data.items():
+                            if key in word_data and word_data[key] == "TBD":
+                                word_data[key] = value
+                        
+                        processed_count += 1
+                        print(f"  ✓ Updated {word} with AI analysis")
+                    
+                    # Add small delay to avoid rate limiting
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"  ✗ Error processing {word}: {e}")
+                    continue
+            
+            # Save updated data
+            if save_progress(args.output):
+                print(f"✓ AI processing complete. Updated {processed_count} words in '{os.path.basename(args.output)}'")
+                sys.exit(0)
+            else:
+                exit_with_error("Failed to save processed data")
+                
+        except FileNotFoundError as e:
+            exit_with_error(f"File not found: {e}")
+        except json.JSONDecodeError:
+            exit_with_error(f"Invalid JSON format in: {args.resume_from}")
+        except Exception as e:
+            exit_with_error(f"Resume processing failed: {e}")
     else:
-        exit_with_error("Currently only --initialize-only mode is supported")
+        exit_with_error("Please specify either --initialize-only or --resume-from")
 
 if __name__ == "__main__":
     main()
