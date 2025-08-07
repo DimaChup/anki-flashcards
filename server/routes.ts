@@ -915,7 +915,7 @@ Take your time, be super careful, no cutting corners.`,
       };
 
       // Execute Python processing script asynchronously
-      const { spawn } = require('child_process');
+      const { spawn } = await import('child_process');
       const python = spawn('python3', [
         './server/ai-processor.py',
         job.id,
@@ -1009,7 +1009,7 @@ Take your time, be super careful, no cutting corners.`,
       };
 
       // Execute Python processing script asynchronously
-      const { spawn } = require('child_process');
+      const { spawn } = await import('child_process');
       const python = spawn('python3', [
         './server/ai-processor.py',
         job.id,
