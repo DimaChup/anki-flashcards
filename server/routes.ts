@@ -723,6 +723,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize file processing - equivalent to Python script --initialize-only
+  app.post("/api/initialize-file", async (req, res) => {
+    try {
+      const { inputText, fileName } = req.body;
+      
+      if (!inputText || !fileName) {
+        return res.status(400).json({ message: "Input text and file name are required" });
+      }
+
+      // Create the initialization data structure matching Python script output
+      const initializationResult = {
+        inputText: inputText,
+        fileName: fileName,
+        wordDatabase: {},
+        segments: [],
+        idioms: [],
+        knownWords: [],
+        metadata: {
+          totalWords: 0,
+          processedAt: new Date().toISOString(),
+          status: "initialized"
+        }
+      };
+
+      // Tokenize the text using JavaScript regex (similar to Python script)
+      // TOKEN_REGEX = r"([\p{L}'']+)|(\s+)|(\n+)|([^\p{L}\s\n'']+)"
+      const tokenRegex = /([\p{L}'']+)|(\s+)|(\n+)|([^\p{L}\s\n'']+)/gu;
+      let currentWordIndex = 0;
+      let match;
+
+      console.log(`Starting tokenization for "${fileName}"...`);
+
+      while ((match = tokenRegex.exec(inputText)) !== null) {
+        const tokenText = match[0];
+        const isWord = match[1]; // First capture group - letters/apostrophes
+
+        if (isWord) {
+          currentWordIndex++;
+          
+          // Create placeholder entry for every word (matching Python script logic)
+          initializationResult.wordDatabase[currentWordIndex] = {
+            word: tokenText, // Store original case
+            pos: "TBD",
+            lemma: "TBD", 
+            best_translation: "TBD",
+            possible_translations: [],
+            details: {},
+            freq: "TBD",
+            freq_till_now: "TBD",
+            first_inst: "TBD",
+            lemma_translations: [],
+            most_frequent_lemma: "TBD"
+          };
+        }
+      }
+
+      initializationResult.metadata.totalWords = currentWordIndex;
+
+      console.log(`File initialization complete: ${currentWordIndex} words found in "${fileName}"`);
+      
+      res.status(200).json({
+        message: "File initialized successfully",
+        data: initializationResult,
+        wordCount: currentWordIndex
+      });
+
+    } catch (error) {
+      console.error("Error initializing file:", error);
+      res.status(500).json({ message: "Failed to initialize file" });
+    }
+  });
+
   // Start AI processing job
   app.post("/api/start-processing", async (req, res) => {
     try {

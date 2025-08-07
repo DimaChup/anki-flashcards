@@ -124,31 +124,40 @@ export default function CreateDatabase() {
     showStatus(`Latest job status: ${latestJob.status} (${latestJob.progress}% complete)`, 'success');
   };
 
-  // Initialize File functionality - matches original script behavior exactly
+  // Initialize File functionality - matches original Python script --initialize-only behavior exactly
   const initializeFileMutation = useMutation({
     mutationFn: async (data: { filename: string; inputText: string }) => {
-      const response = await fetch('/api/databases/initialize', {
+      const response = await fetch('/api/initialize-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: 'initialize',
           inputText: data.inputText,
-          filename: data.filename
+          fileName: data.filename
         })
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to initialize database');
+        throw new Error(error.message || 'Failed to initialize file');
       }
       return response.json();
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/databases'] });
-      setSelectedDatabase(result.id); // Auto-select the newly created database
-      showStatus(`Database "${result.name}" initialized successfully!`, 'success');
+      showStatus(`File initialized successfully! Found ${result.wordCount} words. Ready for further processing.`, 'success');
+      
+      // Show detailed results in console for debugging
+      console.log('Initialization complete:', result);
+      
       // Clear the initialize form
       setInitializeText('');
       setInitializeFilename('');
+      
+      // Display the initialized data structure info
+      const dataInfo = result.data;
+      showStatus(
+        `✓ Initialized "${dataInfo.fileName}" with ${result.wordCount} words. ` +
+        `Data structure ready for processing with Python script.`, 
+        'success'
+      );
     },
     onError: (error: Error) => {
       showStatus(error.message, 'error');
