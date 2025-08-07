@@ -8,7 +8,7 @@ import { Upload, Terminal, Play, FolderOpen, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function PythonTerminal() {
-  const [command, setCommand] = useState('python process_llm.py --initialize-only --input ../nature.txt')
+  const [command, setCommand] = useState('python server/process_llm.py --initialize-only --input /tmp/nature.txt')
   const [output, setOutput] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
@@ -63,7 +63,7 @@ export default function PythonTerminal() {
         fetchUploadedFiles()
         
         // Update command to use the uploaded file
-        setCommand(`python process_llm.py --initialize-only --input ${result.filename}`)
+        setCommand(`python server/process_llm.py --initialize-only --input /tmp/${result.filename}`)
       } else {
         throw new Error('Upload failed')
       }
@@ -130,7 +130,7 @@ export default function PythonTerminal() {
   }
 
   const selectFile = (filename: string) => {
-    setCommand(`python process_llm.py --initialize-only --input ${filename}`)
+    setCommand(`python server/process_llm.py --initialize-only --input /tmp/${filename}`)
   }
 
   return (
@@ -224,7 +224,7 @@ export default function PythonTerminal() {
                 id="command"
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
-                placeholder="python process_llm.py --initialize-only --input ../nature.txt"
+                placeholder="python server/process_llm.py --initialize-only --input /tmp/nature.txt"
                 className="font-mono text-sm mt-1"
                 data-testid="input-command"
               />
@@ -286,7 +286,7 @@ export default function PythonTerminal() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Button
               variant="outline"
-              onClick={() => setCommand('python process_llm.py --initialize-only --input nature.txt')}
+              onClick={() => setCommand('python server/process_llm.py --initialize-only --input /tmp/nature.txt')}
               className="justify-start font-mono text-sm"
               data-testid="button-quick-initialize"
             >
@@ -294,7 +294,7 @@ export default function PythonTerminal() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setCommand('python process_llm.py --resume-from /tmp/database.json --model gemini-2.5-flash --prompt prompt_es.txt')}
+              onClick={() => setCommand('python server/process_llm.py --resume-from /tmp/database.json --model gemini-2.5-flash --prompt server/prompt_es.txt')}
               className="justify-start font-mono text-sm"
               data-testid="button-quick-resume"
             >
