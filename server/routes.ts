@@ -1058,43 +1058,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Auto-create cards from first instance words
-        let firstInstanceWords: any[] = [];
-        
         if (database.analysisData && Array.isArray(database.analysisData)) {
-          firstInstanceWords = database.analysisData.filter((word: any) => {
-            const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
-                                   (word.translation && word.translation.trim());
-            return word.firstInstance && hasTranslations;
-          });
-        } else if (database.analysisData && (database.analysisData as any).wordDatabase) {
-          const wordDb = (database.analysisData as any).wordDatabase;
-          firstInstanceWords = Object.values(wordDb).filter((word: any) => {
-            const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
-                                   (word.best_translation && word.best_translation.trim()) ||
-                                   (word.translation && word.translation.trim());
-            return (word.first_inst === "true" || word.firstInstance) && hasTranslations;
-          });
-        }
-        
-        if (firstInstanceWords.length > 0) {
+          const firstInstanceWords = database.analysisData.filter((word: any) => 
+            word.firstInstance && word.translation && word.translation.trim()
+          );
           
           let createdCount = 0;
           for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
             try {
-              // Get translations from possible_translations, best_translation, or translation
-              let translations: string[] = [];
-              if (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) {
-                translations = [...word.possible_translations]; // Create a copy of the array
-                console.log(`Auto-deck: Using possible_translations for ${word.word}:`, translations);
-              } else if (word.best_translation) {
-                translations = [word.best_translation];
-                console.log(`Auto-deck: Using best_translation for ${word.word}:`, translations);
-              } else if (Array.isArray(word.translation)) {
-                translations = word.translation;
-              } else if (word.translation) {
-                translations = [word.translation];
-              }
-              
               await storage.createAnkiCard({
                 userId,
                 databaseId,
@@ -1102,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 signature: `${word.word}::${word.pos || 'unknown'}`,
                 wordKey: word.position || 0,
                 word: word.word,
-                translations: translations.join(', '), // Convert array to comma-separated string
+                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
                 pos: word.pos || null,
                 lemma: word.lemma || null,
                 sentence: word.sentence || null,
@@ -1129,7 +1100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             deck = await storage.getAnkiDeckByDatabase(databaseId, userId);
           }
         }
-        }
+      }
       
       res.json(deck);
     } catch (error) {
@@ -1246,48 +1217,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get first-instance words from the database, maintaining order
-      let firstInstanceWords: any[] = [];
-      
       if (database.analysisData && Array.isArray(database.analysisData)) {
-        // Handle array format (analysisData)
-        firstInstanceWords = database.analysisData
+        const firstInstanceWords = database.analysisData
           .filter((word: any) => {
+            // Check for both possible_translations and translation fields
             const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
                                    (word.translation && word.translation.trim());
             return word.firstInstance && hasTranslations;
-          });
-      } else if (database.analysisData && (database.analysisData as any).wordDatabase) {
-        // Handle object format (wordDatabase with numbered keys)
-        const wordDb = (database.analysisData as any).wordDatabase;
-        firstInstanceWords = Object.values(wordDb).filter((word: any) => {
-          const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
-                                 (word.best_translation && word.best_translation.trim()) ||
-                                 (word.translation && word.translation.trim());
-          return (word.first_inst === "true" || word.firstInstance) && hasTranslations;
-        });
-      }
-      
-      // Sort by position to maintain text order
-      firstInstanceWords = firstInstanceWords.sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-      
-      if (firstInstanceWords.length > 0) {
+          })
+          .sort((a: any, b: any) => (a.position || 0) - (b.position || 0)); // Sort by position to maintain text order
+        
         let createdCount = 0;
         for (const word of firstInstanceWords) {
           try {
-            // Get translations from possible_translations, best_translation, or translation
-            let translations: string[] = [];
-            if (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) {
-              translations = [...word.possible_translations]; // Create a copy of the array
-              console.log(`Using possible_translations for ${word.word}:`, translations);
-            } else if (word.best_translation) {
-              translations = [word.best_translation];
-              console.log(`Using best_translation for ${word.word}:`, translations);
-            } else if (Array.isArray(word.translation)) {
-              translations = word.translation;
-            } else if (word.translation) {
-              translations = [word.translation];
-            }
-            
             await storage.createAnkiCard({
               userId,
               databaseId,
@@ -1295,7 +1237,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               signature: `${word.word}::${word.pos || 'unknown'}`,
               wordKey: word.position || createdCount, // Use position from text or fallback to index
               word: word.word,
-              translations: translations.join(', '), // Convert array to comma-separated string
+              translations: word.possible_translations && Array.isArray(word.possible_translations) 
+                ? word.possible_translations 
+                : (Array.isArray(word.translation) ? word.translation : [word.translation]),
               pos: word.pos || null,
               lemma: word.lemma || null,
               sentence: word.sentence || null,

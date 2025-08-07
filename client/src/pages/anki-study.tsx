@@ -757,7 +757,7 @@ export default function AnkiStudy() {
                                   {card.word}
                                 </td>
                                 <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
-                                  {card.translations}
+                                  {card.translations.join(', ')}
                                 </td>
                                 <td className="p-3 text-blue-400 text-sm" data-testid={`text-pos-${index}`}>
                                   {card.pos || '-'}
@@ -798,7 +798,7 @@ export default function AnkiStudy() {
                             </div>
                           </div>
                           <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
-                            {card.translations}
+                            {card.translations.join(', ')}
                           </div>
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-blue-400 text-sm" data-testid={`text-mobile-pos-${index}`}>
