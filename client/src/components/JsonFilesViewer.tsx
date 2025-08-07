@@ -12,13 +12,17 @@ interface FileItem {
 
 export default function JsonFilesViewer() {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [databases, setDatabases] = useState<any[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [showProcessingFiles, setShowProcessingFiles] = useState(true);
 
   const fetchFiles = async () => {
     setLoading(true);
     try {
+      // Fetch processing files from /tmp
       const response = await fetch('/api/files?path=/tmp');
       if (response.ok) {
         const data = await response.json();
@@ -38,6 +42,21 @@ export default function JsonFilesViewer() {
     }
   };
 
+  const fetchDatabases = async () => {
+    try {
+      const response = await fetch('/api/databases');
+      if (response.ok) {
+        const data = await response.json();
+        setDatabases(data);
+      } else {
+        setDatabases([]);
+      }
+    } catch (error) {
+      console.error('Error fetching databases:', error);
+      setDatabases([]);
+    }
+  };
+
   const viewFile = async (filePath: string) => {
     try {
       const response = await fetch(`/api/files/content?path=${encodeURIComponent(filePath)}`);
@@ -45,12 +64,30 @@ export default function JsonFilesViewer() {
         const content = await response.text();
         setFileContent(content);
         setSelectedFile(filePath);
+        setSelectedDatabase(null);
       } else {
         alert('Failed to read file');
       }
     } catch (error) {
       console.error('Error reading file:', error);
       alert('Error reading file');
+    }
+  };
+
+  const viewDatabaseContent = async (databaseId: string) => {
+    try {
+      const response = await fetch(`/api/databases/${databaseId}/analysis-data`);
+      if (response.ok) {
+        const data = await response.json();
+        setFileContent(JSON.stringify(data, null, 2));
+        setSelectedDatabase(databaseId);
+        setSelectedFile(null);
+      } else {
+        alert('Failed to read database content');
+      }
+    } catch (error) {
+      console.error('Error reading database:', error);
+      alert('Error reading database');
     }
   };
 
@@ -120,8 +157,12 @@ export default function JsonFilesViewer() {
 
   useEffect(() => {
     fetchFiles();
+    fetchDatabases();
     // Auto-refresh every 10 seconds
-    const interval = setInterval(fetchFiles, 10000);
+    const interval = setInterval(() => {
+      fetchFiles();
+      fetchDatabases();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -136,22 +177,39 @@ export default function JsonFilesViewer() {
       }}>
         <div className="flex items-center justify-between mb-4">
           <h4 style={{ color: 'var(--text-heading)', fontSize: '1.1rem', fontWeight: '600' }}>
-            JSON Files (/tmp)
+            Uploaded Databases & Processing Files
           </h4>
-          <Button
-            onClick={fetchFiles}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            data-testid="button-refresh-json"
-            style={{
-              backgroundColor: 'var(--bg-tertiary)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--text-primary)'
-            }}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowProcessingFiles(!showProcessingFiles)}
+              variant="outline"
+              size="sm"
+              style={{
+                backgroundColor: showProcessingFiles ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                color: showProcessingFiles ? 'white' : 'var(--text-primary)'
+              }}
+            >
+              {showProcessingFiles ? 'Show Databases' : 'Show Processing'}
+            </Button>
+            <Button
+              onClick={() => {
+                fetchFiles();
+                fetchDatabases();
+              }}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              data-testid="button-refresh-json"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
         
         <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
@@ -163,102 +221,192 @@ export default function JsonFilesViewer() {
             }}>
               Loading...
             </div>
-          ) : files.length === 0 ? (
-            <div style={{ 
-              padding: '1rem', 
-              textAlign: 'center' as const, 
-              color: 'var(--text-secondary)' 
-            }}>
-              No JSON files found
-            </div>
-          ) : (
-            <div>
-              {files.map((file, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: '0.75rem',
-                    borderBottom: '1px solid var(--border-color)',
-                    cursor: 'pointer',
-                    transition: 'background-color var(--transition-speed-normal) var(--transition-timing)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1">
-                      <File className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                      <span 
-                        style={{ 
-                          color: 'var(--text-primary)', 
-                          fontSize: '0.9rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={file.name}
-                      >
-                        {file.name}
-                      </span>
-                      {file.size && (
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          color: 'var(--text-secondary)',
-                          marginLeft: 'auto'
-                        }}>
-                          {formatFileSize(file.size)}
+          ) : showProcessingFiles ? (
+            // Show processing files
+            files.length === 0 ? (
+              <div style={{ 
+                padding: '1rem', 
+                textAlign: 'center' as const, 
+                color: 'var(--text-secondary)' 
+              }}>
+                No processing files found in /tmp
+              </div>
+            ) : (
+              <div>
+                <div style={{ 
+                  padding: '0.5rem', 
+                  backgroundColor: 'var(--bg-primary)', 
+                  borderRadius: '4px', 
+                  marginBottom: '0.5rem',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-secondary)'
+                }}>
+                  📁 Processing Files (/tmp) - Temporary files created during AI processing
+                </div>
+                {files.map((file, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '0.75rem',
+                      borderBottom: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'background-color var(--transition-speed-normal) var(--transition-timing)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1">
+                        <File className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                        <span 
+                          style={{ 
+                            color: 'var(--text-primary)', 
+                            fontSize: '0.9rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title={file.name}
+                        >
+                          {file.name}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex gap-1 ml-2">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          viewFile(file.path);
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        data-testid={`button-view-${file.name}`}
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadFile(file.path);
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        data-testid={`button-download-${file.name}`}
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <Download className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteFile(file.path);
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        data-testid={`button-delete-${file.name}`}
-                        style={{ color: '#ef4444' }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                        {file.size && (
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            color: 'var(--text-secondary)',
+                            marginLeft: 'auto'
+                          }}>
+                            {formatFileSize(file.size)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewFile(file.path);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          data-testid={`button-view-${file.name}`}
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadFile(file.path);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          data-testid={`button-download-${file.name}`}
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteFile(file.path);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          data-testid={`button-delete-${file.name}`}
+                          style={{ color: '#ef4444' }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )
+          ) : (
+            // Show uploaded databases
+            databases.length === 0 ? (
+              <div style={{ 
+                padding: '1rem', 
+                textAlign: 'center' as const, 
+                color: 'var(--text-secondary)' 
+              }}>
+                No uploaded databases found
+              </div>
+            ) : (
+              <div>
+                <div style={{ 
+                  padding: '0.5rem', 
+                  backgroundColor: 'var(--bg-primary)', 
+                  borderRadius: '4px', 
+                  marginBottom: '0.5rem',
+                  fontSize: '0.8rem',
+                  color: 'var(--text-secondary)'
+                }}>
+                  💾 Uploaded Databases - Stored in PostgreSQL database, not as files
                 </div>
-              ))}
-            </div>
+                {databases.map((db, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '0.75rem',
+                      borderBottom: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'background-color var(--transition-speed-normal) var(--transition-timing)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-1">
+                        <File className="h-4 w-4 text-green-400 flex-shrink-0" />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            color: 'var(--text-primary)', 
+                            fontSize: '0.9rem',
+                            fontWeight: '500'
+                          }}>
+                            {db.name}
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: 'var(--text-secondary)'
+                          }}>
+                            {db.language} • {db.wordCount?.toLocaleString() || 0} words • Database ID: {db.id}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 ml-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewDatabaseContent(db.id);
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          data-testid={`button-view-db-${db.id}`}
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
@@ -276,10 +424,12 @@ export default function JsonFilesViewer() {
           fontWeight: '600',
           marginBottom: '1rem'
         }}>
-          {selectedFile ? `Viewing: ${selectedFile.split('/').pop()}` : 'Select a JSON file to view'}
+          {selectedFile ? `Viewing: ${selectedFile.split('/').pop()}` : 
+           selectedDatabase ? `Viewing Database: ${databases.find(db => db.id === selectedDatabase)?.name || 'Unknown'}` :
+           'Select a file or database to view'}
         </h4>
         
-        {selectedFile ? (
+        {selectedFile || selectedDatabase ? (
           <div style={{ 
             height: '300px', 
             overflow: 'auto',
@@ -309,7 +459,7 @@ export default function JsonFilesViewer() {
             borderRadius: '4px',
             color: 'var(--text-secondary)'
           }}>
-            Click on a JSON file to view its contents
+            Click on a processing file or database to view its contents
           </div>
         )}
       </div>
