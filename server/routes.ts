@@ -153,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Python stderr:', data.toString());
         });
 
-        await new Promise((resolve, reject) => {
+        const result = await new Promise((resolve, reject) => {
           python.on('close', async (code) => {
             console.log(`Python initialization process exited with code ${code}`);
             
@@ -211,11 +211,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error("Failed to start Python process:", error);
             reject(error);
           });
-        });
-
-        const result = await new Promise((resolve, reject) => {
-          python.on('close', resolve);
-          python.on('error', reject);
         });
 
         res.status(201).json(result);
