@@ -1059,9 +1059,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Auto-create cards from first instance words
         if (database.analysisData && Array.isArray(database.analysisData)) {
-          const firstInstanceWords = database.analysisData.filter((word: any) => 
-            word.firstInstance && word.translation && word.translation.trim()
-          );
+          const firstInstanceWords = database.analysisData.filter((word: any) => {
+            // Check for both possible_translations and translation fields
+            const hasTranslations = (word.possible_translations && Array.isArray(word.possible_translations) && word.possible_translations.length > 0) ||
+                                   (word.translation && word.translation.trim());
+            return word.firstInstance && hasTranslations;
+          });
           
           let createdCount = 0;
           for (const word of firstInstanceWords.slice(0, 200)) { // Limit to first 200
