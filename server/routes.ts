@@ -924,8 +924,41 @@ Take your time, be super careful, no cutting corners.`,
       const jsonFilePath = `/tmp/database_${databaseId}.json`;
       const promptFilePath = './server/prompt_es.txt';
       
-      // Write database analysis_data to JSON file
-      writeFileSync(jsonFilePath, JSON.stringify(database.analysisData, null, 2));
+      // Convert database format to the format expected by your Python script
+      const analysisData = database.analysisData as any[];
+      
+      // Extract input text from word data
+      const inputText = analysisData.map(item => item.word).join(' ');
+      
+      // Convert to wordDatabase format expected by Python script
+      const wordDatabase: any = {};
+      analysisData.forEach((item, index) => {
+        wordDatabase[item.position || (index + 1)] = {
+          word: item.word,
+          pos: item.pos || 'TBD',
+          lemma: item.lemma || item.word.toLowerCase(),
+          translation: item.translation || 'TBD',
+          frequency: item.frequency || 1,
+          first_inst: item.firstInstance || true,
+          // Add other fields your script expects
+          possible_translations: [],
+          best_translation: item.translation || 'TBD',
+          lemma_translations: [],
+          details: {}
+        };
+      });
+
+      // Create the JSON structure your Python script expects
+      const pythonFormat = {
+        inputText: inputText,
+        wordDatabase: wordDatabase,
+        segments: [],
+        idioms: [],
+        knownWords: []
+      };
+      
+      // Write the correctly formatted JSON file
+      writeFileSync(jsonFilePath, JSON.stringify(pythonFormat, null, 2));
       
       // Mark job as processing
       await storage.updateProcessingJob(job.id, { status: 'processing' });
@@ -962,9 +995,35 @@ Take your time, be super careful, no cutting corners.`,
             const { readFileSync, unlinkSync } = await import('fs');
             const processedData = JSON.parse(readFileSync(jsonFilePath, 'utf8'));
             
+            // Convert back from Python format to our database format
+            const updatedAnalysisData: any[] = [];
+            const wordDatabase = processedData.wordDatabase || {};
+            
+            Object.keys(wordDatabase).forEach(key => {
+              const wordData = wordDatabase[key];
+              updatedAnalysisData.push({
+                id: key,
+                word: wordData.word,
+                pos: wordData.pos,
+                lemma: wordData.lemma,
+                position: parseInt(key),
+                sentence: `Context for word: ${wordData.word}`,
+                frequency: wordData.frequency || 1,
+                translation: wordData.best_translation || wordData.translation || 'TBD',
+                firstInstance: wordData.first_inst || true,
+                contextualInfo: wordData.details || {},
+                // Store additional AI-generated data
+                possibleTranslations: wordData.possible_translations || [],
+                lemmaTranslations: wordData.lemma_translations || []
+              });
+            });
+            
+            // Sort by position to maintain order
+            updatedAnalysisData.sort((a, b) => a.position - b.position);
+            
             // Update database with processed data
             await storage.updateLinguisticDatabase(databaseId, database.userId, {
-              analysisData: processedData
+              analysisData: updatedAnalysisData
             });
             
             // Mark job as completed
@@ -1013,6 +1072,94 @@ Take your time, be super careful, no cutting corners.`,
       } else {
         res.status(500).json({ message: "Failed to start quick processing" });
       }
+    }
+  });
+
+  // File browser API endpoints
+  app.get('/api/files', async (req, res) => {
+    try {
+      const { path = '/tmp' } = req.query;
+      const { readdir, stat } = await import('fs/promises');
+      const { join } = await import('path');
+
+      const targetPath = path as string;
+      const files = await readdir(targetPath);
+      
+      const fileList = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const filePath = join(targetPath, file);
+            const stats = await stat(filePath);
+            return {
+              name: file,
+              type: stats.isDirectory() ? 'directory' : 'file',
+              size: stats.isFile() ? stats.size : undefined,
+              modified: stats.mtime.toISOString(),
+              path: filePath
+            };
+          } catch (error) {
+            return {
+              name: file,
+              type: 'file',
+              path: join(targetPath, file)
+            };
+          }
+        })
+      );
+
+      res.json({ files: fileList });
+    } catch (error) {
+      console.error('File browser error:', error);
+      res.status(500).json({ message: 'Failed to list files' });
+    }
+  });
+
+  app.get('/api/files/content', async (req, res) => {
+    try {
+      const { path } = req.query;
+      if (!path) {
+        return res.status(400).json({ message: 'Path is required' });
+      }
+
+      const { readFile } = await import('fs/promises');
+      const content = await readFile(path as string, 'utf8');
+      res.type('text/plain').send(content);
+    } catch (error) {
+      console.error('File read error:', error);
+      res.status(500).json({ message: 'Failed to read file' });
+    }
+  });
+
+  app.get('/api/files/download', async (req, res) => {
+    try {
+      const { path } = req.query;
+      if (!path) {
+        return res.status(400).json({ message: 'Path is required' });
+      }
+
+      const filePath = path as string;
+      const fileName = filePath.split('/').pop() || 'download';
+      
+      res.download(filePath, fileName);
+    } catch (error) {
+      console.error('File download error:', error);
+      res.status(500).json({ message: 'Failed to download file' });
+    }
+  });
+
+  app.post('/api/files/delete', async (req, res) => {
+    try {
+      const { path } = req.body;
+      if (!path) {
+        return res.status(400).json({ message: 'Path is required' });
+      }
+
+      const { unlink } = await import('fs/promises');
+      await unlink(path);
+      res.json({ message: 'File deleted successfully' });
+    } catch (error) {
+      console.error('File delete error:', error);
+      res.status(500).json({ message: 'Failed to delete file' });
     }
   });
 

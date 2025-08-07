@@ -10,6 +10,7 @@ import Landing from "@/pages/landing";
 import DemoUsers from "@/pages/demo-users";
 import Flashcards from "@/pages/flashcards";
 import AnkiStudy from "@/pages/anki-study";
+import FileBrowser from "@/pages/file-browser";
 import SimpleFlashcards from "@/pages/simple-flashcards";
 import AuthPage from "@/pages/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/create" component={CreateDatabase} />
           <Route path="/flashcards" component={SimpleFlashcards} />
           <Route path="/anki-study" component={AnkiStudy} />
+          <Route path="/files" component={FileBrowser} />
           <Route path="/pricing" component={Pricing} />
           <Route>
             <div className="min-h-screen flex items-center justify-center">
