@@ -1073,7 +1073,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 signature: `${word.word}::${word.pos || 'unknown'}`,
                 wordKey: word.position || 0,
                 word: word.word,
-                translations: Array.isArray(word.translation) ? word.translation : [word.translation],
+                translations: word.possible_translations && Array.isArray(word.possible_translations) 
+                ? word.possible_translations 
+                : (Array.isArray(word.translation) ? word.translation : [word.translation]),
                 pos: word.pos || null,
                 lemma: word.lemma || null,
                 sentence: word.sentence || null,
