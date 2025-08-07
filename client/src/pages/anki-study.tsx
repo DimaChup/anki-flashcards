@@ -406,6 +406,59 @@ export default function AnkiStudy() {
                   <div className="space-y-4">
                     <div className="bg-green-900/20 border border-green-700 p-4 rounded-lg">
                       <h3 className="text-green-400 font-semibold mb-2">✓ Anki Deck Ready</h3>
+                      
+                      {/* Progress Bar */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-slate-300 font-medium text-sm">Deck Progress</span>
+                          <span className="text-slate-400 text-xs">
+                            {deck.totalCards} total cards
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                          <div className="h-full flex">
+                            {/* New cards (blue) */}
+                            <div 
+                              className="bg-blue-500 transition-all duration-300"
+                              style={{ 
+                                width: deck.totalCards > 0 ? `${(deck.newCards / deck.totalCards) * 100}%` : '0%' 
+                              }}
+                              title={`${deck.newCards} new cards`}
+                            />
+                            {/* Learning cards (yellow) */}
+                            <div 
+                              className="bg-yellow-500 transition-all duration-300"
+                              style={{ 
+                                width: deck.totalCards > 0 ? `${(deck.learningCards / deck.totalCards) * 100}%` : '0%' 
+                              }}
+                              title={`${deck.learningCards} learning cards`}
+                            />
+                            {/* Review cards (green) */}
+                            <div 
+                              className="bg-green-500 transition-all duration-300"
+                              style={{ 
+                                width: deck.totalCards > 0 ? `${(deck.reviewCards / deck.totalCards) * 100}%` : '0%' 
+                              }}
+                              title={`${deck.reviewCards} review cards`}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-2 text-xs">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-slate-400">{deck.newCards} new</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            <span className="text-slate-400">{deck.learningCards} learning</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-slate-400">{deck.reviewCards} review</span>
+                          </div>
+                        </div>
+                      </div>
+                      
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-white" data-testid="text-total-cards">{deck.totalCards}</div>
