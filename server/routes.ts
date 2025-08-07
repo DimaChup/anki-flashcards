@@ -919,27 +919,29 @@ Take your time, be super careful, no cutting corners.`,
         results: {}
       });
 
-      // Prepare configuration for Python script (equivalent to --resume-from command)
-      const processingConfig = {
-        database_id: databaseId,
-        model_name: "gemini-2.5-flash",
-        batch_size: 30,
-        concurrency: 5,
-        prompt_template: spanishPrompt.template,
-        resume_mode: true, // Equivalent to --resume-from
-        output_overwrite: true // Equivalent to same input/output path
-      };
+      // Export database to JSON file for Python script
+      const { writeFileSync } = await import('fs');
+      const jsonFilePath = `/tmp/database_${databaseId}.json`;
+      const promptFilePath = './server/prompt_es.txt';
+      
+      // Write database analysis_data to JSON file
+      writeFileSync(jsonFilePath, JSON.stringify(database.analysisData, null, 2));
+      
+      // Mark job as processing
+      await storage.updateProcessingJob(job.id, { status: 'processing' });
 
-      // Execute Python processing script asynchronously
+      // Execute the exact Python command you specified
       const { spawn } = await import('child_process');
-      const python = spawn('python3', [
-        './server/ai-processor.py',
-        job.id,
-        JSON.stringify(processingConfig)
+      const python = spawn('python', [
+        './server/process_llm.py',
+        '--resume-from', jsonFilePath,
+        '--output', jsonFilePath,
+        '--model', 'gemini-2.5-flash',
+        '--prompt', promptFilePath
       ], {
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, GEMINI_API_KEY: process.env.GEMINI_API_KEY }
+        stdio: 'pipe',
+        env: { ...process.env, GEMINI_API_KEY: process.env.GEMINI_API_KEY },
+        cwd: process.cwd()
       });
 
       // Log any output for debugging
@@ -951,11 +953,47 @@ Take your time, be super careful, no cutting corners.`,
         console.error(`Python stderr: ${data}`);
       });
 
-      python.on('close', (code) => {
+      python.on('close', async (code) => {
         console.log(`Python process exited with code ${code}`);
-      });
-
-      python.unref(); // Allow parent process to continue
+        
+        try {
+          if (code === 0) {
+            // Read the processed JSON file back
+            const { readFileSync, unlinkSync } = await import('fs');
+            const processedData = JSON.parse(readFileSync(jsonFilePath, 'utf8'));
+            
+            // Update database with processed data
+            await storage.updateLinguisticDatabase(databaseId, database.userId, {
+              analysisData: processedData
+            });
+            
+            // Mark job as completed
+            await storage.updateProcessingJob(job.id, { 
+              status: 'completed',
+              progress: 100
+            });
+            
+            console.log('✓ Quick processing completed successfully!');
+            
+            // Clean up temp file
+            try {
+              unlinkSync(jsonFilePath);
+            } catch (e) {
+              console.log('Could not clean up temp file:', e);
+            }
+          } else {
+            // Mark job as failed
+            await storage.updateProcessingJob(job.id, { 
+              status: 'failed'
+            });
+            
+            console.log('✗ Quick processing failed!');
+          }
+        } catch (error) {
+          console.error('Error handling Python process completion:', error);
+          await storage.updateProcessingJob(job.id, { status: 'failed' });
+        }
+      })
 
       res.status(201).json({
         message: "Quick processing started",
