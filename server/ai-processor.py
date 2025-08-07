@@ -627,6 +627,174 @@ def load_prompt_template(template_file):
     except Exception as e:
         exit_with_error(f"Could not load prompt template from {template_file}: {e}")
 
+async def process_web_database(job_id, config):
+    """Process database from web app integration."""
+    try:
+        import psycopg2
+        import psycopg2.extras
+        
+        # Get database connection from environment
+        database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            print("Error: DATABASE_URL environment variable not set")
+            return False
+        
+        database_id = config.get('database_id')
+        if not database_id:
+            print("Error: No database_id provided in config")
+            return False
+        
+        print(f"Connecting to database to fetch data for database_id: {database_id}")
+        
+        # Connect to database and fetch analysis data
+        conn = psycopg2.connect(database_url)
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # Get database record
+        cur.execute("SELECT * FROM linguistic_databases WHERE id = %s", (database_id,))
+        db_record = cur.fetchone()
+        
+        if not db_record:
+            print(f"Error: Database {database_id} not found")
+            return False
+        
+        print(f"Found database: {db_record['name']} with {db_record['word_count']} words")
+        
+        # Get analysis data (this contains the initialized JSON structure)
+        analysis_data = db_record['analysis_data']
+        if not analysis_data:
+            print("Error: No analysis data found in database")
+            return False
+        
+        print(f"Processing {len(analysis_data)} word entries through AI model...")
+        
+        # Update job status to "processing"
+        cur.execute("""
+            UPDATE processing_jobs 
+            SET status = 'processing', 
+                total_batches = %s, 
+                progress = 0 
+            WHERE id = %s
+        """, (len(analysis_data) // config.get('batch_size', 30) + 1, job_id))
+        conn.commit()
+        
+        # Process the analysis data through AI
+        batch_size = config.get('batch_size', 30)
+        processed_count = 0
+        
+        # Group words into batches and process
+        words_list = list(analysis_data)
+        for i in range(0, len(words_list), batch_size):
+            batch_words = words_list[i:i + batch_size]
+            batch_data = {word_id: analysis_data[word_id] for word_id in batch_words}
+            
+            print(f"Processing batch {i//batch_size + 1}: words {i+1}-{min(i+batch_size, len(words_list))}")
+            
+            # Create text segment from batch
+            text_segment = " ".join([analysis_data[word_id]['word'] for word_id in batch_words])
+            
+            # Prepare JSON structure for AI processing
+            segment_data = {
+                "segmentData": {
+                    f"segment_{i//batch_size + 1}": {
+                        "text": text_segment,
+                        "translations": {}
+                    }
+                },
+                "wordData": batch_data,
+                "idioms": []
+            }
+            
+            # Process through AI model
+            try:
+                processed_batch = await process_batch_with_gemini(text_segment, segment_data)
+                if processed_batch:
+                    # Update the original analysis_data with processed results
+                    for word_id in batch_words:
+                        if word_id in processed_batch.get('wordData', {}):
+                            analysis_data[word_id].update(processed_batch['wordData'][word_id])
+                    
+                    processed_count += len(batch_words)
+                    progress = int((processed_count / len(words_list)) * 100)
+                    
+                    # Update job progress
+                    cur.execute("""
+                        UPDATE processing_jobs 
+                        SET progress = %s, current_batch = %s 
+                        WHERE id = %s
+                    """, (progress, i//batch_size + 1, job_id))
+                    conn.commit()
+                    
+                    print(f"✓ Batch completed. Progress: {progress}%")
+                else:
+                    print(f"✗ Batch failed")
+            
+            except Exception as e:
+                print(f"Error processing batch: {e}")
+        
+        # Update database with processed results
+        cur.execute("""
+            UPDATE linguistic_databases 
+            SET analysis_data = %s 
+            WHERE id = %s
+        """, (json.dumps(analysis_data), database_id))
+        
+        # Mark job as completed
+        cur.execute("""
+            UPDATE processing_jobs 
+            SET status = 'completed', progress = 100 
+            WHERE id = %s
+        """, (job_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        print(f"✓ Database processing completed! Processed {processed_count} words")
+        return True
+        
+    except Exception as e:
+        print(f"Error in web database processing: {e}")
+        
+        # Mark job as failed
+        try:
+            cur.execute("""
+                UPDATE processing_jobs 
+                SET status = 'failed' 
+                WHERE id = %s
+            """, (job_id,))
+            conn.commit()
+        except:
+            pass
+        
+        return False
+
+async def process_batch_with_gemini(text_segment, json_structure):
+    """Process a batch of text through Gemini with the loaded prompt template."""
+    try:
+        # Replace placeholders in prompt template
+        prompt = loaded_prompt_template.replace('{BATCH_TEXT_HERE}', text_segment)
+        prompt = prompt.replace('{COMBINED_JSON_HERE}', json.dumps(json_structure, indent=2))
+        
+        # Call Gemini API
+        response = await gemini_model.generate_content_async(
+            prompt,
+            generation_config=GENERATION_CONFIG,
+            safety_settings=SAFETY_SETTINGS
+        )
+        
+        if response and response.text:
+            # Parse the JSON response
+            result = json.loads(response.text)
+            return result
+        else:
+            print("No response from Gemini model")
+            return None
+            
+    except Exception as e:
+        print(f"Error in Gemini processing: {e}")
+        return None
+
 async def main():
     """Main entry point."""
     global args
@@ -657,12 +825,28 @@ async def main():
         loaded_prompt_template = prompt_template
         print(f"Using prompt template from control panel")
         
-        # TODO: Implement web app database processing logic here
+        # Process database from web app
         print(f"Processing database_id: {config.get('database_id')}")
         print(f"Batch size: {config.get('batch_size', 30)}")
         print(f"Concurrency: {config.get('concurrency', 5)}")
         
-        return True
+        # Set up processing parameters for web mode
+        global args
+        args = type('Args', (), {
+            'target_words_per_batch': config.get('batch_size', 30),
+            'max_concurrent_api_calls': config.get('concurrency', 5),
+            'gemini_model': model_name
+        })()
+        
+        # Process the database
+        success = await process_web_database(job_id, config)
+        
+        if success:
+            print("✓ Web database processing completed successfully!")
+            return True
+        else:
+            print("✗ Web database processing failed!")
+            return False
     
     # Original command-line mode
     # Parse arguments
