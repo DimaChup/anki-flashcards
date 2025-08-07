@@ -11,9 +11,12 @@ export default function SimpleProcessor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [outputFilename, setOutputFilename] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isResuming, setIsResuming] = useState(false)
   const [output, setOutput] = useState('')
+  const [resumeOutput, setResumeOutput] = useState('')
   const [generatedFile, setGeneratedFile] = useState<string | null>(null)
   const [jsonContent, setJsonContent] = useState('')
+  const [initializationComplete, setInitializationComplete] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -51,6 +54,7 @@ export default function SimpleProcessor() {
     setOutput('')
     setGeneratedFile(null)
     setJsonContent('')
+    setInitializationComplete(false)
 
     try {
       // Upload the file first
@@ -70,8 +74,9 @@ export default function SimpleProcessor() {
       const inputPath = `/tmp/${uploadResult.filename}`
       const outputPath = `/tmp/${outputFilename}`
 
-      // Run the Python command
+      // Run the initialization command
       const command = `python server/process_llm.py --initialize-only --input ${inputPath} --output ${outputPath}`
+      setOutput(`Running: ${command}\n\n`)
       
       const response = await fetch('/api/python-terminal/run', {
         method: 'POST',
@@ -103,16 +108,17 @@ export default function SimpleProcessor() {
       // Check if the command completed successfully
       if (fullOutput.includes('exit code: 0')) {
         setGeneratedFile(outputPath)
+        setInitializationComplete(true)
         toast({
-          title: "Processing complete",
-          description: `Generated ${outputFilename} successfully`
+          title: "Initialization complete",
+          description: `Generated ${outputFilename} successfully. Ready for AI processing.`
         })
         
         // Load the generated JSON file
         loadJsonFile(outputPath)
       } else {
         toast({
-          title: "Processing failed",
+          title: "Initialization failed",
           description: "Check the output for error details",
           variant: "destructive"
         })
@@ -127,6 +133,83 @@ export default function SimpleProcessor() {
       })
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const runResumeProcessor = async () => {
+    if (!generatedFile || !outputFilename) {
+      toast({
+        title: "Missing requirements",
+        description: "Please run initialization first",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsResuming(true)
+    setResumeOutput('')
+
+    try {
+      const inputJsonPath = generatedFile
+      const outputPath = generatedFile // Same location to overwrite
+
+      // Run the resume command
+      const command = `python server/process_llm.py --resume-from ${inputJsonPath} --output ${outputPath} --model gemini-2.5-flash --prompt server/prompt_es.txt`
+      setResumeOutput(`Running: ${command}\n\n`)
+      
+      const response = await fetch('/api/python-terminal/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ command })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to run resume command')
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullOutput = ''
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = decoder.decode(value)
+          fullOutput += chunk
+          setResumeOutput(prev => prev + chunk)
+        }
+      }
+
+      // Check if the command completed successfully
+      if (fullOutput.includes('exit code: 0')) {
+        toast({
+          title: "AI Processing complete",
+          description: `Updated ${outputFilename} with AI analysis`
+        })
+        
+        // Reload the updated JSON file
+        loadJsonFile(generatedFile)
+      } else {
+        toast({
+          title: "AI Processing failed",
+          description: "Check the output for error details",
+          variant: "destructive"
+        })
+      }
+
+    } catch (error) {
+      console.error('Resume processing error:', error)
+      toast({
+        title: "Error",
+        description: "Failed to run AI processing",
+        variant: "destructive"
+      })
+    } finally {
+      setIsResuming(false)
     }
   }
 
@@ -231,8 +314,30 @@ export default function SimpleProcessor() {
               data-testid="button-run-processor"
             >
               <Play className="h-4 w-4 mr-2" />
-              {isProcessing ? 'Processing...' : 'Run Processor'}
+              {isProcessing ? 'Initializing...' : 'Step 1: Initialize'}
             </Button>
+
+            {/* Resume Processing Section */}
+            {initializationComplete && (
+              <div className="pt-4 border-t space-y-4">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                  <Label className="text-sm font-mono">Resume command:</Label>
+                  <p className="text-sm font-mono text-muted-foreground mt-1">
+                    python server/process_llm.py --resume-from /tmp/{outputFilename} --output /tmp/{outputFilename} --model gemini-2.5-flash --prompt server/prompt_es.txt
+                  </p>
+                </div>
+                
+                <Button
+                  onClick={runResumeProcessor}
+                  disabled={isResuming}
+                  className="w-full bg-orange-600 hover:bg-orange-700"
+                  data-testid="button-run-resume"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  {isResuming ? 'AI Processing...' : 'Step 2: AI Process'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -244,17 +349,35 @@ export default function SimpleProcessor() {
               Process Output
             </CardTitle>
             <CardDescription>
-              Real-time output from the Python script
+              Real-time output from the Python scripts
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Textarea
-              value={output}
-              readOnly
-              className="min-h-[300px] font-mono text-sm bg-black text-green-400 resize-none"
-              placeholder="Process output will appear here..."
-              data-testid="textarea-output"
-            />
+          <CardContent className="space-y-4">
+            {/* Initialization Output */}
+            <div>
+              <Label className="text-sm font-medium">Step 1: Initialization Output</Label>
+              <Textarea
+                value={output}
+                readOnly
+                className="min-h-[200px] font-mono text-sm bg-black text-green-400 resize-none mt-2"
+                placeholder="Initialization output will appear here..."
+                data-testid="textarea-init-output"
+              />
+            </div>
+
+            {/* Resume Output */}
+            {initializationComplete && (
+              <div>
+                <Label className="text-sm font-medium">Step 2: AI Processing Output</Label>
+                <Textarea
+                  value={resumeOutput}
+                  readOnly
+                  className="min-h-[200px] font-mono text-sm bg-black text-orange-400 resize-none mt-2"
+                  placeholder="AI processing output will appear here..."
+                  data-testid="textarea-resume-output"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
