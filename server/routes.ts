@@ -1022,7 +1022,7 @@ Take your time, be super careful, no cutting corners.`,
             updatedAnalysisData.sort((a, b) => a.position - b.position);
             
             // Update database with processed data
-            await storage.updateLinguisticDatabase(databaseId, database.userId, {
+            await storage.updateLinguisticDatabase(databaseId, {
               analysisData: updatedAnalysisData
             });
             

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import JsonFilesViewer from '@/components/JsonFilesViewer';
 
 export default function CreateDatabase() {
   const [, setLocation] = useLocation();
@@ -751,6 +752,15 @@ export default function CreateDatabase() {
               )}
             </pre>
           </div>
+        </div>
+
+        {/* JSON Files Viewer Section */}
+        <div className="control-section">
+          <h3 className="section-title">Processing Files</h3>
+          <div className="section-description">
+            View, download, and manage JSON files created during processing
+          </div>
+          <JsonFilesViewer />
         </div>
       </div>
     </>
