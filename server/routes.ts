@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Initialize database from text using Python script --initialize-only
+  // Initialize file using Python script --initialize-only (saves raw output to /tmp only)
   app.post("/api/databases/initialize", isAuthenticated, async (req: any, res) => {
     try {
       const { mode, inputText, filename } = req.body;
@@ -116,13 +116,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid request. Expected mode: 'initialize' and inputText." });
       }
 
-      const userId = req.user.id;
-      const databaseName = filename || `Database_${Date.now()}`;
+      const databaseName = filename || `database_${Date.now()}`;
       
-      // Create a temporary input text file for the Python script
+      // Create temporary input file for Python script
       const { writeFileSync, unlinkSync } = await import('fs');
       const tempInputFile = `/tmp/input_${Date.now()}.txt`;
-      const outputJsonFile = `/tmp/initialized_${Date.now()}.json`;
+      const outputJsonFile = `/tmp/${databaseName}.json`;
       
       try {
         // Write input text to temporary file
@@ -154,61 +153,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const result = await new Promise((resolve, reject) => {
-          python.on('close', async (code) => {
+          python.on('close', (code) => {
             console.log(`Python initialization process exited with code ${code}`);
             
+            // Clean up temporary input file
             try {
-              if (code === 0) {
-                // Read the initialized JSON file created by Python script
-                const { readFileSync, copyFileSync } = await import('fs');
-                const pythonData = JSON.parse(readFileSync(outputJsonFile, 'utf8'));
-                
-                // Generate a unique ID for this initialization (without creating database yet)
-                const initId = `init_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                
-                // Save the raw Python output directly to /tmp in EXACT format
-                const processingFile = `/tmp/database_${initId}.json`;
-                copyFileSync(outputJsonFile, processingFile);
-                
-                const wordDatabase = pythonData.wordDatabase || {};
-                const wordCount = Object.keys(wordDatabase).length;
-                
-                console.log("Initialization complete:", {
-                  message: `File initialized successfully - ${wordCount} words found`,
-                  filename: databaseName,
-                  wordCount,
-                  processingFile,
-                  format: "Raw Python output saved to /tmp"
-                });
-                
-                resolve({ 
-                  message: `File initialized successfully - ${wordCount} words found`,
-                  filename: databaseName,
-                  wordCount,
-                  processingFile,
-                  initId
-                });
-              } else {
-                console.error("✗ Python initialization failed!");
-                console.error("Error output:", stderr);
-                reject(new Error(`Python script failed with code ${code}: ${stderr}`));
-              }
-            } catch (error) {
-              console.error("Error processing Python initialization result:", error);
-              reject(error);
-            } finally {
-              // Clean up temporary files
-              try {
-                unlinkSync(tempInputFile);
-                unlinkSync(outputJsonFile);
-              } catch (cleanupError) {
-                console.error("Error cleaning up temporary files:", cleanupError);
-              }
+              unlinkSync(tempInputFile);
+            } catch (cleanupError) {
+              console.error("Error cleaning up temp input file:", cleanupError);
+            }
+            
+            if (code === 0) {
+              console.log(`✓ Python initialization successful - raw output saved to ${outputJsonFile}`);
+              resolve({ 
+                message: `File initialized successfully and saved to /tmp/${databaseName}.json`,
+                filename: databaseName,
+                outputFile: outputJsonFile
+              });
+            } else {
+              console.error("✗ Python initialization failed!");
+              console.error("Error output:", stderr);
+              reject(new Error(`Python script failed with code ${code}: ${stderr}`));
             }
           });
 
           python.on('error', (error) => {
             console.error("Failed to start Python process:", error);
+            // Clean up on error
+            try {
+              unlinkSync(tempInputFile);
+            } catch (cleanupError) {
+              // Ignore cleanup errors
+            }
             reject(error);
           });
         });
@@ -230,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof Error) {
         res.status(400).json({ message: error.message });
       } else {
-        res.status(500).json({ message: "Failed to initialize database" });
+        res.status(500).json({ message: "Failed to initialize file" });
       }
     }
   });
