@@ -160,48 +160,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               if (code === 0) {
                 // Read the initialized JSON file created by Python script
-                const { readFileSync } = await import('fs');
+                const { readFileSync, copyFileSync } = await import('fs');
                 const pythonData = JSON.parse(readFileSync(outputJsonFile, 'utf8'));
                 
-                // Don't convert - use the Python format directly for processing
-                // But still create a database entry for tracking
+                // Generate a unique ID for this initialization (without creating database yet)
+                const initId = `init_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Save the raw Python output directly to /tmp in EXACT format
+                const processingFile = `/tmp/database_${initId}.json`;
+                copyFileSync(outputJsonFile, processingFile);
+                
                 const wordDatabase = pythonData.wordDatabase || {};
                 const wordCount = Object.keys(wordDatabase).length;
                 
-                // Create minimal database entry for UI purposes
-                const transformedData = {
-                  name: databaseName,
-                  description: `Initialized from text input - ${wordCount} words found`,
-                  language: "Unknown", // Will be determined during processing
-                  originalText: pythonData.inputText || inputText,
-                  wordCount: wordCount,
-                  analysisData: [], // Keep empty - processing will fill this
-                  knownWords: [],
-                  segments: pythonData.segments || []
-                };
-
-                const database = await storage.createLinguisticDatabase(transformedData, userId);
-                
-                // Save the Python format to /tmp for processing
-                const processingFile = `/tmp/database_${database.id}.json`;
-                const { writeFileSync } = await import('fs');
-                writeFileSync(processingFile, JSON.stringify(pythonData, null, 2), 'utf8');
-                
-                // Automatically create associated Anki deck
-                try {
-                  await storage.generateAnkiDeckFromDatabase(database.id, userId);
-                } catch (error) {
-                  console.error("Failed to create Anki deck:", error);
-                }
-                
                 console.log("Initialization complete:", {
-                  message: "File initialized and database created successfully",
-                  database,
+                  message: `File initialized successfully - ${wordCount} words found`,
+                  filename: databaseName,
                   wordCount,
-                  processingFile
+                  processingFile,
+                  format: "Raw Python output saved to /tmp"
                 });
                 
-                resolve({ database, wordCount, processingFile });
+                resolve({ 
+                  message: `File initialized successfully - ${wordCount} words found`,
+                  filename: databaseName,
+                  wordCount,
+                  processingFile,
+                  initId
+                });
               } else {
                 console.error("✗ Python initialization failed!");
                 console.error("Error output:", stderr);
