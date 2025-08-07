@@ -154,7 +154,7 @@ export default function SimpleProcessor() {
       const outputPath = generatedFile // Same location to overwrite
 
       // Run the resume command
-      const command = `python server/process_llm.py --resume-from ${inputJsonPath} --output ${outputPath} --model gemini-2.5-flash --prompt server/prompt_es.txt`
+      const command = `python server/process_llm.py --resume-from ${inputJsonPath} --output ${outputPath} --model gemini-2.5-flash --prompt server/prompts/prompt_es.txt`
       setResumeOutput(`Running: ${command}\n\n`)
       
       const response = await fetch('/api/python-terminal/run', {
@@ -323,7 +323,7 @@ export default function SimpleProcessor() {
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <Label className="text-sm font-mono">Resume command:</Label>
                   <p className="text-sm font-mono text-muted-foreground mt-1">
-                    python server/process_llm.py --resume-from /tmp/{outputFilename} --output /tmp/{outputFilename} --model gemini-2.5-flash --prompt server/prompt_es.txt
+                    python server/process_llm.py --resume-from /tmp/{outputFilename} --output /tmp/{outputFilename} --model gemini-2.5-flash --prompt server/prompts/prompt_es.txt
                   </p>
                 </div>
                 

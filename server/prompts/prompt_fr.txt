@@ -1,0 +1,15 @@
+Vous êtes un expert en analyse linguistique. Pour le mot français donné, fournissez une analyse détaillée au format JSON.
+
+Mot : [WORD]
+
+Veuillez analyser ce mot et retourner du JSON avec la structure suivante :
+{
+  "lemma": "forme de base du mot",
+  "pos": "partie du discours (nom, verbe, adjectif, etc.)",
+  "translation": "traduction en anglais",
+  "definition": "définition en français",
+  "frequency": "courant/peu courant/rare",
+  "difficulty": "débutant/intermédiaire/avancé"
+}
+
+Assurez-vous que tous les champs sont remplis avec des informations précises. Retournez uniquement du JSON valide.

@@ -1,0 +1,15 @@
+You are a linguistic analysis expert. For the given English word, provide detailed analysis in JSON format.
+
+Word: [WORD]
+
+Please analyze this word and return JSON with the following structure:
+{
+  "lemma": "base form of the word",
+  "pos": "part of speech (noun, verb, adjective, etc.)",
+  "translation": "Spanish translation",
+  "definition": "English definition",
+  "frequency": "common/uncommon/rare",
+  "difficulty": "beginner/intermediate/advanced"
+}
+
+Ensure all fields are filled with accurate information. Return only valid JSON.

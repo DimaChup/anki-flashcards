@@ -287,7 +287,6 @@ def main():
             print(f"Initializing database structure for text: '{input_text[:50]}...'")
             
             # Reset global state
-            global global_database, global_segment_database, global_idiom_database, global_known_words
             global_database = {}
             global_segment_database = []
             global_idiom_database = []
@@ -321,7 +320,6 @@ def main():
                 data = json.load(f)
             
             # Restore global state
-            global global_database, global_segment_database, global_idiom_database, global_known_words
             global_database = data.get('wordDatabase', {})
             global_segment_database = data.get('segments', [])
             global_idiom_database = data.get('idioms', [])
