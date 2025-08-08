@@ -14,7 +14,6 @@ import FileBrowser from "@/pages/file-browser";
 import SimpleFlashcards from "@/pages/simple-flashcards";
 import SimpleProcessor from "@/pages/simple-processor";
 import LLMProcessor from "@/pages/llm-processor";
-import PythonTerminal from "@/pages/python-terminal";
 import AuthPage from "@/pages/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -50,7 +49,6 @@ function Router() {
           <Route path="/files" component={FileBrowser} />
           <Route path="/simple-processor" component={SimpleProcessor} />
           <Route path="/llm-processor" component={LLMProcessor} />
-          <Route path="/python-terminal" component={PythonTerminal} />
           <Route path="/pricing" component={Pricing} />
           <Route>
             <div className="min-h-screen flex items-center justify-center">

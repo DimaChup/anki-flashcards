@@ -49,7 +49,7 @@ export default function LLMProcessor() {
     queryKey: ['/api/files'],
   });
   
-  const files = Array.isArray(filesResponse) ? filesResponse : (filesResponse?.files || []);
+  const files = Array.isArray(filesResponse) ? filesResponse : ((filesResponse as any)?.files || []);
 
   // Fetch prompt templates
   const { data: templates = [] } = useQuery<PromptTemplate[]>({
