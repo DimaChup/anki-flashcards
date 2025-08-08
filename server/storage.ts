@@ -639,6 +639,8 @@ export class DatabaseStorage implements IStorage {
       pos: word.pos,
       lemma: word.lemma,
       translations: [word.translation],
+      possibleTranslations: word.possibleTranslations || [],
+      lemmaTranslations: word.lemmaTranslations || [],
       sentence: word.sentence,
       status: 'new',
       easeFactor: 2500,

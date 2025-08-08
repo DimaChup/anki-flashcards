@@ -1,0 +1,326 @@
+[
+  {
+    "id": "1",
+    "pos": "NOUN",
+    "word": "μῆνιν",
+    "lemma": "μῆνις",
+    "details": {
+      "Case": "Acc",
+      "Gender": "f",
+      "Number": "s"
+    },
+    "rawData": {
+      "pos": "NOUN",
+      "freq": 1,
+      "word": "μῆνιν",
+      "lemma": "μῆνις",
+      "details": {
+        "Case": "Acc",
+        "Gender": "f",
+        "Number": "s"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "wrath",
+      "lemma_translations": [
+        "fury",
+        "rage",
+        "wrath"
+      ],
+      "most_frequent_lemma": "μῆνις",
+      "possible_translations": [
+        "fury",
+        "rage",
+        "wrath"
+      ]
+    },
+    "position": 1,
+    "sentence": "Context for word: μῆνιν",
+    "frequency": 1,
+    "translation": "wrath",
+    "firstInstance": true,
+    "contextualInfo": {
+      "gender": "f",
+      "number": "s"
+    },
+    "bestTranslation": "wrath",
+    "frequencyTillNow": 1,
+    "lemmaTranslations": [
+      "fury",
+      "rage",
+      "wrath"
+    ],
+    "mostFrequentLemma": "μῆνις",
+    "possibleTranslations": [
+      "fury",
+      "rage",
+      "wrath"
+    ]
+  },
+  {
+    "id": "2",
+    "pos": "VERB",
+    "word": "ἄειδε",
+    "lemma": "ἀείδω",
+    "details": {
+      "Mood": "Imp",
+      "Tense": "Aor",
+      "Number": "s",
+      "Person": "2",
+      "VerbForm": "Fin"
+    },
+    "rawData": {
+      "pos": "VERB",
+      "freq": 1,
+      "word": "ἄειδε",
+      "lemma": "ἀείδω",
+      "details": {
+        "Mood": "Imp",
+        "Tense": "Aor",
+        "Number": "s",
+        "Person": "2",
+        "VerbForm": "Fin"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "(you) sing",
+      "lemma_translations": [
+        "to chant",
+        "to sing",
+        "to tell"
+      ],
+      "most_frequent_lemma": "ἀείδω",
+      "possible_translations": [
+        "(you) chant",
+        "(you) sing",
+        "(you) tell"
+      ]
+    },
+    "position": 2,
+    "sentence": "Context for word: ἄειδε",
+    "frequency": 1,
+    "translation": "(you) sing",
+    "firstInstance": true,
+    "contextualInfo": {
+      "mood": "Imp",
+      "tense": "Aor",
+      "number": "s",
+      "person": "2"
+    },
+    "bestTranslation": "(you) sing",
+    "frequencyTillNow": 1,
+    "lemmaTranslations": [
+      "to chant",
+      "to sing",
+      "to tell"
+    ],
+    "mostFrequentLemma": "ἀείδω",
+    "possibleTranslations": [
+      "(you) chant",
+      "(you) sing",
+      "(you) tell"
+    ]
+  },
+  {
+    "id": "3",
+    "pos": "NOUN",
+    "word": "θεὰ",
+    "lemma": "θεά",
+    "details": {
+      "Case": "Voc",
+      "Gender": "f",
+      "Number": "s"
+    },
+    "rawData": {
+      "pos": "NOUN",
+      "freq": 1,
+      "word": "θεὰ",
+      "lemma": "θεά",
+      "details": {
+        "Case": "Voc",
+        "Gender": "f",
+        "Number": "s"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "goddess",
+      "lemma_translations": [
+        "goddess"
+      ],
+      "most_frequent_lemma": "θεά",
+      "possible_translations": [
+        "goddess"
+      ]
+    },
+    "position": 3,
+    "sentence": "Context for word: θεὰ",
+    "frequency": 1,
+    "translation": "goddess",
+    "firstInstance": true,
+    "contextualInfo": {
+      "gender": "f",
+      "number": "s"
+    },
+    "bestTranslation": "goddess",
+    "frequencyTillNow": 1,
+    "lemmaTranslations": [
+      "goddess"
+    ],
+    "mostFrequentLemma": "θεά",
+    "possibleTranslations": [
+      "goddess"
+    ]
+  },
+  {
+    "id": "4",
+    "pos": "PROPN",
+    "word": "Πηληϊάδεω",
+    "lemma": "Πηληϊάδης",
+    "details": {
+      "Case": "Gen",
+      "Gender": "m",
+      "Number": "s"
+    },
+    "rawData": {
+      "pos": "PROPN",
+      "freq": 1,
+      "word": "Πηληϊάδεω",
+      "lemma": "Πηληϊάδης",
+      "details": {
+        "Case": "Gen",
+        "Gender": "m",
+        "Number": "s"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "of Peleus' son",
+      "lemma_translations": [
+        "Achilles",
+        "Peleus' son"
+      ],
+      "most_frequent_lemma": "Πηληϊάδης",
+      "possible_translations": [
+        "of Peleus' son"
+      ]
+    },
+    "position": 4,
+    "sentence": "Context for word: Πηληϊάδεω",
+    "frequency": 1,
+    "translation": "of Peleus' son",
+    "firstInstance": true,
+    "contextualInfo": {
+      "gender": "m",
+      "number": "s"
+    },
+    "bestTranslation": "of Peleus' son",
+    "frequencyTillNow": 1,
+    "lemmaTranslations": [
+      "Achilles",
+      "Peleus' son"
+    ],
+    "mostFrequentLemma": "Πηληϊάδης",
+    "possibleTranslations": [
+      "of Peleus' son"
+    ]
+  },
+  {
+    "id": "5",
+    "pos": "PROPN",
+    "word": "Ἀχιλῆος",
+    "lemma": "Ἀχιλλεύς",
+    "details": {
+      "Case": "Gen",
+      "Gender": "m",
+      "Number": "s"
+    },
+    "rawData": {
+      "pos": "PROPN",
+      "freq": 1,
+      "word": "Ἀχιλῆος",
+      "lemma": "Ἀχιλλεύς",
+      "details": {
+        "Case": "Gen",
+        "Gender": "m",
+        "Number": "s"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "of Achilles",
+      "lemma_translations": [
+        "Achilles"
+      ],
+      "most_frequent_lemma": "Ἀχιλλεύς",
+      "possible_translations": [
+        "of Achilles"
+      ]
+    },
+    "position": 5,
+    "sentence": "Context for word: Ἀχιλῆος",
+    "frequency": 1,
+    "translation": "of Achilles",
+    "firstInstance": true,
+    "contextualInfo": {
+      "gender": "m",
+      "number": "s"
+    },
+    "bestTranslation": "of Achilles",
+    "frequencyTillNow": 1,
+    "lemmaTranslations": [
+      "Achilles"
+    ],
+    "mostFrequentLemma": "Ἀχιλλεύς",
+    "possibleTranslations": [
+      "of Achilles"
+    ]
+  },
+  {
+    "id": "6",
+    "pos": "ADJ",
+    "word": "οὐλομένην",
+    "lemma": "οὐλόμενος",
+    "details": {
+      "Case": "Acc",
+      "Tense": "Pres",
+      "Voice": "Mid",
+      "Gender": "f",
+      "Number": "s",
+      "VerbForm": "Part"
+    },
+    "rawData": {
+      "pos": "ADJ",
+      "freq": 1,
+      "word": "οὐλομένην",
+      "lemma": "οὐλόμενος",
+      "details": {
+        "Case": "Acc",
+        "Tense": "Pres",
+        "Voice": "Mid",
+        "Gender": "f",
+        "Number": "s",
+        "VerbForm": "Part"
+      },
+      "first_inst": true,
+      "freq_till_now": 1,
+      "best_translation": "destructive",
+      "lemma_translations": [
+        "accursed",
+        "baneful",
+        "destructive"
+      ],
+      "most_frequent_lemma": "οὐλόμενος",
+      "possible_translations": [
+        "accursed",
+        "baneful",
+        "destructive"
+      ]
+    },
+    "position": 6,
+    "sentence": "Context for word: οὐλομένην",
+    "frequency": 1,
+    "translation": "destructive",
+    "firstInstance": true,
+    "contextualInfo": {
+      "tense": "Pres",
+      "gender": "f",
+      "number": "s"
+    },

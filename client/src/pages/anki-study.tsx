@@ -812,6 +812,7 @@ export default function AnkiStudy() {
                               <th className="text-left p-3 text-slate-300 font-medium">Position</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Word</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Translation</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Possible Translations</th>
                               <th className="text-left p-3 text-slate-300 font-medium">POS</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Status</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Context</th>
@@ -832,6 +833,12 @@ export default function AnkiStudy() {
                                 </td>
                                 <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
                                   {card.translations.join(', ')}
+                                </td>
+                                <td className="p-3 text-purple-400 text-sm" data-testid={`text-possible-translations-${index}`}>
+                                  {(card as any).possibleTranslations?.length > 0 
+                                    ? (card as any).possibleTranslations.join(', ')
+                                    : '-'
+                                  }
                                 </td>
                                 <td className="p-3 text-blue-400 text-sm" data-testid={`text-pos-${index}`}>
                                   {card.pos || '-'}
@@ -874,6 +881,12 @@ export default function AnkiStudy() {
                           <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
                             {card.translations.join(', ')}
                           </div>
+                          {(card as any).possibleTranslations?.length > 0 && (
+                            <div className="text-purple-400 mb-2 text-sm" data-testid={`text-mobile-possible-translations-${index}`}>
+                              <span className="text-slate-400">Possible: </span>
+                              {(card as any).possibleTranslations.join(', ')}
+                            </div>
+                          )}
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-blue-400 text-sm" data-testid={`text-mobile-pos-${index}`}>
                               {card.pos || 'Unknown POS'}
