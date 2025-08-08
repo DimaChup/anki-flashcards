@@ -370,7 +370,7 @@ export default function LLMProcessorPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {loadingPrompts ? (
-                        <SelectItem value="" disabled>Loading prompts...</SelectItem>
+                        <SelectItem value="loading" disabled>Loading prompts...</SelectItem>
                       ) : prompts && prompts.length > 0 ? (
                         prompts.map((prompt) => (
                           <SelectItem key={prompt.filename} value={prompt.filename}>
@@ -378,7 +378,7 @@ export default function LLMProcessorPage() {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>No prompts available</SelectItem>
+                        <SelectItem value="none" disabled>No prompts available</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

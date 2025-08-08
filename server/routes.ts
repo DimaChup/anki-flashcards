@@ -19,6 +19,8 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { SpacedRepetitionService } from "./spacedRepetition";
 import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
 
 // Configure multer for file uploads
 const upload = multer({ 
