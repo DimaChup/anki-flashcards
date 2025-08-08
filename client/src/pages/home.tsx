@@ -121,7 +121,14 @@ export default function Home() {
                 <span className="hidden sm:inline">🧠 Anki Study</span>
                 <span className="sm:hidden">🧠 Study</span>
               </button>
-
+              <button
+                onClick={() => setLocation('/simple-processor')}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
+                data-testid="text-processor-button"
+              >
+                <span className="hidden sm:inline">🔄 Text Processor</span>
+                <span className="sm:hidden">🔄 Processor</span>
+              </button>
               <button
                 onClick={() => setLocation('/pricing')}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"

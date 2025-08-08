@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type LinguisticDatabase } from "@shared/schema";
-import { Upload, Plus, Database, CheckCircle, AlertCircle, Circle, Trash2, Play } from "lucide-react";
+import { Upload, Plus, Database, CheckCircle, AlertCircle, Circle, Trash2 } from "lucide-react";
 
 interface DatabaseSectionProps {
   databases: LinguisticDatabase[];
@@ -30,7 +29,6 @@ export default function DatabaseSection({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -203,16 +201,6 @@ export default function DatabaseSection({
           >
             <Plus className="w-4 h-4" />
             Create New
-          </Button>
-          
-          <Button
-            variant="default"
-            onClick={() => setLocation('/simple-processor')}
-            className="flex items-center gap-2 justify-center sm:justify-start bg-orange-600 hover:bg-orange-700"
-            data-testid="text-processor-button"
-          >
-            <Play className="w-4 h-4" />
-            Text Processor
           </Button>
         </div>
       </div>
