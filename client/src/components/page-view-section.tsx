@@ -73,6 +73,21 @@ export default function PageViewSection({
     setKnownSignaturesSet(signatures);
   }, [knownWords]);
 
+  // Auto-switch to Single view on small screens (iPhone XR and below)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 414) { // iPhone XR width
+        setIsDualPageView(false);
+      }
+    };
+
+    // Check on mount and resize
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Handle known words input change
   const handleKnownWordsInputChange = (value: string) => {
     setKnownWordsInput(value);
@@ -808,102 +823,6 @@ export default function PageViewSection({
               />
             </label>
           </div>
-          
-          {/* POS Button Rows */}
-          <div className="highlight-row button-container">
-            {(posButtonGroups[0]?.tags || []).map((pos: string) => (
-              <button
-                key={pos}
-                onClick={() => togglePOSHighlight([pos])}
-                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                  highlightedPOS.has(pos)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-background border-border hover:bg-muted'
-                }`}
-                style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[0]?.hueVar}), var(${posButtonGroups[0]?.satVar}), var(${posButtonGroups[0]?.lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[0]?.hueVar}), var(${posButtonGroups[0]?.satVar}), var(${posButtonGroups[0]?.lightVar}))`,
-                  color: 'white'
-                } : {}}
-              >
-                {pos}
-              </button>
-            ))}
-          </div>
-          
-          <div className="highlight-row button-container">
-            {(posButtonGroups[1]?.tags || []).map((pos: string) => (
-              <button
-                key={pos}
-                onClick={() => togglePOSHighlight([pos])}
-                className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                  highlightedPOS.has(pos)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-background border-border hover:bg-muted'
-                }`}
-                style={highlightedPOS.has(pos) ? {
-                  backgroundColor: `hsl(var(${posButtonGroups[1]?.hueVar}), var(${posButtonGroups[1]?.satVar}), var(${posButtonGroups[1]?.lightVar}))`,
-                  borderColor: `hsl(var(${posButtonGroups[1]?.hueVar}), var(${posButtonGroups[1]?.satVar}), var(${posButtonGroups[1]?.lightVar}))`,
-                  color: 'white'
-                } : {}}
-              >
-                {pos}
-              </button>
-            ))}
-          </div>
-          
-          <div className="highlight-row button-container">
-            {/* ADJ Button */}
-            <button
-              onClick={() => togglePOSHighlight(posButtonGroups[2].tags)}
-              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag))
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-background border-border hover:bg-muted'
-              }`}
-              style={posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag)) ? {
-                backgroundColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
-                borderColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
-                color: 'white'
-              } : {}}
-            >
-              {posButtonGroups[2].text}
-            </button>
-            
-            {/* AUX Button */}
-            <button
-              onClick={() => togglePOSHighlight(posButtonGroups[3].tags)}
-              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag))
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-background border-border hover:bg-muted'
-              }`}
-              style={posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag)) ? {
-                backgroundColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
-                borderColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
-                color: 'white'
-              } : {}}
-            >
-              {posButtonGroups[3].text}
-            </button>
-            
-            {/* Other Button */}
-            <button
-              onClick={() => togglePOSHighlight(posButtonGroups[4].tags)}
-              className={`pos-button text-xs px-2 py-1 rounded border transition-colors ${
-                posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag))
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-background border-border hover:bg-muted'
-              }`}
-              style={posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag)) ? {
-                backgroundColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
-                borderColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
-                color: 'white'
-              } : {}}
-            >
-              {posButtonGroups[4].text}
-            </button>
-          </div>
         </div>
 
           
@@ -993,6 +912,89 @@ export default function PageViewSection({
               Clear Known Words
             </button>
           </div>
+      </div>
+
+      {/* Compact Mobile-First POS Buttons - Right Above Text */}
+      <div className="flex flex-wrap gap-1 sm:gap-2 mb-2 p-2 bg-muted/50 rounded">
+        {/* VERB Button */}
+        <button
+          onClick={() => togglePOSHighlight(posButtonGroups[0].tags)}
+          className={`text-xs px-2 py-1 rounded border transition-colors flex-1 min-w-0 ${
+            posButtonGroups[0].tags.every(tag => highlightedPOS.has(tag))
+              ? 'text-white border-opacity-50'
+              : 'bg-background border-border hover:bg-muted text-foreground'
+          }`}
+          style={posButtonGroups[0].tags.every(tag => highlightedPOS.has(tag)) ? {
+            backgroundColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
+            borderColor: `hsl(var(${posButtonGroups[0].hueVar}), var(${posButtonGroups[0].satVar}), var(${posButtonGroups[0].lightVar}))`,
+          } : {}}
+        >
+          VERB
+        </button>
+        
+        {/* NOUN/PROPN Button */}
+        <button
+          onClick={() => togglePOSHighlight(posButtonGroups[1].tags)}
+          className={`text-xs px-2 py-1 rounded border transition-colors flex-1 min-w-0 ${
+            posButtonGroups[1].tags.every(tag => highlightedPOS.has(tag))
+              ? 'text-white border-opacity-50'
+              : 'bg-background border-border hover:bg-muted text-foreground'
+          }`}
+          style={posButtonGroups[1].tags.every(tag => highlightedPOS.has(tag)) ? {
+            backgroundColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
+            borderColor: `hsl(var(${posButtonGroups[1].hueVar}), var(${posButtonGroups[1].satVar}), var(${posButtonGroups[1].lightVar}))`,
+          } : {}}
+        >
+          NOUN
+        </button>
+        
+        {/* ADJ Button */}
+        <button
+          onClick={() => togglePOSHighlight(posButtonGroups[2].tags)}
+          className={`text-xs px-2 py-1 rounded border transition-colors flex-1 min-w-0 ${
+            posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag))
+              ? 'text-white border-opacity-50'
+              : 'bg-background border-border hover:bg-muted text-foreground'
+          }`}
+          style={posButtonGroups[2].tags.every(tag => highlightedPOS.has(tag)) ? {
+            backgroundColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+            borderColor: `hsl(var(${posButtonGroups[2].hueVar}), var(${posButtonGroups[2].satVar}), var(${posButtonGroups[2].lightVar}))`,
+          } : {}}
+        >
+          ADJ
+        </button>
+        
+        {/* AUX Button */}
+        <button
+          onClick={() => togglePOSHighlight(posButtonGroups[3].tags)}
+          className={`text-xs px-2 py-1 rounded border transition-colors flex-1 min-w-0 ${
+            posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag))
+              ? 'text-white border-opacity-50'
+              : 'bg-background border-border hover:bg-muted text-foreground'
+          }`}
+          style={posButtonGroups[3].tags.every(tag => highlightedPOS.has(tag)) ? {
+            backgroundColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
+            borderColor: `hsl(var(${posButtonGroups[3].hueVar}), var(${posButtonGroups[3].satVar}), var(${posButtonGroups[3].lightVar}))`,
+          } : {}}
+        >
+          AUX
+        </button>
+        
+        {/* OTHER Button */}
+        <button
+          onClick={() => togglePOSHighlight(posButtonGroups[4].tags)}
+          className={`text-xs px-2 py-1 rounded border transition-colors flex-1 min-w-0 ${
+            posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag))
+              ? 'text-white border-opacity-50'
+              : 'bg-background border-border hover:bg-muted text-foreground'
+          }`}
+          style={posButtonGroups[4].tags.some(tag => highlightedPOS.has(tag)) ? {
+            backgroundColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
+            borderColor: `hsl(var(${posButtonGroups[4].hueVar}), var(${posButtonGroups[4].satVar}), var(${posButtonGroups[4].lightVar}))`,
+          } : {}}
+        >
+          OTHER
+        </button>
       </div>
 
       {/* Text Display Area */}
