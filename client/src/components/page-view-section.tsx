@@ -754,37 +754,6 @@ export default function PageViewSection({
       {/* Mobile-Optimized Controls Container */}
       <div className="controls-container bg-muted p-3 rounded-lg mb-4">
         <div className="control-group highlight-controls">
-          {/* Mobile-First Layout - Top Row with Main Controls */}
-          <div className="flex flex-wrap gap-2 mb-3 items-center justify-start">
-            <button
-              onClick={toggleAllHighlights}
-              className={`px-4 py-2 rounded text-sm font-semibold transition-colors min-h-[48px] ${
-                highlightedPOS.size > 0 ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'
-              }`}
-            >
-              Highlight All
-            </button>
-            
-            <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
-              <span className="text-sm font-medium">Style:</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">BG</span>
-                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${highlightStyle === 'underline' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </div>
-                <span className="text-xs text-muted-foreground">UL</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={highlightStyle === 'underline'}
-                onChange={(e) => setHighlightStyle(e.target.checked ? 'underline' : 'background')}
-                className="sr-only"
-              />
-            </label>
-          </div>
-        </div>
-
-          
           {/* Organized Filter & Control Toggles */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
             <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
@@ -871,6 +840,36 @@ export default function PageViewSection({
               Clear Known Words
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Highlight All Button and Style Toggle - Right Above POS Buttons */}
+      <div className="flex flex-wrap gap-2 mb-2 items-center justify-start">
+        <button
+          onClick={toggleAllHighlights}
+          className={`px-4 py-2 rounded text-sm font-semibold transition-colors min-h-[48px] ${
+            highlightedPOS.size > 0 ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'
+          }`}
+        >
+          Highlight All
+        </button>
+        
+        <label className="toggle-label flex items-center gap-2 cursor-pointer p-2 bg-background rounded">
+          <span className="text-sm font-medium">Style:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">BG</span>
+            <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+              <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${highlightStyle === 'underline' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+            <span className="text-xs text-muted-foreground">UL</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={highlightStyle === 'underline'}
+            onChange={(e) => setHighlightStyle(e.target.checked ? 'underline' : 'background')}
+            className="sr-only"
+          />
+        </label>
       </div>
 
       {/* Compact Mobile-First POS Buttons - Right Above Text */}
