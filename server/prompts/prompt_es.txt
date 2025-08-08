@@ -1,40 +1,44 @@
-Analiza el siguiente texto en español y proporciona un análisis lingüístico completo en formato JSON.
+Analyze the following text segment and complete the provided JSON structure following the specific instruction order. **CRITICAL:** The output MUST be ONLY the completed JSON object, perfectly formatted, with no additional text, explanations, markdown formatting (like ```json), or invisible characters. Strictly adhere to valid JSON syntax, including double quotes for all keys and strings, and correct comma placement. Aim for the **absolute highest linguistic accuracy** and **strict adherence to Universal Dependencies (UD) standards** for Spanish as detailed below. **Execute ALL instructions thoroughly, sequentially, and meticulously; do not cut corners. Prioritize accuracy and completeness over speed. Take the necessary time to ensure every detail is correct.** The output will be parsed programmatically.
 
-Texto a analizar:
-{TEXT_CONTENT}
+Text Segment:
+"""
+{BATCH_TEXT_HERE}
+"""
 
-Datos existentes del contexto:
-{JSON_DATA}
+JSON Structure to Complete:
+```json
+{COMBINED_JSON_HERE}
+```
 
-Para cada palabra en wordData, actualiza los campos con información precisa:
-- pos: parte del discurso (sustantivo, verbo, adjetivo, etc.)
-- lemma: forma base de la palabra
-- best_translation: mejor traducción al inglés en este contexto
-- possible_translations: lista de traducciones alternativas
-- details: información adicional (género, número, tiempo verbal, etc.)
-- freq: frecuencia relativa en el texto
-- freq_till_now: frecuencia acumulativa hasta esta posición
-- first_inst: "yes" si es la primera aparición, "no" si no
-- lemma_translations: traducciones del lemma
-- most_frequent_lemma: el lemma más frecuente para esta palabra
+Instructions (Follow in Order):
 
-Devuelve EXACTAMENTE en este formato JSON:
-{
-  "wordData": {
-    "1": {
-      "word": "texto_palabra",
-      "pos": "sustantivo",
-      "lemma": "lemma_base",
-      "best_translation": "english_translation",
-      "possible_translations": ["translation1", "translation2"],
-      "details": {"gender": "masculine", "number": "singular"},
-      "freq": "1",
-      "freq_till_now": "1",
-      "first_inst": "yes",
-      "lemma_translations": ["lemma_translation"],
-      "most_frequent_lemma": "lemma_base"
-    }
-  },
-  "segmentData": {},
-  "idioms": []
-}
+1. **Segment Translation First:**
+   - Analyze the entire 'Text Segment'.
+   - Add at least two accurate English translations into the "translations" object within the "segmentData" section (using the segment ID provided in the input JSON structure).
+   - Use the key "en_variant1" for a direct, strictly literal translation, preserving original structure as much as possible while being grammatically correct English. Represent each word very closely to its core dictionary meaning in context. Ignore punctuation when translating.
+   - Use the key "en_variant2" for the best-sounding, most natural, and idiomatic English translation, focusing on flow, capturing intended meaning, and using standard English punctuation.
+   - You may add other variants if necessary.
+
+2. **wordData Analysis (Per Word):**
+   - **Scope:** Process ONLY the actual words. Completely IGNORE all punctuation. Ensure the final wordData object contains NO entries for punctuation.
+   - **Input Keys:** Use the keys provided in {COMBINED_JSON_HERE} that correspond to words. Skip/ignore any keys potentially intended for punctuation.
+   - **CRITICAL: Independent & Sequential Analysis:** Process each word token sequentially and carefully. Analyze each word instance independently. Do not assume a word's pos or lemma is the same as a previous instance of the identical word form within this text segment. Context determines the function and base form (e.g., que PRON vs. que SCONJ; se PRON vs. sé VERB). Always check the specific context for each token.
+
+   For each word entry:
+   a. **word:** Ensure the value is always lowercase.
+   b. **pos (UPOS):** CRITICAL POS Verification & Correction: Review the provided 'pos' tag (if not "TBD"). Rigorously verify this tag against the specific sentence context and standard Universal POS tags (UPOS) following Spanish UD guidelines. Correct the 'pos' tag ONLY if the provided tag is definitively incorrect according to UD standards and the context.
+   c. **lemma (Lowercase & Orthographically Precise):** CRITICAL: Lemma Accuracy is Paramount. Accurately fill in the lemma field with the precise, orthographically correct canonical base/dictionary form according to standard Spanish morphological analysis. The lemma MUST always be strictly lowercase.
+   d. **lemma_translations:** Provide context-independent English translations for the precise, lowercase lemma from step 2c. Include a reasonable range of common meanings. CRITICAL: ONLY verbs should start with "to ".
+   e. **possible_translations:** Provide context-independent English translations for the specific word form (word). Include a reasonable range of common alternative meanings.
+   f. **best_translation (Strict Literal):** Analyze context within the source 'Text Segment'. Select the single best literal translation from the list in 2e, prioritizing a core dictionary meaning of the word itself in that specific context.
+   g. **details (Strict UD Features):** Adhere closely to standard UD features/values for Spanish. ALL feature values MUST be strings. For Gender and Number values, MUST USE the single letters: m/f/n for Gender, s/p for Number.
+
+3. **Expert Idiom Identification & Scoring:**
+   - Identify multi-word expressions that function as a single semantic unit, where the meaning is non-literal, figurative, or highly conventionalized.
+   - For each valid idiom found: Add object to "idioms" array with required fields: id, startWordKey, endWordKey, text, meaning, translation, idiomaticity_score (1-3).
+   - If none found, use [].
+
+**Formatting Requirements:**
+- The overall JSON structure should be pretty-printed (e.g., 2-space indent).
+- CRITICAL: Each individual entry within the wordData object MUST be formatted entirely on a single line.
+- CRITICAL: Each individual object within the idioms array MUST be formatted entirely on a single line.
