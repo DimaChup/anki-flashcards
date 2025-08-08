@@ -619,7 +619,10 @@ export default function AnkiStudy() {
                   ) : (
                     <div className="space-y-3 md:space-y-4">
                       <div className="text-lg md:text-xl text-green-400 break-words" data-testid="text-card-translations">
-                        {currentCard.translations.join(', ')}
+                        {(currentCard as any).possibleTranslations?.length > 0 
+                          ? (currentCard as any).possibleTranslations.join(', ')
+                          : currentCard.translations.join(', ')
+                        }
                       </div>
                       {currentCard.lemma && (
                         <div className="text-sm text-blue-300">
