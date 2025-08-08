@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +44,14 @@ export default function SimpleProcessor() {
     refetchInterval: false,
   })
 
+  // Auto-generate output filename when text filename changes
+  useEffect(() => {
+    if (inputMode === 'text' && textFilename.trim()) {
+      const baseName = textFilename.endsWith('.txt') ? textFilename.replace('.txt', '') : textFilename
+      setOutputFilename(`${baseName}.json`)
+    }
+  }, [textFilename, inputMode])
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file && file.type === 'text/plain') {
@@ -81,9 +89,6 @@ export default function SimpleProcessor() {
       const file = new File([blob], filename, { type: 'text/plain' })
       
       setSelectedFile(file)
-      // Auto-generate output filename
-      const baseName = filename.replace('.txt', '')
-      setOutputFilename(`${baseName}.json`)
       
       toast({
         title: "Text file created",
