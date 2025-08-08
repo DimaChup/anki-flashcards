@@ -102,7 +102,7 @@ export default function Home() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="flex justify-center p-1 sm:p-2 md:p-5">
         <div 
-          className="w-full max-w-7xl flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-8 rounded-xl sm:rounded-2xl shadow-2xl"
+          className="w-full max-w-7xl flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-8 rounded-xl sm:rounded-2xl shadow-2xl text-content"
           style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
           {/* Main Header - iPhone XR Optimized */}

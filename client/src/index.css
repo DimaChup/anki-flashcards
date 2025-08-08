@@ -87,6 +87,8 @@
 @layer base {
   * {
     @apply border-border;
+    /* Ensure all content respects boundaries */
+    box-sizing: border-box;
   }
 
   body {
@@ -95,14 +97,81 @@
     line-height: 1.6;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    /* Prevent horizontal overflow */
+    overflow-x: hidden;
+    width: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--text-heading);
+    /* Ensure headings wrap within container */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Global text wrapping for all text elements */
+  p, span, div, label, button, input, textarea, pre, code {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Prevent specific elements from overflowing */
+  img, video, canvas, iframe, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Ensure tables don't break layouts */
+  table {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  td, th {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 0;
   }
 }
 
 @layer components {
+  /* Text Wrapping and Container Constraints */
+  .text-content {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 100%;
+  }
+
+  .page-text-display, .list-display {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .word-span {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: nowrap;
+  }
+
+  /* Ensure all containers respect width boundaries */
+  .list-view-section, .page-view-section, .database-section {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .grid-batch-row, .grid-cell {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
   /* iPhone XR Specific Optimizations */
   @media (max-width: 414px) {
     .container {

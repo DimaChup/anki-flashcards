@@ -720,7 +720,7 @@ export default function PageViewSection({
     }
 
     return (
-      <div className="text-display-content">
+      <div className="text-display-content text-content">
         {reconstructTextWithPunctuation(words, startIndex)}
       </div>
     );
@@ -970,7 +970,7 @@ export default function PageViewSection({
           }}
         >
           <div 
-            className="text-display-page text-display-left"
+            className="text-display-page text-display-left page-text-display"
             style={{
               height: '100%',
               overflow: 'auto',
@@ -984,7 +984,7 @@ export default function PageViewSection({
           </div>
           {isDualPageView && (
             <div 
-              className={`text-display-page text-display-right ${segmentMode ? 'segment-translation-display' : ''}`}
+              className={`text-display-page text-display-right page-text-display ${segmentMode ? 'segment-translation-display' : ''}`}
               style={{
                 height: '100%',
                 overflow: 'auto',

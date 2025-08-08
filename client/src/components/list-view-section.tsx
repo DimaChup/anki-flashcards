@@ -432,12 +432,12 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
           ) : null;
           
           return (
-            <div key={batchIndex} className="grid-batch-row" data-batch-number={batchIndex + 1}>
-              <div className="grid-cell row-number-cell">
+            <div key={batchIndex} className="grid-batch-row text-content" data-batch-number={batchIndex + 1}>
+              <div className="grid-cell row-number-cell text-content">
                 {batchIndex + 1}
                 {maxKeyDisplay}
               </div>
-              <div className="grid-cell list-view-words-cell">
+              <div className="grid-cell list-view-words-cell text-content">
                 {batch.map((word, wordIndex) => (
                   <span key={`${word.word}-${word.pos}-${wordIndex}`}>
                     {renderWordSpan(word, true)}{' '}
@@ -987,7 +987,7 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
 
       {/* Word List Display - Fixed Height for 23 lines */}
       <div 
-        className="list-display bg-background border border-border rounded-lg p-4"
+        className="list-display bg-background border border-border rounded-lg p-4 text-content"
         style={{
           height: '36.5vh',
           minHeight: '485px',
