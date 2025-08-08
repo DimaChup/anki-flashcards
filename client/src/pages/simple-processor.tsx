@@ -6,6 +6,16 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, Play, FileText, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useQuery } from '@tanstack/react-query'
+
+interface PromptTemplate {
+  filename: string;
+  name: string;
+  description: string;
+  size: number;
+  modified: string;
+}
 
 export default function SimpleProcessor() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -17,8 +27,15 @@ export default function SimpleProcessor() {
   const [generatedFile, setGeneratedFile] = useState<string | null>(null)
   const [jsonContent, setJsonContent] = useState('')
   const [initializationComplete, setInitializationComplete] = useState(false)
+  const [selectedPrompt, setSelectedPrompt] = useState('prompt_es.txt')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // Get available prompt templates
+  const { data: prompts } = useQuery<PromptTemplate[]>({
+    queryKey: ["/api/llm-processor/prompts"],
+    refetchInterval: false,
+  })
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -154,7 +171,7 @@ export default function SimpleProcessor() {
       const outputPath = generatedFile // Same location to overwrite
 
       // Run the resume command
-      const command = `python server/process_llm.py --resume-from ${inputJsonPath} --output ${outputPath} --model gemini-2.5-flash --prompt server/prompts/prompt_es.txt`
+      const command = `python server/process_llm.py --resume-from ${inputJsonPath} --output ${outputPath} --model gemini-2.5-flash --prompt server/prompts/${selectedPrompt}`
       setResumeOutput(`Running: ${command}\n\n`)
       
       const response = await fetch('/api/python-terminal/run', {
@@ -320,10 +337,36 @@ export default function SimpleProcessor() {
             {/* Resume Processing Section */}
             {initializationComplete && (
               <div className="pt-4 border-t space-y-4">
+                {/* Prompt Selection */}
+                <div className="space-y-2">
+                  <Label>Prompt Template for Step 2</Label>
+                  <Select value={selectedPrompt} onValueChange={setSelectedPrompt}>
+                    <SelectTrigger data-testid="select-prompt-template">
+                      <SelectValue placeholder="Select prompt..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {prompts && prompts.length > 0 ? (
+                        prompts.map((prompt) => (
+                          <SelectItem key={prompt.filename} value={prompt.filename}>
+                            {prompt.name} ({prompt.filename})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="prompt_es.txt">ES (prompt_es.txt)</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {selectedPrompt && prompts && (
+                    <div className="text-xs text-muted-foreground">
+                      {prompts.find(p => p.filename === selectedPrompt)?.description || 'Selected prompt template'}
+                    </div>
+                  )}
+                </div>
+
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <Label className="text-sm font-mono">Resume command:</Label>
                   <p className="text-sm font-mono text-muted-foreground mt-1">
-                    python server/process_llm.py --resume-from /tmp/{outputFilename} --output /tmp/{outputFilename} --model gemini-2.5-flash --prompt server/prompts/prompt_es.txt
+                    python server/process_llm.py --resume-from /tmp/{outputFilename} --output /tmp/{outputFilename} --model gemini-2.5-flash --prompt server/prompts/{selectedPrompt}
                   </p>
                 </div>
                 
