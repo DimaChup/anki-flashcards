@@ -218,7 +218,7 @@ async def process_batch_with_gemini(batch_text, batch_data):
         print(f"Error processing batch with Gemini: {e}")
         return None
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description='Advanced LLM Text Processor')
     parser.add_argument('--input', help='Input text file path')
     parser.add_argument('--resume-from', help='Resume from JSON progress file')
@@ -267,7 +267,6 @@ def main():
     print(f"Starting full processing with batch size: {args.batch_size}, concurrency: {args.concurrency}")
     
     # Create batches and process them
-    # This is a simplified version - the full implementation would be more complex
     batch_size = args.batch_size
     total_words = len(global_database)
     total_batches = (total_words + batch_size - 1) // batch_size
