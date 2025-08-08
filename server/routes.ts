@@ -2142,6 +2142,231 @@ Take your time, be super careful, no cutting corners.`,
     }
   });
 
+  // ==================== LLM PROCESSOR API ====================
+  
+  // Check LLM processing environment status
+  app.get("/api/llm-processor/status", async (req, res) => {
+    try {
+      const { spawn } = await import('child_process');
+      
+      // Check if Python is available
+      const pythonCheck = spawn('python3', ['--version']);
+      let pythonAvailable = false;
+      
+      pythonCheck.on('close', (code) => {
+        pythonAvailable = code === 0;
+      });
+      
+      // Check if required packages are installed (including regex)
+      const packageCheck = spawn('python3', ['-c', 'import google.generativeai, regex, json, asyncio; print("OK")']);
+      let packagesAvailable = false;
+      
+      packageCheck.on('close', (code) => {
+        packagesAvailable = code === 0;
+      });
+      
+      // Wait a bit for checks to complete
+      setTimeout(() => {
+        if (!res.headersSent) {
+          res.json({
+            python_available: pythonAvailable,
+            gemini_available: packagesAvailable && !!process.env.GEMINI_API_KEY,
+            regex_available: packagesAvailable,
+            packages_installed: packagesAvailable
+          });
+        }
+      }, 1000);
+      
+    } catch (error) {
+      res.json({
+        python_available: false,
+        gemini_available: false,
+        regex_available: false,
+        packages_installed: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Start LLM processing job
+  app.post("/api/llm-processor/start", upload.fields([
+    { name: 'inputFile', maxCount: 1 },
+    { name: 'resumeFile', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const config = JSON.parse(req.body.config || '{}');
+      const inputFile = (req.files as any)?.inputFile?.[0];
+      const resumeFile = (req.files as any)?.resumeFile?.[0];
+      const inputText = req.body.inputText;
+
+      if (!config) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Configuration is required" 
+        });
+      }
+
+      const { spawn } = await import('child_process');
+      const { writeFileSync, readFileSync } = await import('fs');
+      const { randomUUID } = await import('crypto');
+      
+      // Create job ID and temporary files
+      const jobId = randomUUID();
+      const tempDir = `/tmp/llm_job_${jobId}`;
+      const { mkdirSync } = await import('fs');
+      mkdirSync(tempDir, { recursive: true });
+      
+      // Prepare script arguments
+      const args = [
+        'server/process_llm.py',
+        '--model', config.modelName || 'gemini-2.5-flash',
+        '--batch-size', String(config.targetWordsPerBatch || 30),
+        '--concurrency', String(config.maxConcurrentCalls || 5),
+        '--output', `${tempDir}/${config.outputPath || 'output.json'}`
+      ];
+
+      // Handle different processing modes
+      if (config.mode === 'resume' && resumeFile) {
+        const resumePath = `${tempDir}/resume.json`;
+        writeFileSync(resumePath, resumeFile.buffer);
+        args.push('--resume-from', resumePath);
+      } else if (config.mode === 'initialize' || config.mode === 'full') {
+        let textContent = '';
+        
+        if (inputFile) {
+          textContent = inputFile.buffer.toString('utf-8');
+        } else if (inputText) {
+          textContent = inputText;
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: 'Input text or file is required for initialization'
+          });
+        }
+        
+        const inputPath = `${tempDir}/input.txt`;
+        writeFileSync(inputPath, textContent);
+        args.push('--input', inputPath);
+        
+        if (config.mode === 'initialize') {
+          args.push('--initialize-only');
+        }
+      }
+
+      // Set up environment variables for the script
+      const env = {
+        ...process.env,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        LLM_API_KEY: process.env.GEMINI_API_KEY
+      };
+
+      // Create job tracking
+      const job = {
+        id: jobId,
+        status: 'pending' as const,
+        progress: 0,
+        currentBatch: 0,
+        totalBatches: 0,
+        startTime: new Date().toISOString(),
+        tempDir
+      };
+      
+      // Store job in memory (in production, use a proper database)
+      (global as any).llmJobs = (global as any).llmJobs || new Map();
+      (global as any).llmJobs.set(jobId, job);
+
+      // Start the Python process
+      const pythonProcess = spawn('python3', args, {
+        env,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      job.status = 'running';
+      
+      let stdout = '';
+      let stderr = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        stdout += output;
+        
+        // Parse progress updates from the script output
+        const lines = output.split('\n');
+        for (const line of lines) {
+          if (line.includes('Progress:') || line.includes('Batch')) {
+            // Extract progress information if the script outputs it
+            const progressMatch = line.match(/(\d+)\/(\d+)/);
+            if (progressMatch) {
+              job.currentBatch = parseInt(progressMatch[1]);
+              job.totalBatches = parseInt(progressMatch[2]);
+              job.progress = job.totalBatches > 0 ? (job.currentBatch / job.totalBatches) * 100 : 0;
+            }
+          }
+        }
+      });
+      
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      pythonProcess.on('close', (code) => {
+        job.endTime = new Date().toISOString();
+        
+        if (code === 0) {
+          job.status = 'completed';
+          job.progress = 100;
+          
+          // Try to read the results file
+          try {
+            const outputPath = `${tempDir}/${config.outputPath || 'output.json'}`;
+            const results = readFileSync(outputPath, 'utf-8');
+            job.results = JSON.parse(results);
+          } catch (error) {
+            console.warn('Could not read results file:', error);
+          }
+        } else {
+          job.status = 'failed';
+          job.error = stderr || 'Process failed with unknown error';
+        }
+      });
+      
+      pythonProcess.on('error', (error) => {
+        job.status = 'failed';
+        job.error = `Failed to start process: ${error.message}`;
+        job.endTime = new Date().toISOString();
+      });
+      
+      res.json(job);
+      
+    } catch (error) {
+      console.error("LLM processing error:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error"
+      });
+    }
+  });
+
+  // Get LLM processing job status
+  app.get("/api/llm-processor/job/:jobId", async (req, res) => {
+    try {
+      const jobId = req.params.jobId;
+      const jobs = (global as any).llmJobs || new Map();
+      const job = jobs.get(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching job status:", error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Internal server error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

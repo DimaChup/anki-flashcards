@@ -138,6 +138,15 @@ export default function Home() {
                 <span className="hidden sm:inline">🔧 Python Runner</span>
                 <span className="sm:hidden">🔧 Runner</span>
               </button>
+              
+              <button
+                onClick={() => setLocation('/llm-processor')}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
+                data-testid="llm-processor-button"
+              >
+                <span className="hidden sm:inline">🤖 LLM Processor</span>
+                <span className="sm:hidden">🤖 LLM</span>
+              </button>
               <button
                 onClick={() => setLocation('/simple-processor')}
                 className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-2.5 sm:px-3 sm:py-2 md:px-4 md:py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm md:text-base min-h-[48px] sm:min-h-[44px] flex items-center justify-center"
