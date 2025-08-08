@@ -452,8 +452,8 @@ export default function LLMProcessor() {
                           Template Content:
                         </Label>
                         <div className="mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono max-h-20 overflow-y-auto">
-                          {template.content.substring(0, 200)}
-                          {template.content.length > 200 && '...'}
+                          {template.content ? template.content.substring(0, 200) : 'No content available'}
+                          {template.content && template.content.length > 200 && '...'}
                         </div>
                       </div>
                     </div>
