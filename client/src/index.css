@@ -172,8 +172,13 @@
     min-width: 0;
   }
 
-  /* iPhone XR Specific Optimizations */
+  /* iPhone XR Specific Optimizations and Mobile Browser Color Fixes */
   @media (max-width: 414px) {
+    /* Force color profile for mobile consistency */
+    * {
+      -webkit-color-interpolation: sRGB;
+      color-interpolation: sRGB;
+    }
     .container {
       padding-left: 0.5rem;
       padding-right: 0.5rem;
@@ -194,46 +199,57 @@
       gap: 0.5rem;
     }
 
-    /* Mobile-specific color fixes - use solid colors instead of HSLA for consistency */
+    /* Mobile-specific color fixes - use bright RGB colors for better mobile visibility */
     .highlight-verb {
-      background-color: hsl(340, 80%, 72%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+      background-color: rgb(230, 90, 180) !important; /* Bright pink/magenta for verbs */
     }
     
     .highlight-noun, .highlight-propn {
-      background-color: hsl(205, 80%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+      background-color: rgb(100, 180, 255) !important; /* Bright blue for nouns */
     }
     
     .highlight-adj {
-      background-color: hsl(145, 65%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+      background-color: rgb(100, 220, 150) !important; /* Bright green for adjectives */
     }
     
     .highlight-aux {
-      background-color: hsl(35, 90%, 59%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+      background-color: rgb(255, 180, 80) !important; /* Bright orange for auxiliary */
     }
     
     .highlight-other {
-      background-color: hsl(45, 90%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+      background-color: rgb(255, 220, 100) !important; /* Bright yellow for other */
     }
 
     /* Also fix POS button colors for mobile */
     .pos-verb {
-      background-color: hsl(340, 80%, 72%) !important;
+      background-color: rgb(230, 90, 180) !important;
     }
 
     .pos-noun, .pos-propn {
-      background-color: hsl(205, 80%, 68%) !important;
+      background-color: rgb(100, 180, 255) !important;
     }
 
     .pos-adj {
-      background-color: hsl(145, 65%, 68%) !important;
+      background-color: rgb(100, 220, 150) !important;
     }
 
     .pos-aux {
-      background-color: hsl(35, 90%, 59%) !important;
+      background-color: rgb(255, 180, 80) !important;
     }
 
     .pos-other {
-      background-color: hsl(45, 90%, 68%) !important;
+      background-color: rgb(255, 220, 100) !important;
+    }
+
+    /* Force proper text contrast on mobile */
+    .highlight-verb, .highlight-noun, .highlight-propn, 
+    .highlight-adj, .highlight-aux, .highlight-other,
+    .pos-verb, .pos-noun, .pos-propn, 
+    .pos-adj, .pos-aux, .pos-other {
+      color: rgb(20, 20, 20) !important; /* Dark text for better contrast */
+      text-shadow: none !important;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
   }
 
