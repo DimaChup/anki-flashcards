@@ -14,6 +14,7 @@ import FileBrowser from "@/pages/file-browser";
 import SimpleFlashcards from "@/pages/simple-flashcards";
 import PythonTerminal from "@/pages/python-terminal";
 import SimpleProcessor from "@/pages/simple-processor";
+import PythonRunner from "@/pages/python-runner";
 import AuthPage from "@/pages/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -48,6 +49,7 @@ function Router() {
           <Route path="/anki-study" component={AnkiStudy} />
           <Route path="/files" component={FileBrowser} />
           <Route path="/python-terminal" component={PythonTerminal} />
+          <Route path="/python-runner" component={PythonRunner} />
           <Route path="/simple-processor" component={SimpleProcessor} />
           <Route path="/pricing" component={Pricing} />
           <Route>

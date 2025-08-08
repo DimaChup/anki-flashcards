@@ -1975,6 +1975,171 @@ Take your time, be super careful, no cutting corners.`,
     }
   });
 
+  // ==================== PYTHON EXECUTION API ====================
+  
+  // Check Python environment status
+  app.get("/api/python/status", async (req, res) => {
+    try {
+      const { spawn } = await import('child_process');
+      
+      // Check if Python is available
+      const pythonCheck = spawn('python3', ['--version']);
+      let pythonAvailable = false;
+      
+      pythonCheck.on('close', (code) => {
+        pythonAvailable = code === 0;
+      });
+      
+      // Check if required packages are installed
+      const packageCheck = spawn('python3', ['-c', 'import google.generativeai, os; print("OK")']);
+      let packagesAvailable = false;
+      
+      packageCheck.on('close', (code) => {
+        packagesAvailable = code === 0;
+      });
+      
+      // Wait a bit for checks to complete
+      setTimeout(() => {
+        res.json({
+          python_available: pythonAvailable,
+          gemini_available: packagesAvailable && !!process.env.GEMINI_API_KEY,
+          packages_installed: packagesAvailable
+        });
+      }, 1000);
+      
+    } catch (error) {
+      res.json({
+        python_available: false,
+        gemini_available: false,
+        packages_installed: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Execute Python script
+  app.post("/api/python/execute", async (req, res) => {
+    try {
+      const { script, input } = req.body;
+      
+      if (!script) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Script content is required" 
+        });
+      }
+
+      const { spawn } = await import('child_process');
+      const { writeFileSync, unlinkSync } = await import('fs');
+      const { randomUUID } = await import('crypto');
+      
+      // Create temporary script file
+      const scriptId = randomUUID();
+      const scriptPath = `/tmp/script_${scriptId}.py`;
+      
+      try {
+        writeFileSync(scriptPath, script);
+        
+        // Set up environment variables for the script
+        const env = {
+          ...process.env,
+          GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+          LLM_API_KEY: process.env.GEMINI_API_KEY // For compatibility
+        };
+
+        const startTime = Date.now();
+        let stdout = '';
+        let stderr = '';
+        
+        // Execute Python script
+        const pythonProcess = spawn('python3', [scriptPath], {
+          env,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        // Handle user input if provided
+        if (input && input.trim()) {
+          const inputLines = input.trim().split('\n');
+          inputLines.forEach(line => {
+            pythonProcess.stdin.write(line + '\n');
+          });
+        }
+        pythonProcess.stdin.end();
+        
+        // Collect output
+        pythonProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+        
+        pythonProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+        
+        pythonProcess.on('close', (code) => {
+          const executionTime = (Date.now() - startTime) / 1000;
+          
+          // Clean up temporary file
+          try {
+            unlinkSync(scriptPath);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup script file:', cleanupError);
+          }
+          
+          const result = {
+            success: code === 0,
+            output: stdout,
+            error: code !== 0 ? stderr : undefined,
+            execution_time: executionTime
+          };
+          
+          res.json(result);
+        });
+        
+        pythonProcess.on('error', (error) => {
+          // Clean up temporary file
+          try {
+            unlinkSync(scriptPath);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup script file:', cleanupError);
+          }
+          
+          res.json({
+            success: false,
+            output: '',
+            error: `Failed to execute script: ${error.message}`,
+            execution_time: (Date.now() - startTime) / 1000
+          });
+        });
+        
+        // Set timeout for long-running scripts
+        setTimeout(() => {
+          if (!pythonProcess.killed) {
+            pythonProcess.kill();
+            res.json({
+              success: false,
+              output: stdout,
+              error: 'Script execution timed out (30 seconds)',
+              execution_time: 30
+            });
+          }
+        }, 30000);
+        
+      } catch (fileError) {
+        res.status(500).json({
+          success: false,
+          error: `Failed to create script file: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`
+        });
+      }
+      
+    } catch (error) {
+      console.error("Python execution error:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Internal server error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
