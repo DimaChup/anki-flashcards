@@ -35,6 +35,21 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   const [downloadBatchTo, setDownloadBatchTo] = useState(1);
   const [knownWordsText, setKnownWordsText] = useState("");
   const [isGridView, setIsGridView] = useState(false);
+  
+  // Mobile accordion state
+  const [mobileExpandedSections, setMobileExpandedSections] = useState<Set<string>>(new Set(['filters']));
+  
+  const toggleMobileSection = (section: string) => {
+    setMobileExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  };
 
   // Get current known words for filtering
   const getCurrentKnownWords = () => {
@@ -589,171 +604,371 @@ export default function ListViewSection({ database }: ListViewSectionProps) {
   return (
     <div className="list-view-section">
 
-      {/* Controls Container - iPhone XR Optimized */}
-      <div className="controls-container bg-muted p-2 sm:p-3 md:p-4 rounded-lg mb-3 sm:mb-4 md:mb-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:flex lg:flex-wrap lg:gap-6 justify-between items-start">
-          
-          {/* Filter Toggles */}
-          <div className="control-group flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Filters</h3>
-            
-            <label className="toggle-label flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={firstInstancesOnly}
-                onChange={(e) => setFirstInstancesOnly(e.target.checked)}
-                className="sr-only"
-              />
-              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${firstInstancesOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </div>
-              <span className="text-sm">First Instances</span>
-            </label>
-            
-            <label className="toggle-label flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={newWordsOnly}
-                onChange={(e) => setNewWordsOnly(e.target.checked)}
-                className="sr-only"
-              />
-              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${newWordsOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </div>
-              <span className="text-sm">New Words Only</span>
-            </label>
-          </div>
-
-          {/* Batch Settings */}
-          <div className="control-group flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Batch Settings</h3>
-            
-            <div className="setting-control flex items-center gap-2">
-              <label className="text-sm">Words per Batch:</label>
-              <input
-                type="number"
-                min="1"
-                max="200"
-                value={batchSize}
-                onChange={(e) => setBatchSize(parseInt(e.target.value) || 25)}
-                className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
-              />
-              <div className="flex flex-col">
-                <button
-                  onClick={() => setBatchSize(Math.min(200, batchSize + 1))}
-                  className="px-1 py-0 text-xs border border-border hover:bg-muted"
-                >
-                  ▲
-                </button>
-                <button
-                  onClick={() => setBatchSize(Math.max(1, batchSize - 1))}
-                  className="px-1 py-0 text-xs border border-border hover:bg-muted"
-                >
-                  ▼
-                </button>
-              </div>
-            </div>
-            
-            <label className="toggle-label flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={batchByUnknown}
-                onChange={(e) => setBatchByUnknown(e.target.checked)}
-                className="sr-only"
-              />
-              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${batchByUnknown ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </div>
-              <span className="text-sm">Batch by Unknown</span>
-            </label>
-          </div>
-
-          {/* View Controls */}
-          <div className="control-group flex flex-col gap-3">
-            <h3 className="text-sm font-medium">View</h3>
-            
-            <Button
-              onClick={() => setIsGridView(!isGridView)}
-              variant="outline"
-              size="sm"
-              className="view-toggle-button min-h-[48px] sm:min-h-[44px] text-xs sm:text-sm md:text-base px-3 py-2"
+      {/* Controls Container - Mobile Optimized with Accordion */}
+      <div className="controls-container bg-muted rounded-lg mb-3 sm:mb-4 md:mb-6">
+        {/* Mobile Layout - Compact Accordion Style */}
+        <div className="block sm:hidden">
+          {/* Filters Section */}
+          <div className="border-b border-border last:border-b-0">
+            <button
+              onClick={() => toggleMobileSection('filters')}
+              className="w-full flex items-center justify-between p-3 text-left hover:bg-muted-foreground/10"
             >
-              <span className="hidden sm:inline">{isGridView ? 'Switch to List View' : 'Switch to Grid View'}</span>
-              <span className="sm:hidden">{isGridView ? 'List' : 'Grid'}</span>
-            </Button>
-          </div>
-
-          {/* Download Settings */}
-          <div className="control-group flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Download</h3>
-            
-            <label className="toggle-label flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={ankiFormat}
-                onChange={(e) => setAnkiFormat(e.target.checked)}
-                className="sr-only"
-              />
-              <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
-                <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${ankiFormat ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </div>
-              <span className="text-sm">Anki Format</span>
-            </label>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-sm">Batch From:</label>
-              <input
-                type="number"
-                min="1"
-                max={totalBatches}
-                value={downloadBatchFrom}
-                onChange={(e) => setDownloadBatchFrom(parseInt(e.target.value) || 1)}
-                className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
-              />
-              <span className="text-sm">To:</span>
-              <input
-                type="number"
-                min="1"
-                max={totalBatches}
-                value={downloadBatchTo}
-                onChange={(e) => setDownloadBatchTo(parseInt(e.target.value) || 1)}
-                className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
-              />
-            </div>
-            
-            <Button
-              onClick={handleDownload}
-              disabled={totalBatches === 0}
-              className="min-h-[44px] text-sm md:text-base bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Download className="w-4 h-4 mr-1" />
-              Download
-            </Button>
-          </div>
-
-          {/* POS Column Filters */}
-          <div className="control-group flex flex-col gap-3">
-            <h3 className="text-sm font-medium">POS Columns</h3>
-            
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: 'pink', label: 'V', title: 'Verb' },
-                { key: 'blue', label: 'N', title: 'Noun' },
-                { key: 'green', label: 'Adj', title: 'Adjective' },
-                { key: 'orange', label: 'Aux', title: 'Auxiliary' },
-                { key: 'yellow', label: 'Oth', title: 'Other' }
-              ].map(({ key, label, title }) => (
-                <label key={key} className="checkbox-label flex items-center gap-1 cursor-pointer">
+              <span className="text-sm font-medium">Filters</span>
+              <span className="text-xs">{mobileExpandedSections.has('filters') ? '▼' : '▶'}</span>
+            </button>
+            {mobileExpandedSections.has('filters') && (
+              <div className="px-3 pb-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={selectedPosColumns.has(key)}
-                    onChange={() => togglePosColumn(key)}
-                    className="w-3 h-3"
+                    checked={firstInstancesOnly}
+                    onChange={(e) => setFirstInstancesOnly(e.target.checked)}
+                    className="sr-only"
                   />
-                  <span className="text-sm" title={title}>{label}</span>
+                  <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                    <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${firstInstancesOnly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-xs">First Instances</span>
                 </label>
-              ))}
+                
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newWordsOnly}
+                    onChange={(e) => setNewWordsOnly(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                    <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${newWordsOnly ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-xs">New Words Only</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Batch Settings Section */}
+          <div className="border-b border-border last:border-b-0">
+            <button
+              onClick={() => toggleMobileSection('batch')}
+              className="w-full flex items-center justify-between p-3 text-left hover:bg-muted-foreground/10"
+            >
+              <span className="text-sm font-medium">Batch Settings</span>
+              <span className="text-xs">{mobileExpandedSections.has('batch') ? '▼' : '▶'}</span>
+            </button>
+            {mobileExpandedSections.has('batch') && (
+              <div className="px-3 pb-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs">Words:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={batchSize}
+                    onChange={(e) => setBatchSize(parseInt(e.target.value) || 25)}
+                    className="w-12 px-1 py-1 text-center border border-border rounded text-xs"
+                  />
+                </div>
+                
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={batchByUnknown}
+                    onChange={(e) => setBatchByUnknown(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                    <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${batchByUnknown ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-xs">Batch by Unknown</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* View Section */}
+          <div className="border-b border-border last:border-b-0">
+            <button
+              onClick={() => toggleMobileSection('view')}
+              className="w-full flex items-center justify-between p-3 text-left hover:bg-muted-foreground/10"
+            >
+              <span className="text-sm font-medium">View</span>
+              <span className="text-xs">{mobileExpandedSections.has('view') ? '▼' : '▶'}</span>
+            </button>
+            {mobileExpandedSections.has('view') && (
+              <div className="px-3 pb-3">
+                <Button
+                  onClick={() => setIsGridView(!isGridView)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs px-3 py-2"
+                >
+                  {isGridView ? 'List' : 'Grid'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Download Section */}
+          <div className="border-b border-border last:border-b-0">
+            <button
+              onClick={() => toggleMobileSection('download')}
+              className="w-full flex items-center justify-between p-3 text-left hover:bg-muted-foreground/10"
+            >
+              <span className="text-sm font-medium">Download</span>
+              <span className="text-xs">{mobileExpandedSections.has('download') ? '▼' : '▶'}</span>
+            </button>
+            {mobileExpandedSections.has('download') && (
+              <div className="px-3 pb-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ankiFormat}
+                    onChange={(e) => setAnkiFormat(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className="toggle-switch w-8 h-4 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                    <div className={`toggle-slider w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${ankiFormat ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                  <span className="text-xs">Anki Format</span>
+                </label>
+                
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">From:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalBatches}
+                    value={downloadBatchFrom}
+                    onChange={(e) => setDownloadBatchFrom(parseInt(e.target.value) || 1)}
+                    className="w-10 px-1 py-1 text-center border border-border rounded text-xs"
+                  />
+                  <span className="text-xs">To:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalBatches}
+                    value={downloadBatchTo}
+                    onChange={(e) => setDownloadBatchTo(parseInt(e.target.value) || 1)}
+                    className="w-10 px-1 py-1 text-center border border-border rounded text-xs"
+                  />
+                </div>
+                
+                <Button
+                  onClick={handleDownload}
+                  disabled={totalBatches === 0}
+                  className="w-full text-xs bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <Download className="w-3 h-3 mr-1" />
+                  Download
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* POS Columns Section */}
+          <div className="border-b border-border last:border-b-0">
+            <button
+              onClick={() => toggleMobileSection('pos')}
+              className="w-full flex items-center justify-between p-3 text-left hover:bg-muted-foreground/10"
+            >
+              <span className="text-sm font-medium">POS Columns</span>
+              <span className="text-xs">{mobileExpandedSections.has('pos') ? '▼' : '▶'}</span>
+            </button>
+            {mobileExpandedSections.has('pos') && (
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-5 gap-1">
+                  {[
+                    { key: 'pink', label: 'V', title: 'Verb' },
+                    { key: 'blue', label: 'N', title: 'Noun' },
+                    { key: 'green', label: 'Adj', title: 'Adjective' },
+                    { key: 'orange', label: 'Aux', title: 'Auxiliary' },
+                    { key: 'yellow', label: 'Oth', title: 'Other' }
+                  ].map(({ key, label, title }) => (
+                    <label key={key} className="flex items-center gap-1 cursor-pointer justify-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedPosColumns.has(key)}
+                        onChange={() => togglePosColumn(key)}
+                        className="w-3 h-3"
+                      />
+                      <span className="text-xs" title={title}>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop Layout - Same row layout for larger screens */}
+        <div className="hidden sm:block p-2 sm:p-3 md:p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:flex lg:flex-wrap lg:gap-6 justify-between items-start">
+            
+            {/* Desktop Filter Toggles */}
+            <div className="control-group flex flex-col gap-3">
+              <h3 className="text-sm font-medium">Filters</h3>
+              
+              <label className="toggle-label flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={firstInstancesOnly}
+                  onChange={(e) => setFirstInstancesOnly(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${firstInstancesOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm">First Instances</span>
+              </label>
+              
+              <label className="toggle-label flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newWordsOnly}
+                  onChange={(e) => setNewWordsOnly(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${newWordsOnly ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm">New Words Only</span>
+              </label>
+            </div>
+
+            {/* Desktop Batch Settings */}
+            <div className="control-group flex flex-col gap-3">
+              <h3 className="text-sm font-medium">Batch Settings</h3>
+              
+              <div className="setting-control flex items-center gap-2">
+                <label className="text-sm">Words per Batch:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={batchSize}
+                  onChange={(e) => setBatchSize(parseInt(e.target.value) || 25)}
+                  className="w-16 px-2 py-1 text-center border border-border rounded text-sm"
+                />
+                <div className="flex flex-col">
+                  <button
+                    onClick={() => setBatchSize(Math.min(200, batchSize + 1))}
+                    className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={() => setBatchSize(Math.max(1, batchSize - 1))}
+                    className="px-1 py-0 text-xs border border-border hover:bg-muted"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </div>
+              
+              <label className="toggle-label flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={batchByUnknown}
+                  onChange={(e) => setBatchByUnknown(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${batchByUnknown ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm">Batch by Unknown</span>
+              </label>
+            </div>
+
+            {/* Desktop View Controls */}
+            <div className="control-group flex flex-col gap-3">
+              <h3 className="text-sm font-medium">View</h3>
+              
+              <Button
+                onClick={() => setIsGridView(!isGridView)}
+                variant="outline"
+                size="sm"
+                className="view-toggle-button min-h-[48px] sm:min-h-[44px] text-xs sm:text-sm md:text-base px-3 py-2"
+              >
+                <span className="hidden sm:inline">{isGridView ? 'Switch to List View' : 'Switch to Grid View'}</span>
+                <span className="sm:hidden">{isGridView ? 'List' : 'Grid'}</span>
+              </Button>
+            </div>
+
+            {/* Desktop Download Settings */}
+            <div className="control-group flex flex-col gap-3">
+              <h3 className="text-sm font-medium">Download</h3>
+              
+              <label className="toggle-label flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ankiFormat}
+                  onChange={(e) => setAnkiFormat(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className="toggle-switch w-10 h-5 bg-muted-foreground rounded-full relative transition-colors duration-300">
+                  <div className={`toggle-slider w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform duration-300 ${ankiFormat ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-sm">Anki Format</span>
+              </label>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-sm">Batch From:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={totalBatches}
+                  value={downloadBatchFrom}
+                  onChange={(e) => setDownloadBatchFrom(parseInt(e.target.value) || 1)}
+                  className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
+                />
+                <span className="text-sm">To:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={totalBatches}
+                  value={downloadBatchTo}
+                  onChange={(e) => setDownloadBatchTo(parseInt(e.target.value) || 1)}
+                  className="w-16 px-2 py-1 text-center border border-border rounded text-sm bg-background text-foreground"
+                />
+              </div>
+              
+              <Button
+                onClick={handleDownload}
+                disabled={totalBatches === 0}
+                className="min-h-[44px] text-sm md:text-base bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Download
+              </Button>
+            </div>
+
+            {/* Desktop POS Column Filters */}
+            <div className="control-group flex flex-col gap-3">
+              <h3 className="text-sm font-medium">POS Columns</h3>
+              
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { key: 'pink', label: 'V', title: 'Verb' },
+                  { key: 'blue', label: 'N', title: 'Noun' },
+                  { key: 'green', label: 'Adj', title: 'Adjective' },
+                  { key: 'orange', label: 'Aux', title: 'Auxiliary' },
+                  { key: 'yellow', label: 'Oth', title: 'Other' }
+                ].map(({ key, label, title }) => (
+                  <label key={key} className="checkbox-label flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPosColumns.has(key)}
+                      onChange={() => togglePosColumn(key)}
+                      className="w-3 h-3"
+                    />
+                    <span className="text-sm" title={title}>{label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
