@@ -169,8 +169,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLinguisticDatabase(id: string): Promise<boolean> {
-    const result = await db.delete(linguisticDatabases).where(eq(linguisticDatabases.id, id));
-    return (result.rowCount ?? 0) > 0;
+    try {
+      // Find associated Anki deck first
+      const deck = await this.getAnkiDeckByDatabase(id);
+      
+      if (deck) {
+        // Delete all flashcards for this deck first
+        await db.delete(ankiFlashcards).where(eq(ankiFlashcards.deckId, deck.id));
+        
+        // Delete review history for cards in this deck (if exists)
+        // Note: Review history cleanup handled by cascade if configured, otherwise skip for now
+        
+        // Delete the deck itself
+        await db.delete(ankiStudyDecks).where(eq(ankiStudyDecks.id, deck.id));
+      }
+      
+      // Delete any spaced repetition data associated with this database (if exists)
+      // Note: Legacy spaced repetition cleanup handled separately if tables exist
+      
+      // Finally delete the database itself
+      const result = await db.delete(linguisticDatabases).where(eq(linguisticDatabases.id, id));
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      console.error('Error deleting database:', error);
+      throw new Error(`Failed to delete database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async updateKnownWords(databaseId: string, knownWords: string[]): Promise<LinguisticDatabase | undefined> {

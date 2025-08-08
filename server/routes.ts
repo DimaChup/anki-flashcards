@@ -470,13 +470,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete database
   app.delete("/api/databases/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.id;
+      
+      // First verify user owns this database
+      const existingDatabase = await storage.getLinguisticDatabase(req.params.id, userId);
+      if (!existingDatabase) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      
       const success = await storage.deleteLinguisticDatabase(req.params.id);
       if (!success) {
         return res.status(404).json({ message: "Database not found" });
       }
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete database" });
+      console.error("Database deletion error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete database";
+      res.status(500).json({ message: errorMessage });
     }
   });
 
