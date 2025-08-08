@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Play, Upload, Download, Settings, FileText, Cpu, AlertCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -43,6 +44,14 @@ interface EnvironmentStatus {
   error?: string;
 }
 
+interface PromptTemplate {
+  filename: string;
+  name: string;
+  description: string;
+  size: number;
+  modified: string;
+}
+
 export default function LLMProcessorPage() {
   const [config, setConfig] = useState<ProcessingConfig>({
     targetWordsPerBatch: 30,
@@ -62,6 +71,12 @@ export default function LLMProcessorPage() {
   // Check environment status
   const { data: envStatus, isLoading: checkingEnv } = useQuery<EnvironmentStatus>({
     queryKey: ["/api/llm-processor/status"],
+    refetchInterval: false,
+  });
+
+  // Get available prompt templates
+  const { data: prompts, isLoading: loadingPrompts } = useQuery<PromptTemplate[]>({
+    queryKey: ["/api/llm-processor/prompts"],
     refetchInterval: false,
   });
 
@@ -334,14 +349,45 @@ export default function LLMProcessorPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Gemini Model</Label>
-                <Input
-                  value={config.modelName}
-                  onChange={(e) => setConfig(prev => ({ ...prev, modelName: e.target.value }))}
-                  placeholder="gemini-2.5-flash"
-                  data-testid="input-model-name"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Gemini Model</Label>
+                  <Input
+                    value={config.modelName}
+                    onChange={(e) => setConfig(prev => ({ ...prev, modelName: e.target.value }))}
+                    placeholder="gemini-2.5-flash"
+                    data-testid="input-model-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Prompt Template</Label>
+                  <Select
+                    value={config.promptTemplate}
+                    onValueChange={(value) => setConfig(prev => ({ ...prev, promptTemplate: value }))}
+                  >
+                    <SelectTrigger data-testid="select-prompt-template">
+                      <SelectValue placeholder="Select prompt..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingPrompts ? (
+                        <SelectItem value="" disabled>Loading prompts...</SelectItem>
+                      ) : prompts && prompts.length > 0 ? (
+                        prompts.map((prompt) => (
+                          <SelectItem key={prompt.filename} value={prompt.filename}>
+                            {prompt.name} ({prompt.filename})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>No prompts available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {config.promptTemplate && prompts && (
+                    <div className="text-xs text-muted-foreground">
+                      {prompts.find(p => p.filename === config.promptTemplate)?.description}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

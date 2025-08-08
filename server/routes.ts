@@ -2144,6 +2144,43 @@ Take your time, be super careful, no cutting corners.`,
 
   // ==================== LLM PROCESSOR API ====================
   
+  // Get available prompt templates for LLM processor
+  app.get("/api/llm-processor/prompts", async (req, res) => {
+    try {
+      const promptsDir = path.join(__dirname, 'prompts');
+      const files = await fs.readdir(promptsDir);
+      
+      const prompts = await Promise.all(
+        files
+          .filter(file => file.endsWith('.txt'))
+          .map(async (file) => {
+            const filePath = path.join(promptsDir, file);
+            const stats = await fs.stat(filePath);
+            
+            // Read first few lines to get description
+            const content = await fs.readFile(filePath, 'utf-8');
+            const firstLine = content.split('\n')[0];
+            const description = firstLine.length > 100 ? 
+              firstLine.substring(0, 100) + '...' : 
+              firstLine;
+            
+            return {
+              filename: file,
+              name: file.replace('.txt', '').replace('prompt_', '').toUpperCase(),
+              description,
+              size: stats.size,
+              modified: stats.mtime
+            };
+          })
+      );
+
+      res.json(prompts);
+    } catch (error) {
+      console.error("Error reading prompt templates:", error);
+      res.status(500).json({ error: "Failed to read prompt templates" });
+    }
+  });
+
   // Check LLM processing environment status
   app.get("/api/llm-processor/status", async (req, res) => {
     try {
@@ -2222,7 +2259,8 @@ Take your time, be super careful, no cutting corners.`,
         '--model', config.modelName || 'gemini-2.5-flash',
         '--batch-size', String(config.targetWordsPerBatch || 30),
         '--concurrency', String(config.maxConcurrentCalls || 5),
-        '--output', `${tempDir}/${config.outputPath || 'output.json'}`
+        '--output', `${tempDir}/${config.outputPath || 'output.json'}`,
+        '--prompt', `server/prompts/${config.promptTemplate || 'prompt_es.txt'}`
       ];
 
       // Handle different processing modes
