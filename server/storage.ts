@@ -611,19 +611,25 @@ export class DatabaseStorage implements IStorage {
 
     // Check if deck already exists
     const existingDeck = await this.getAnkiDeckByDatabase(databaseId, userId);
-    if (existingDeck) return existingDeck;
-
-    // Create the deck
-    const deck = await this.createAnkiDeck({
-      userId,
-      databaseId,
-      deckName: `${database.name} - Anki Deck`,
-      totalCards: 0,
-      newCards: 0,
-      learningCards: 0,
-      reviewCards: 0,
-      studySettings: { newCardsPerDay: 20, maxReviews: 100, colorAssist: true }
-    });
+    let deck: AnkiStudyDeck;
+    
+    if (existingDeck) {
+      // Delete all existing cards for this deck before regenerating
+      await db.delete(ankiFlashcards).where(eq(ankiFlashcards.deckId, existingDeck.id));
+      deck = existingDeck;
+    } else {
+      // Create the deck
+      deck = await this.createAnkiDeck({
+        userId,
+        databaseId,
+        deckName: `${database.name} - Anki Deck`,
+        totalCards: 0,
+        newCards: 0,
+        learningCards: 0,
+        reviewCards: 0,
+        studySettings: { newCardsPerDay: 20, maxReviews: 100, colorAssist: true }
+      });
+    }
 
     // Generate cards from first instance words
     const analysisData = database.analysisData as WordEntry[];
