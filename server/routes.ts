@@ -2000,11 +2000,13 @@ Take your time, be super careful, no cutting corners.`,
       
       // Wait a bit for checks to complete
       setTimeout(() => {
-        res.json({
-          python_available: pythonAvailable,
-          gemini_available: packagesAvailable && !!process.env.GEMINI_API_KEY,
-          packages_installed: packagesAvailable
-        });
+        if (!res.headersSent) {
+          res.json({
+            python_available: pythonAvailable,
+            gemini_available: packagesAvailable && !!process.env.GEMINI_API_KEY,
+            packages_installed: packagesAvailable
+          });
+        }
       }, 1000);
       
     } catch (error) {
@@ -2113,7 +2115,7 @@ Take your time, be super careful, no cutting corners.`,
         
         // Set timeout for long-running scripts
         setTimeout(() => {
-          if (!pythonProcess.killed) {
+          if (!pythonProcess.killed && !res.headersSent) {
             pythonProcess.kill();
             res.json({
               success: false,

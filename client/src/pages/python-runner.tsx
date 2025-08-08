@@ -25,21 +25,14 @@ interface PythonStatusResult {
 export default function PythonRunnerPage() {
   const [script, setScript] = useState(`import os
 import google.generativeai as genai
-from dotenv import load_dotenv
 
 # --- 📝 SETUP INSTRUCTIONS ---
-# 1. Install required libraries by running this in your terminal:
-#    pip install google-generativeai python-dotenv
-#
-# 2. Create a file named .env in the same folder as this script.
-#
-# 3. Add your Google AI API key to the .env file like this:
-#    LLM_API_KEY="your_actual_api_key_here"
+# The API key is automatically available through environment variables
+# No additional setup needed in Replit environment
 # ---
 
-# Load the API key from the .env file
-load_dotenv()
-api_key = os.getenv("LLM_API_KEY")
+# Get API key from environment variables
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY")
 
 # Check if the API key was found and configure the AI
 if not api_key:
@@ -112,24 +105,25 @@ else:
         setScript(`import os
 import google.generativeai as genai
 
-# Configure Gemini AI
-api_key = os.getenv("GEMINI_API_KEY")
+# Configure Gemini AI - API key is automatically available in Replit environment
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY")
 if not api_key:
     print("Error: GEMINI_API_KEY not found in environment variables")
-    exit(1)
+    print("Please make sure the GEMINI_API_KEY secret is configured in your Replit")
+else:
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-2.5-flash')
+        # Your question
+        question = "Explain quantum computing in simple terms"
 
-# Your question
-question = "Explain quantum computing in simple terms"
-
-try:
-    response = model.generate_content(question)
-    print("AI Response:")
-    print(response.text)
-except Exception as e:
-    print(f"Error: {e}")
+        print("🤔 Thinking...")
+        response = model.generate_content(question)
+        print("\\n🤖 AI Response:")
+        print(response.text)
+    except Exception as e:
+        print(f"🔴 Error: {e}")
 `);
         break;
       case "basic":

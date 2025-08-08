@@ -8,5 +8,6 @@ dependencies = [
     "asyncio>=4.0.0",
     "google-generativeai>=0.8.5",
     "psycopg2-binary>=2.9.10",
+    "python-dotenv>=1.1.1",
     "regex>=2025.7.34",
 ]
