@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ export default function DatabaseSection({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -201,6 +203,15 @@ export default function DatabaseSection({
           >
             <Plus className="w-4 h-4" />
             Create New
+          </Button>
+          
+          <Button
+            variant="secondary"
+            onClick={() => setLocation('/simple-processor')}
+            className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2 justify-center sm:justify-start"
+            data-testid="text-processor-button"
+          >
+            🔄 Text Processor
           </Button>
         </div>
       </div>

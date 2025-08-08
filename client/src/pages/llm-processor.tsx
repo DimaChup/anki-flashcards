@@ -45,9 +45,11 @@ export default function LLMProcessor() {
   const queryClient = useQueryClient();
 
   // Fetch available files
-  const { data: files = [] } = useQuery({
+  const { data: filesResponse } = useQuery({
     queryKey: ['/api/files'],
   });
+  
+  const files = Array.isArray(filesResponse) ? filesResponse : (filesResponse?.files || []);
 
   // Fetch prompt templates
   const { data: templates = [] } = useQuery<PromptTemplate[]>({
@@ -214,8 +216,10 @@ export default function LLMProcessor() {
                     <SelectValue placeholder="Choose a file..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {(files as string[]).map((file: string) => (
-                      <SelectItem key={file} value={file}>{file}</SelectItem>
+                    {files.map((file: any) => (
+                      <SelectItem key={file.name || file} value={file.name || file}>
+                        {file.name || file}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
