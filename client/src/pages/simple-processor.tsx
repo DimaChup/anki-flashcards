@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, Play, FileText, Download } from 'lucide-react'
+import { Upload, Play, FileText, Download, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'wouter'
 
 interface PromptTemplate {
   filename: string;
@@ -262,6 +263,14 @@ export default function SimpleProcessor() {
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <Link href="/">
+            <Button variant="outline" size="sm" data-testid="button-back-home">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </div>
         <h1 className="text-3xl font-bold">Text Processor</h1>
         <p className="text-muted-foreground mt-2">
           Upload a text file and run the Python script to generate analysis data
