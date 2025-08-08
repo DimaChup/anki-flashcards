@@ -860,7 +860,10 @@ export default function AnkiStudy() {
                                   {card.pos || '-'}
                                 </td>
                                 <td className="p-3 text-slate-400 text-sm max-w-md truncate" data-testid={`text-details-${index}`}>
-                                  {card.sentence || card.translations.join(', ') || '-'}
+                                  {card.details && typeof card.details === 'object' 
+                                    ? Object.entries(card.details).map(([key, value]) => `${key}: ${value}`).join(', ')
+                                    : '-'
+                                  }
                                 </td>
                               </tr>
                             ))}
@@ -917,10 +920,12 @@ export default function AnkiStudy() {
                               POS: {card.pos || 'Unknown'}
                             </span>
                           </div>
-                          <div className="text-slate-400 text-sm italic border-l-2 border-slate-600 pl-3" data-testid={`text-mobile-details-${index}`}>
-                            <span className="text-slate-500">Details: </span>
-                            {card.sentence || card.translations.join(', ') || '-'}
-                          </div>
+                          {card.details && typeof card.details === 'object' && Object.keys(card.details).length > 0 && (
+                            <div className="text-slate-400 text-sm italic border-l-2 border-slate-600 pl-3" data-testid={`text-mobile-details-${index}`}>
+                              <span className="text-slate-500">Details: </span>
+                              {Object.entries(card.details).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
