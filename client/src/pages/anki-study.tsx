@@ -809,15 +809,14 @@ export default function AnkiStudy() {
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="border-b border-slate-600">
+                              <th className="text-left p-3 text-slate-300 font-medium">Status</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Position</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Word</th>
-                              <th className="text-left p-3 text-slate-300 font-medium">Lemma</th>
-                              <th className="text-left p-3 text-slate-300 font-medium">Translation</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Possible Translations</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Lemma</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Lemma Translations</th>
                               <th className="text-left p-3 text-slate-300 font-medium">POS</th>
-                              <th className="text-left p-3 text-slate-300 font-medium">Status</th>
-                              <th className="text-left p-3 text-slate-300 font-medium">Context</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Details</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -827,23 +826,29 @@ export default function AnkiStudy() {
                                 className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors"
                                 data-testid={`row-card-${index}`}
                               >
+                                <td className="p-3" data-testid={`text-status-${index}`}>
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    card.status === 'new' ? 'bg-blue-900 text-blue-300' :
+                                    card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
+                                    'bg-green-900 text-green-300'
+                                  }`}>
+                                    {card.status}
+                                  </span>
+                                </td>
                                 <td className="p-3 text-slate-400 font-mono text-sm" data-testid={`text-position-${index}`}>
                                   {card.wordKey}
                                 </td>
                                 <td className={`p-3 font-semibold ${getPosTextColor(card.pos)}`} data-testid={`text-word-${index}`}>
                                   {card.word}
                                 </td>
-                                <td className="p-3 text-blue-400 text-sm" data-testid={`text-lemma-${index}`}>
-                                  {card.lemma || '-'}
-                                </td>
-                                <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
-                                  {card.translations.join(', ')}
-                                </td>
                                 <td className="p-3 text-purple-400 text-sm" data-testid={`text-possible-translations-${index}`}>
                                   {(card as any).possibleTranslations?.length > 0 
                                     ? (card as any).possibleTranslations.join(', ')
                                     : '-'
                                   }
+                                </td>
+                                <td className="p-3 text-blue-400 text-sm" data-testid={`text-lemma-${index}`}>
+                                  {card.lemma || '-'}
                                 </td>
                                 <td className="p-3 text-cyan-400 text-sm" data-testid={`text-lemma-translations-${index}`}>
                                   {(card as any).lemmaTranslations?.length > 0 
@@ -854,17 +859,8 @@ export default function AnkiStudy() {
                                 <td className="p-3 text-blue-400 text-sm" data-testid={`text-pos-${index}`}>
                                   {card.pos || '-'}
                                 </td>
-                                <td className="p-3" data-testid={`text-status-${index}`}>
-                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                    card.status === 'new' ? 'bg-blue-900 text-blue-300' :
-                                    card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
-                                    'bg-green-900 text-green-300'
-                                  }`}>
-                                    {card.status}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-slate-400 text-sm max-w-md truncate" data-testid={`text-sentence-${index}`}>
-                                  {card.sentence || '-'}
+                                <td className="p-3 text-slate-400 text-sm max-w-md truncate" data-testid={`text-details-${index}`}>
+                                  {card.sentence || card.translations.join(', ') || '-'}
                                 </td>
                               </tr>
                             ))}
@@ -885,23 +881,29 @@ export default function AnkiStudy() {
                             <div className={`font-semibold text-lg ${getPosTextColor(card.pos)}`} data-testid={`text-mobile-word-${index}`}>
                               {card.word}
                             </div>
-                            <div className="text-slate-400 text-sm font-mono" data-testid={`text-mobile-position-${index}`}>
-                              #{card.wordKey}
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                card.status === 'new' ? 'bg-blue-900 text-blue-300' :
+                                card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
+                                'bg-green-900 text-green-300'
+                              }`} data-testid={`text-mobile-status-${index}`}>
+                                {card.status}
+                              </span>
+                              <div className="text-slate-400 text-sm font-mono" data-testid={`text-mobile-position-${index}`}>
+                                #{card.wordKey}
+                              </div>
                             </div>
-                          </div>
-                          {card.lemma && (
-                            <div className="text-blue-400 mb-2 text-sm" data-testid={`text-mobile-lemma-${index}`}>
-                              <span className="text-slate-400">Lemma: </span>
-                              {card.lemma}
-                            </div>
-                          )}
-                          <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
-                            {card.translations.join(', ')}
                           </div>
                           {(card as any).possibleTranslations?.length > 0 && (
                             <div className="text-purple-400 mb-2 text-sm" data-testid={`text-mobile-possible-translations-${index}`}>
                               <span className="text-slate-400">Possible: </span>
                               {(card as any).possibleTranslations.join(', ')}
+                            </div>
+                          )}
+                          {card.lemma && (
+                            <div className="text-blue-400 mb-2 text-sm" data-testid={`text-mobile-lemma-${index}`}>
+                              <span className="text-slate-400">Lemma: </span>
+                              {card.lemma}
                             </div>
                           )}
                           {(card as any).lemmaTranslations?.length > 0 && (
@@ -912,21 +914,13 @@ export default function AnkiStudy() {
                           )}
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-blue-400 text-sm" data-testid={`text-mobile-pos-${index}`}>
-                              {card.pos || 'Unknown POS'}
-                            </span>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              card.status === 'new' ? 'bg-blue-900 text-blue-300' :
-                              card.status === 'learning' ? 'bg-yellow-900 text-yellow-300' :
-                              'bg-green-900 text-green-300'
-                            }`} data-testid={`text-mobile-status-${index}`}>
-                              {card.status}
+                              POS: {card.pos || 'Unknown'}
                             </span>
                           </div>
-                          {card.sentence && (
-                            <div className="text-slate-400 text-sm italic border-l-2 border-slate-600 pl-3" data-testid={`text-mobile-sentence-${index}`}>
-                              "{card.sentence}"
-                            </div>
-                          )}
+                          <div className="text-slate-400 text-sm italic border-l-2 border-slate-600 pl-3" data-testid={`text-mobile-details-${index}`}>
+                            <span className="text-slate-500">Details: </span>
+                            {card.sentence || card.translations.join(', ') || '-'}
+                          </div>
                         </div>
                       ))}
                     </div>
