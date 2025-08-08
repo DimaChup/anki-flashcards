@@ -193,6 +193,48 @@
     .gap-3 {
       gap: 0.5rem;
     }
+
+    /* Mobile-specific color fixes - use solid colors instead of HSLA for consistency */
+    .highlight-verb {
+      background-color: hsl(340, 80%, 72%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+    }
+    
+    .highlight-noun, .highlight-propn {
+      background-color: hsl(205, 80%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+    }
+    
+    .highlight-adj {
+      background-color: hsl(145, 65%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+    }
+    
+    .highlight-aux {
+      background-color: hsl(35, 90%, 59%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+    }
+    
+    .highlight-other {
+      background-color: hsl(45, 90%, 68%) !important; /* Solid equivalent of HSLA with alpha 0.9 */
+    }
+
+    /* Also fix POS button colors for mobile */
+    .pos-verb {
+      background-color: hsl(340, 80%, 72%) !important;
+    }
+
+    .pos-noun, .pos-propn {
+      background-color: hsl(205, 80%, 68%) !important;
+    }
+
+    .pos-adj {
+      background-color: hsl(145, 65%, 68%) !important;
+    }
+
+    .pos-aux {
+      background-color: hsl(35, 90%, 59%) !important;
+    }
+
+    .pos-other {
+      background-color: hsl(45, 90%, 68%) !important;
+    }
   }
 
   /* Fixed height containers to prevent layout jumping */
