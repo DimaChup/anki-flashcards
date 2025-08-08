@@ -811,8 +811,10 @@ export default function AnkiStudy() {
                             <tr className="border-b border-slate-600">
                               <th className="text-left p-3 text-slate-300 font-medium">Position</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Word</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Lemma</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Translation</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Possible Translations</th>
+                              <th className="text-left p-3 text-slate-300 font-medium">Lemma Translations</th>
                               <th className="text-left p-3 text-slate-300 font-medium">POS</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Status</th>
                               <th className="text-left p-3 text-slate-300 font-medium">Context</th>
@@ -831,12 +833,21 @@ export default function AnkiStudy() {
                                 <td className={`p-3 font-semibold ${getPosTextColor(card.pos)}`} data-testid={`text-word-${index}`}>
                                   {card.word}
                                 </td>
+                                <td className="p-3 text-blue-400 text-sm" data-testid={`text-lemma-${index}`}>
+                                  {card.lemma || '-'}
+                                </td>
                                 <td className="p-3 text-green-400" data-testid={`text-translations-${index}`}>
                                   {card.translations.join(', ')}
                                 </td>
                                 <td className="p-3 text-purple-400 text-sm" data-testid={`text-possible-translations-${index}`}>
                                   {(card as any).possibleTranslations?.length > 0 
                                     ? (card as any).possibleTranslations.join(', ')
+                                    : '-'
+                                  }
+                                </td>
+                                <td className="p-3 text-cyan-400 text-sm" data-testid={`text-lemma-translations-${index}`}>
+                                  {(card as any).lemmaTranslations?.length > 0 
+                                    ? (card as any).lemmaTranslations.join(', ')
                                     : '-'
                                   }
                                 </td>
@@ -878,6 +889,12 @@ export default function AnkiStudy() {
                               #{card.wordKey}
                             </div>
                           </div>
+                          {card.lemma && (
+                            <div className="text-blue-400 mb-2 text-sm" data-testid={`text-mobile-lemma-${index}`}>
+                              <span className="text-slate-400">Lemma: </span>
+                              {card.lemma}
+                            </div>
+                          )}
                           <div className="text-green-400 mb-2" data-testid={`text-mobile-translations-${index}`}>
                             {card.translations.join(', ')}
                           </div>
@@ -885,6 +902,12 @@ export default function AnkiStudy() {
                             <div className="text-purple-400 mb-2 text-sm" data-testid={`text-mobile-possible-translations-${index}`}>
                               <span className="text-slate-400">Possible: </span>
                               {(card as any).possibleTranslations.join(', ')}
+                            </div>
+                          )}
+                          {(card as any).lemmaTranslations?.length > 0 && (
+                            <div className="text-cyan-400 mb-2 text-sm" data-testid={`text-mobile-lemma-translations-${index}`}>
+                              <span className="text-slate-400">Lemma Translations: </span>
+                              {(card as any).lemmaTranslations.join(', ')}
                             </div>
                           )}
                           <div className="flex justify-between items-center mb-2">
