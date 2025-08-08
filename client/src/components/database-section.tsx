@@ -105,8 +105,9 @@ export default function DatabaseSection({
       className="p-5 rounded-xl flex flex-col gap-4"
       style={{ backgroundColor: 'var(--bg-tertiary)' }}
     >
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex flex-col gap-2 min-w-0 flex-1">
+      {/* Database Selection Section */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="database-list" className="flex items-center gap-2 text-sm font-semibold">
             <Database className="w-4 h-4" />
             Select Database:
@@ -170,7 +171,8 @@ export default function DatabaseSection({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons - Mobile: Below database selection, Desktop: Same row */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -184,7 +186,7 @@ export default function DatabaseSection({
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 justify-center sm:justify-start"
             data-testid="upload-json-button"
           >
             <Upload className="w-4 h-4" />
@@ -194,7 +196,7 @@ export default function DatabaseSection({
           <Button
             variant="default"
             onClick={onCreateNew}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 justify-center sm:justify-start"
             data-testid="create-new-button"
           >
             <Plus className="w-4 h-4" />
