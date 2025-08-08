@@ -184,6 +184,9 @@ export class DatabaseStorage implements IStorage {
         await db.delete(ankiStudyDecks).where(eq(ankiStudyDecks.id, deck.id));
       }
       
+      // Delete any processing jobs associated with this database
+      await db.delete(processingJobs).where(eq(processingJobs.databaseId, id));
+      
       // Delete any spaced repetition data associated with this database (if exists)
       // Note: Legacy spaced repetition cleanup handled separately if tables exist
       
