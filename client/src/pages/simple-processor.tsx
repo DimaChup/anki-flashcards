@@ -30,6 +30,12 @@ export default function SimpleProcessor() {
   const [initializationComplete, setInitializationComplete] = useState(false)
   const [selectedPrompt, setSelectedPrompt] = useState('prompt_es.txt')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Text input mode
+  const [inputMode, setInputMode] = useState<'file' | 'text'>('file')
+  const [textContent, setTextContent] = useState('')
+  const [textFilename, setTextFilename] = useState('')
+  
   const { toast } = useToast()
 
   // Get available prompt templates
@@ -58,11 +64,56 @@ export default function SimpleProcessor() {
     }
   }
 
-  const runProcessor = async () => {
-    if (!selectedFile || !outputFilename) {
+  const createTextFile = async () => {
+    if (!textContent.trim() || !textFilename.trim()) {
       toast({
         title: "Missing requirements",
-        description: "Please select a text file and specify output filename",
+        description: "Please provide both text content and filename",
+        variant: "destructive"
+      })
+      return null
+    }
+
+    try {
+      // Create a blob and file from the text content
+      const blob = new Blob([textContent], { type: 'text/plain' })
+      const filename = textFilename.endsWith('.txt') ? textFilename : `${textFilename}.txt`
+      const file = new File([blob], filename, { type: 'text/plain' })
+      
+      setSelectedFile(file)
+      // Auto-generate output filename
+      const baseName = filename.replace('.txt', '')
+      setOutputFilename(`${baseName}.json`)
+      
+      toast({
+        title: "Text file created",
+        description: `${filename} ready for processing`
+      })
+      
+      return file
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create text file",
+        variant: "destructive"
+      })
+      return null
+    }
+  }
+
+  const runProcessor = async () => {
+    let fileToProcess = selectedFile
+
+    // If in text mode, create file from text content first
+    if (inputMode === 'text') {
+      fileToProcess = await createTextFile()
+      if (!fileToProcess) return
+    }
+
+    if (!fileToProcess || !outputFilename) {
+      toast({
+        title: "Missing requirements",
+        description: "Please select a text file or provide text content and specify output filename",
         variant: "destructive"
       })
       return
@@ -77,7 +128,7 @@ export default function SimpleProcessor() {
     try {
       // Upload the file first
       const formData = new FormData()
-      formData.append('textFile', selectedFile)
+      formData.append('textFile', fileToProcess)
 
       const uploadResponse = await fetch('/api/python-terminal/upload', {
         method: 'POST',
@@ -273,7 +324,7 @@ export default function SimpleProcessor() {
         </div>
         <h1 className="text-3xl font-bold">Text Processor</h1>
         <p className="text-muted-foreground mt-2">
-          Upload a text file and run the Python script to generate analysis data
+          Upload a text file or paste content to run the Python script and generate analysis data
         </p>
       </div>
 
@@ -286,28 +337,101 @@ export default function SimpleProcessor() {
               Input & Settings
             </CardTitle>
             <CardDescription>
-              Upload your text file and configure the processing
+              Upload a text file or paste content and configure the processing
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* File Upload */}
+            {/* Input Mode Selection */}
             <div>
-              <Label htmlFor="file">Text File (.txt)</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".txt"
-                onChange={handleFileSelect}
-                ref={fileInputRef}
-                className="mt-1"
-                data-testid="input-file"
-              />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                </p>
-              )}
+              <Label className="text-sm font-medium">Input Method</Label>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant={inputMode === 'file' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setInputMode('file')
+                    setSelectedFile(null)
+                    setTextContent('')
+                    setTextFilename('')
+                    setOutputFilename('')
+                  }}
+                  data-testid="button-file-mode"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Upload File
+                </Button>
+                <Button
+                  variant={inputMode === 'text' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setInputMode('text')
+                    setSelectedFile(null)
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = ''
+                    }
+                    setOutputFilename('')
+                  }}
+                  data-testid="button-text-mode"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Paste Text
+                </Button>
+              </div>
             </div>
+
+            {/* File Upload Mode */}
+            {inputMode === 'file' && (
+              <div>
+                <Label htmlFor="file">Text File (.txt)</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  accept=".txt"
+                  onChange={handleFileSelect}
+                  ref={fileInputRef}
+                  className="mt-1"
+                  data-testid="input-file"
+                />
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Text Input Mode */}
+            {inputMode === 'text' && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="textFilename">Filename (without .txt extension)</Label>
+                  <Input
+                    id="textFilename"
+                    value={textFilename}
+                    onChange={(e) => setTextFilename(e.target.value)}
+                    placeholder="my-document"
+                    className="mt-1"
+                    data-testid="input-text-filename"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="textContent">Text Content</Label>
+                  <Textarea
+                    id="textContent"
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
+                    placeholder="Paste your text content here..."
+                    className="min-h-[150px] mt-1"
+                    data-testid="textarea-text-content"
+                  />
+                  {textContent && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Character count: {textContent.length}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Output Filename */}
             <div>
@@ -323,11 +447,15 @@ export default function SimpleProcessor() {
             </div>
 
             {/* Command Preview */}
-            {selectedFile && outputFilename && (
+            {((inputMode === 'file' && selectedFile) || (inputMode === 'text' && textContent && textFilename)) && outputFilename && (
               <div className="p-3 bg-muted rounded-md">
                 <Label className="text-sm font-mono">Command to execute:</Label>
                 <p className="text-sm font-mono text-muted-foreground mt-1">
-                  python server/process_llm.py --initialize-only --input /tmp/{selectedFile.name} --output /tmp/{outputFilename}
+                  {inputMode === 'file' && selectedFile ? (
+                    `python server/process_llm.py --initialize-only --input /tmp/${selectedFile.name} --output /tmp/${outputFilename}`
+                  ) : (
+                    `python server/process_llm.py --initialize-only --input /tmp/${textFilename}.txt --output /tmp/${outputFilename}`
+                  )}
                 </p>
               </div>
             )}
@@ -335,7 +463,11 @@ export default function SimpleProcessor() {
             {/* Run Button */}
             <Button
               onClick={runProcessor}
-              disabled={!selectedFile || !outputFilename || isProcessing}
+              disabled={
+                (inputMode === 'file' && (!selectedFile || !outputFilename)) ||
+                (inputMode === 'text' && (!textContent.trim() || !textFilename.trim() || !outputFilename)) ||
+                isProcessing
+              }
               className="w-full"
               data-testid="button-run-processor"
             >
