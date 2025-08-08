@@ -1,0 +1,1354 @@
+Failed Batches Log - 2025-08-08 15:49:14
+==============================
+Batch Index: 1
+Status: validation_failed
+--------------------
+Input JSON Sent (approx for last failed step):
+{
+  "wordData": {
+    "1": {
+      "word": "Qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "2": {
+      "word": "lindo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "3": {
+      "word": "que",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "4": {
+      "word": "es",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "5": {
+      "word": "caminar",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "6": {
+      "word": "bien",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "7": {
+      "word": "tomados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "8": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "9": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "10": {
+      "word": "mano",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "11": {
+      "word": "por",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "12": {
+      "word": "el",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "13": {
+      "word": "barrio",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "14": {
+      "word": "por",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "15": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "16": {
+      "word": "plaza",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "17": {
+      "word": "qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "18": {
+      "word": "sé",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "19": {
+      "word": "yo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "20": {
+      "word": "por",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "21": {
+      "word": "todos",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "22": {
+      "word": "lados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "23": {
+      "word": "Qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "24": {
+      "word": "lindo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "25": {
+      "word": "es",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "26": {
+      "word": "mirar",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "27": {
+      "word": "los",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "28": {
+      "word": "árboles",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "29": {
+      "word": "bien",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "30": {
+      "word": "tomados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "31": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "32": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "33": {
+      "word": "mano",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "34": {
+      "word": "desde",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "35": {
+      "word": "el",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "36": {
+      "word": "banco",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "37": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "38": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "39": {
+      "word": "plaza",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    }
+  },
+  "segmentData": {
+    "seg-1-39": {
+      "id": "seg-1-39",
+      "startWordKey": 1,
+      "endWordKey": 39,
+      "translations": {}
+    }
+  },
+  "idioms": []
+}--------------------
+Last Received Response Text (if available):
+{
+  "words": [
+    {
+      "word": "{",
+      "pos": "Puntuación",
+      "lemma": "{",
+      "best_translation": "{",
+      "possible_translations": ["{"],
+      "details": {}
+    },
+    {
+      "word": "TEXT_CONTENT",
+      "pos": "Sustantivo",
+      "lemma": "TEXT_CONTENT",
+      "best_translation": "TEXT_CONTENT",
+      "possible_translations": ["TEXT_CONTENT", "content", "text"],
+      "details": {
+        "type": "placeholder",
+        "context": "programming_variable"
+      }
+    },
+    {
+      "word": "}",
+      "pos": "Puntuación",
+      "lemma": "}",
+      "best_translation": "}",
+      "possible_translations": ["}"],
+      "details": {}
+    }
+  ]
+}
+==============================
+
+Batch Index: 2
+Status: validation_failed
+--------------------
+Input JSON Sent (approx for last failed step):
+{
+  "wordData": {
+    "40": {
+      "word": "en",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "41": {
+      "word": "el",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "42": {
+      "word": "que",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "43": {
+      "word": "estamos",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "44": {
+      "word": "sentados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "45": {
+      "word": "Qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "46": {
+      "word": "lindo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "47": {
+      "word": "es",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "48": {
+      "word": "mirar",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "49": {
+      "word": "el",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "50": {
+      "word": "cielo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "51": {
+      "word": "bien",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "52": {
+      "word": "tomados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "53": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "54": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "55": {
+      "word": "mano",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "56": {
+      "word": "en",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "57": {
+      "word": "nuestros",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "58": {
+      "word": "ojos",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "59": {
+      "word": "volando",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "60": {
+      "word": "dos",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "61": {
+      "word": "pájaros",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "62": {
+      "word": "reflejados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "63": {
+      "word": "Qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "64": {
+      "word": "lindo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "65": {
+      "word": "que",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "66": {
+      "word": "es",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "67": {
+      "word": "caminar",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "68": {
+      "word": "bien",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "69": {
+      "word": "tomados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "70": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "71": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "72": {
+      "word": "mano",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "73": {
+      "word": "qué",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "74": {
+      "word": "lindo",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    }
+  },
+  "segmentData": {
+    "seg-40-74": {
+      "id": "seg-40-74",
+      "startWordKey": 40,
+      "endWordKey": 74,
+      "translations": {}
+    }
+  },
+  "idioms": []
+}--------------------
+Last Received Response Text (if available):
+{
+  "words": [
+    {
+      "word": "El",
+      "pos": "Artículo",
+      "lemma": "el",
+      "best_translation": "The",
+      "possible_translations": ["The"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "gato",
+      "pos": "Sustantivo",
+      "lemma": "gato",
+      "best_translation": "cat",
+      "possible_translations": ["cat"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "negro",
+      "pos": "Adjetivo",
+      "lemma": "negro",
+      "best_translation": "black",
+      "possible_translations": ["black", "dark"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "duerme",
+      "pos": "Verbo",
+      "lemma": "dormir",
+      "best_translation": "sleeps",
+      "possible_translations": ["sleeps", "is sleeping", "sleep (imperative)"],
+      "details": {
+        "verb_tense": "present",
+        "verb_mood": "indicative",
+        "person": "third",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "tranquilamente",
+      "pos": "Adverbio",
+      "lemma": "tranquilamente",
+      "best_translation": "calmly",
+      "possible_translations": ["calmly", "peacefully", "quietly"],
+      "details": {}
+    },
+    {
+      "word": ".",
+      "pos": "Puntuación",
+      "lemma": ".",
+      "best_translation": ".",
+      "possible_translations": ["."],
+      "details": {}
+    }
+  ]
+}
+==============================
+
+Batch Index: 3
+Status: validation_failed
+--------------------
+Input JSON Sent (approx for last failed step):
+{
+  "wordData": {
+    "75": {
+      "word": "andar",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "76": {
+      "word": "por",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "77": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "78": {
+      "word": "vida",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "79": {
+      "word": "de",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "80": {
+      "word": "la",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "81": {
+      "word": "mano",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "82": {
+      "word": "bien",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    },
+    "83": {
+      "word": "tomados",
+      "pos": "TBD",
+      "lemma": "TBD",
+      "best_translation": "TBD",
+      "possible_translations": [],
+      "details": {},
+      "freq": "TBD",
+      "freq_till_now": "TBD",
+      "first_inst": "TBD",
+      "lemma_translations": [],
+      "most_frequent_lemma": "TBD"
+    }
+  },
+  "segmentData": {
+    "seg-75-83": {
+      "id": "seg-75-83",
+      "startWordKey": 75,
+      "endWordKey": 83,
+      "translations": {}
+    }
+  },
+  "idioms": []
+}--------------------
+Last Received Response Text (if available):
+{
+  "words": [
+    {
+      "word": "La",
+      "pos": "artículo",
+      "lemma": "el",
+      "best_translation": "The",
+      "possible_translations": ["the"],
+      "details": {
+        "gender": "feminine",
+        "number": "singular",
+        "type": "definido"
+      }
+    },
+    {
+      "word": "casa",
+      "pos": "sustantivo",
+      "lemma": "casa",
+      "best_translation": "house",
+      "possible_translations": ["house", "home"],
+      "details": {
+        "gender": "feminine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "azul",
+      "pos": "adjetivo",
+      "lemma": "azul",
+      "best_translation": "blue",
+      "possible_translations": ["blue"],
+      "details": {
+        "gender": "neutral",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "tiene",
+      "pos": "verbo",
+      "lemma": "tener",
+      "best_translation": "has",
+      "possible_translations": ["has", "possesses"],
+      "details": {
+        "verb_tense": "presente",
+        "verb_mood": "indicativo",
+        "verb_person": "tercera",
+        "verb_number": "singular"
+      }
+    },
+    {
+      "word": "un",
+      "pos": "artículo",
+      "lemma": "uno",
+      "best_translation": "a",
+      "possible_translations": ["a", "an", "one"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular",
+        "type": "indefinido"
+      }
+    },
+    {
+      "word": "jardín",
+      "pos": "sustantivo",
+      "lemma": "jardín",
+      "best_translation": "garden",
+      "possible_translations": ["garden", "yard"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "grande",
+      "pos": "adjetivo",
+      "lemma": "grande",
+      "best_translation": "big",
+      "possible_translations": ["big", "large", "great"],
+      "details": {
+        "gender": "neutral",
+        "number": "singular"
+      }
+    },
+    {
+      "word": "y",
+      "pos": "conjunción",
+      "lemma": "y",
+      "best_translation": "and",
+      "possible_translations": ["and"],
+      "details": {
+        "type": "coordinativa"
+      }
+    },
+    {
+      "word": "hermoso",
+      "pos": "adjetivo",
+      "lemma": "hermoso",
+      "best_translation": "beautiful",
+      "possible_translations": ["beautiful", "handsome", "lovely"],
+      "details": {
+        "gender": "masculine",
+        "number": "singular"
+      }
+    },
+    {
+      "word": ".",
+      "pos": "signo de puntuación",
+      "lemma": ".",
+      "best_translation": ".",
+      "possible_translations": [],
+      "details": {
+        "type": "full stop"
+      }
+    }
+  ]
+}
+==============================
+

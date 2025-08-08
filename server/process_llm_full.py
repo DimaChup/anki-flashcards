@@ -8,13 +8,13 @@ import asyncio # For parallel processing
 import argparse # For command-line arguments
 import google.generativeai as genai # Import the Gemini library
 from google.generativeai.types import HarmCategory, HarmBlockThreshold # For safety settings
-# from dotenv import load_dotenv  # Not needed in Replit
+from dotenv import load_dotenv
 # --- Configuration ---
-# load_dotenv()  # Not needed in Replit
+load_dotenv()
 # !!! PASTE YOUR GEMINI API KEY HERE !!!
 # It's recommended to use environment variables or a config file for API keys
 # instead of hardcoding them directly in the script.
-LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") # Get from environment
+LLM_API_KEY = os.getenv("LLM_API_KEY") # Replace with your actual key
 
 # --- File Path Setup ---
 # Get the directory where the script itself is located
