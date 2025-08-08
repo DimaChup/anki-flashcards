@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import DatabaseSection from "@/components/database-section";
 import PageViewSection from "@/components/page-view-section";
 import ListViewSection from "@/components/list-view-section";
+import KnownWordsSection from "@/components/known-words-section";
 import { type LinguisticDatabase, type WordEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -172,7 +173,6 @@ export default function Home() {
             selectedDatabase={selectedDatabase || null}
             analysisData={analysisData || []}
             knownWords={selectedDatabase?.knownWords as string[] || []}
-            onKnownWordsChange={handleKnownWordsChange}
             data-testid="page-view-section"
           />
 
@@ -180,6 +180,14 @@ export default function Home() {
           <ListViewSection
             database={selectedDatabase}
             data-testid="list-view-section"
+          />
+
+          {/* Known Words Section - Moved to bottom */}
+          <KnownWordsSection
+            selectedDatabase={selectedDatabase || null}
+            knownWords={selectedDatabase?.knownWords as string[] || []}
+            onKnownWordsChange={handleKnownWordsChange}
+            data-testid="known-words-section"
           />
         </div>
       </div>

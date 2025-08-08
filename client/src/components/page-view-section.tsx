@@ -5,14 +5,12 @@ interface PageViewSectionProps {
   selectedDatabase: LinguisticDatabase | null;
   analysisData: WordEntry[];
   knownWords: string[];
-  onKnownWordsChange: (knownWords: string[]) => void;
 }
 
 export default function PageViewSection({
   selectedDatabase,
   analysisData,
   knownWords,
-  onKnownWordsChange,
 }: PageViewSectionProps) {
   // State variables matching the original
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,11 +86,10 @@ export default function PageViewSection({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle known words input change
+  // Handle known words input change (functionality moved to KnownWordsSection)
   const handleKnownWordsInputChange = (value: string) => {
     setKnownWordsInput(value);
-    const words = value.split('\n').filter(word => word.trim()).map(word => word.trim());
-    onKnownWordsChange(words);
+    // Note: Known words management moved to separate component
   };
 
   // Toggle POS highlighting
@@ -146,28 +143,16 @@ export default function PageViewSection({
     setSegmentMode(newSegmentMode);
   };
 
-  // Add first instances to known words
+  // Add first instances to known words (functionality moved to KnownWordsSection)
   const addFirstInstances = () => {
-    if (!analysisData) return;
-    
-    const firstInstances = analysisData
-      .filter(word => word.firstInstance)
-      .map(word => `${word.word}::${word.pos}`);
-    
-    const existingKnownWords = knownWords || [];
-    const combinedWords = [...existingKnownWords, ...firstInstances];
-    const newKnownWords = Array.from(new Set(combinedWords));
-    onKnownWordsChange(newKnownWords);
+    // Note: Known words management moved to separate component
+    console.log('Add first instances functionality moved to Known Words section');
   };
 
-  // Clear known words
+  // Clear known words (functionality moved to KnownWordsSection)
   const clearKnownWords = () => {
-    if (scopeMode === 'entire') {
-      onKnownWordsChange([]);
-    } else {
-      // Clear only current page words - implement page-specific logic
-      onKnownWordsChange([]);
-    }
+    // Note: Known words management moved to separate component
+    console.log('Clear known words functionality moved to Known Words section');
   };
 
   // Get words to display (don't filter out, just return all for proper fading)
@@ -185,22 +170,12 @@ export default function PageViewSection({
     return filtered;
   };
 
-  // Handle word click (toggle known status)
+  // Handle word click (toggle known status) - functionality moved to KnownWordsSection
   const handleWordClick = (word: WordEntry, index: number) => {
     if (segmentMode) return; // Don't handle clicks in segment mode
     
-    const signature = `${word.word}::${word.pos}`;
-    const currentKnownWords = knownWords || [];
-    
-    if (knownSignaturesSet.has(signature)) {
-      // Remove from known words
-      const updatedKnownWords = currentKnownWords.filter(kw => kw !== signature);
-      onKnownWordsChange(updatedKnownWords);
-    } else {
-      // Add to known words
-      const updatedKnownWords = [...currentKnownWords, signature];
-      onKnownWordsChange(updatedKnownWords);
-    }
+    // Note: Known words management moved to separate component
+    console.log(`Word click functionality moved to Known Words section: ${word.word}::${word.pos}`);
   };
 
   // Find idioms for a specific word key (like original findIdiomForKey)
@@ -776,22 +751,6 @@ export default function PageViewSection({
 
   return (
     <div className="page-view-section">
-      {/* Known Words Input Section */}
-      <div className="input-section mb-6">
-        <div className="textarea-group">
-          <label htmlFor="known-words-input" className="text-sm font-medium text-muted-foreground mb-2 block">
-            Known Words (Signatures: word::POS):
-          </label>
-          <textarea
-            id="known-words-input"
-            value={knownWordsInput}
-            onChange={(e) => handleKnownWordsInputChange(e.target.value)}
-            className="w-full h-32 p-3 bg-muted border border-border rounded-lg font-mono text-sm resize-vertical"
-            placeholder="Load data from server or edit here..."
-          />
-        </div>
-      </div>
-
       {/* Mobile-Optimized Controls Container */}
       <div className="controls-container bg-muted p-3 rounded-lg mb-4">
         <div className="control-group highlight-controls">
