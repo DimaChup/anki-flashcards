@@ -6,14 +6,31 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, Terminal, Play, FolderOpen, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useQuery } from '@tanstack/react-query'
+
+interface PromptTemplate {
+  filename: string;
+  name: string;
+  description: string;
+  size: number;
+  modified: string;
+}
 
 export default function PythonTerminal() {
   const [command, setCommand] = useState('python server/process_llm.py --initialize-only --input /tmp/nature.txt')
   const [output, setOutput] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
+  const [selectedPrompt, setSelectedPrompt] = useState('prompt_es.txt')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // Get available prompt templates
+  const { data: prompts } = useQuery<PromptTemplate[]>({
+    queryKey: ["/api/llm-processor/prompts"],
+    refetchInterval: false,
+  })
 
   // Load uploaded files list on component mount
   useEffect(() => {
@@ -282,7 +299,31 @@ export default function PythonTerminal() {
             Common commands for your workflow
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Prompt Template for Step 2</Label>
+            <Select value={selectedPrompt} onValueChange={setSelectedPrompt}>
+              <SelectTrigger data-testid="select-prompt-template">
+                <SelectValue placeholder="Select prompt..." />
+              </SelectTrigger>
+              <SelectContent>
+                {prompts && prompts.length > 0 ? (
+                  prompts.map((prompt) => (
+                    <SelectItem key={prompt.filename} value={prompt.filename}>
+                      {prompt.name} ({prompt.filename})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="prompt_es.txt">ES (prompt_es.txt)</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {selectedPrompt && prompts && (
+              <div className="text-xs text-muted-foreground">
+                {prompts.find(p => p.filename === selectedPrompt)?.description || 'Selected prompt template'}
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <Button
               variant="outline"
@@ -294,7 +335,7 @@ export default function PythonTerminal() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setCommand('python server/process_llm.py --resume-from /tmp/database.json --model gemini-2.5-flash --prompt server/prompt_es.txt')}
+              onClick={() => setCommand(`python server/process_llm.py --resume-from /tmp/nature.json --output /tmp/nature.json --model gemini-2.5-flash --prompt server/prompts/${selectedPrompt}`)}
               className="justify-start font-mono text-sm"
               data-testid="button-quick-resume"
             >

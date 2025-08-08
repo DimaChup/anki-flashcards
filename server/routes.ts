@@ -2149,7 +2149,7 @@ Take your time, be super careful, no cutting corners.`,
   // Get available prompt templates for LLM processor
   app.get("/api/llm-processor/prompts", async (req, res) => {
     try {
-      const promptsDir = path.join(__dirname, 'prompts');
+      const promptsDir = path.join(process.cwd(), 'server/prompts');
       const files = await fs.readdir(promptsDir);
       
       const prompts = await Promise.all(
